@@ -11,6 +11,7 @@ struct JoyStickView: View {
     var body: some View {
         VStack{
             SensorsReadingView()
+                .frame(alignment: .top)
             HStack {
                 DirectionPadView(onDirectionPressed: { direction in
                     print("direction is \(direction)")
