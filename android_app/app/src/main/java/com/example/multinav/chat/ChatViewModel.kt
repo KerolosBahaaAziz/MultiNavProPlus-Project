@@ -30,4 +30,12 @@ class ChatViewModel : ViewModel() {
             _messages.value = _messages.value + Message(message, false)
         }
     }
+
+    fun sendVoice() {
+
+    }
+
+    fun makePhoneCall() {
+        TODO("Not yet implemented")
+    }
 }

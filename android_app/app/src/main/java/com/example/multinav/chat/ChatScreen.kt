@@ -94,60 +94,67 @@ fun MessageBubble(message: Message) {
         )
     }
 }
-
 @Composable
 fun MessageInput(viewModel: ChatViewModel) {
     var inputText by remember { mutableStateOf("") }
 
-    Row(modifier = Modifier.fillMaxWidth()) {
-        BasicTextField(
-            value = inputText,
-            onValueChange = { inputText = it },
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, shape = MaterialTheme.shapes.small),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
             modifier = Modifier
-                .weight(2f)
-                .background(Color.White, shape = MaterialTheme.shapes.small)
-                .padding(12.dp)
+                .weight(1f)
+                .padding(end = 8.dp) // Add padding to separate text from icons
+        ) {
+            BasicTextField(
+                value = inputText,
+                onValueChange = { inputText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            )
 
+            if (inputText.isEmpty()) {
+                Text(
+                    text = "Type a message...",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
 
-        )
         IconButton(onClick = {
             viewModel.sendMessage(inputText)
             inputText = ""
-        } ) {
+        }) {
             Icon(
                 painter = painterResource(R.drawable.ic_send),
-                contentDescription = "Send",
-                tint = Color.White
-            )
-
-
-
-        }
-
-        IconButton(onClick = {
-            viewModel.sendMessage(inputText)
-            inputText = ""
-        } ) {
-            Icon(
-                painterResource(R.drawable.ic_mic)
-                , contentDescription = "Send",
-                tint = Color.White
+                contentDescription = "Send"
             )
         }
 
         IconButton(onClick = {
-            viewModel.sendMessage(inputText)
-            inputText = ""
-        } ) {
+            viewModel.sendVoice()
+        }) {
             Icon(
-                painterResource(R.drawable.ic_cal)
-                , contentDescription = "Send" ,
-                tint = Color.White
+                painter = painterResource(R.drawable.ic_mic),
+                contentDescription = "Mic"
+            )
+        }
+
+        IconButton(onClick = {
+            viewModel.makePhoneCall()
+        }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_cal),
+                contentDescription = "Call"
             )
         }
     }
 }
-
 
 class ChatViewModelFactory : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
