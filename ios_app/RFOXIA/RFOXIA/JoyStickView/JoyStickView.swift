@@ -20,8 +20,8 @@ struct JoyStickView: View {
                     print("Action is \(Action)")
                 })
             }
+            .padding()
         }
-        .padding()
     }
 }
 
