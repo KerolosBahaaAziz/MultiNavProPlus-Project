@@ -9,7 +9,8 @@ import SwiftUI
 
 struct JoyStickView: View {
     var body: some View {
-        ZStack{
+        VStack{
+            SensorsReadingView()
             HStack {
                 DirectionPadView(onDirectionPressed: { direction in
                     print("direction is \(direction)")
