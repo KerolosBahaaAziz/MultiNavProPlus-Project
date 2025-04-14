@@ -13,7 +13,7 @@ struct ContentView: View {
 
     var body: some View {
         // Pass the managed object context to BluetoothChatView
-        BluetoothChatView()
+        JoyStickView()
             .environment(\.managedObjectContext, viewContext)
     }
 }
