@@ -23,7 +23,7 @@ struct JoyStickView: View {
                 
                 Text("\(value)")
                     .font(.title)
-//                    .padding(.vertical, 5)
+                //  .padding(.vertical, 5)
                 
                 HStack {
                     DirectionPadView { direction in
