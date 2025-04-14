@@ -23,7 +23,7 @@ struct JoyStickView: View {
                 
                 Text("\(value)")
                     .font(.title)
-                    .padding(.vertical, 5)
+//                    .padding(.vertical, 5)
                 
                 HStack {
                     DirectionPadView { direction in
@@ -34,14 +34,14 @@ struct JoyStickView: View {
                         print("isMoving: \(isMoving)")
                     }
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: geometry.size.width * 0.35)
+                    .frame(maxWidth: geometry.size.width * 0.38)
                     .padding(.horizontal)
                     
                     ActionButtonsView { action in
                         print("Action is \(action)")
                     }
                 }
-                .frame(maxHeight: geometry.size.height * 0.3)
+                .frame(maxHeight: geometry.size.height * 0.38)
                 
                 Spacer()
                 

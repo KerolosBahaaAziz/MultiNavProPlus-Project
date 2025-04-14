@@ -9,11 +9,25 @@ import SwiftUI
 
 struct TaskView: View {
     
+    private var tasks : [Task] = []
+    @State private var isOn : [Bool] = []
+    
+    init(tasks: [Task]) {
+        self.tasks = tasks
+    }
+    
     var body: some View {
-        Text("asdasd")
+        List{
+            ForEach(tasks, id: \.self) { task in
+                HStack{
+                    Text(task.action)
+                    Spacer()
+                }
+            }
+        }
     }
 }
 
 #Preview {
-    TaskView()
+    TaskView(tasks: [Task(action: "action1"),Task(action: "action2"),Task(action: "action3")])
 }
