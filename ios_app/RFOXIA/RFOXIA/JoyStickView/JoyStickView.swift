@@ -8,36 +8,50 @@
 import SwiftUI
 
 struct JoyStickView: View {
-    
     @State var value: Int = 0
     @State var selectedMode : Int = 0
     
     var body: some View {
-        VStack{
-            SensorsReadingView()
-            ModeButtonsView(selectedIndex: $selectedMode)
-                .frame(height: 10)
-            Text("\(value)")
-                .padding(10)
-            HStack {
-                DirectionPadView(onDirectionPressed: { direction in
-                    print("direction is \(direction)")
-                })
-                rotatingKnobView(selection: $value, range: -500...500){ isMoving in
-                    print("\(isMoving)")
-                }
-                .frame(width: 150, height: 150)
-                .padding([.leading ,.trailing] , 90)
+        GeometryReader { geometry in
+            VStack(spacing: 16) {
                 
-                ActionButtonsView(onActionPressed: { action in
-                    print("Action is \(action)")
-                })
+                SensorsReadingView()
+                
+                ModeButtonsView(selectedIndex: $selectedMode)
+                    .padding(.horizontal)
+                    .frame(height: geometry.size.height * 0.05)
+                
+                Text("\(value)")
+                    .font(.title)
+                    .padding(.vertical, 5)
+                
+                HStack {
+                    DirectionPadView { direction in
+                        print("direction is \(direction)")
+                    }
+                    
+                    rotatingKnobView(selection: $value, range: -500...500) { isMoving in
+                        print("isMoving: \(isMoving)")
+                    }
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: geometry.size.width * 0.35)
+                    .padding(.horizontal)
+                    
+                    ActionButtonsView { action in
+                        print("Action is \(action)")
+                    }
+                }
+                .frame(maxHeight: geometry.size.height * 0.3)
+                
+                Spacer()
+                
+                ActivatorButtonView { action, isActivated in
+                    print("\(action) is \(isActivated)")
+                }
+                .padding(.bottom)
             }
-            .frame(height: 140)
-            .padding(.bottom, 50)
-            ActivatorButtonView(){ Action , isActivated in
-                print("\(Action) is \(isActivated)")
-            }
+            .padding()
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
     }
 }
