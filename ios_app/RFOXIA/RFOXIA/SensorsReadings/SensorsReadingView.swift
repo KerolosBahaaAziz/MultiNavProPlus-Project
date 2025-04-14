@@ -9,13 +9,16 @@ import SwiftUI
 
 struct SensorsReadingView: View {
     var body: some View {
-        VStack(alignment: .leading){
-            Text("Temp: 26°C")
-            Text("Humidity: 48%")
-            Text("Pressure: 1013hPa")
-            Text("Air quality: Good")
+        HStack{
+            Text("26°C")
+            Spacer()
+            Text("48%")
+            Spacer()
+            Text("1013hPa")
+            Spacer()
+            Text("Good")
         }
-        .font(.title3)
+        .font(.system(size: 33))
         .background(in: .rect, fillStyle: .init(eoFill: true))
     }
 }
