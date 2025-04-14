@@ -18,7 +18,7 @@ struct ActivatorButton: View {
             .frame(width: 30, height: 30)
             .foregroundColor(.white)
             .padding(5)
-            .background(.purple)
+            .background(BackgroundGradient.backgroundGradient)
             .clipShape(Circle())
     }
     

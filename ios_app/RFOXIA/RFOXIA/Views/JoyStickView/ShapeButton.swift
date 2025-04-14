@@ -18,7 +18,7 @@ struct ShapeButton: View {
             .frame(width: 30, height: 30)
             .foregroundColor(.white)
             .padding()
-            .background(.purple)
+            .background(BackgroundGradient.backgroundGradient)
             .clipShape(Circle())
     }
     
