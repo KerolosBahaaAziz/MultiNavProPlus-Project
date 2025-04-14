@@ -10,11 +10,11 @@ import SwiftUI
 struct JoyStickView: View {
     @State var value: Int = 0
     @State var selectedMode : Int = 0
+    @Environment(\.scenePhase) var scenePhase
     
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 16) {
-                
                 SensorsReadingView()
                 
                 ModeButtonsView(selectedIndex: $selectedMode)
@@ -23,7 +23,7 @@ struct JoyStickView: View {
                 
                 Text("\(value)")
                     .font(.title)
-                //  .padding(.vertical, 5)
+                    .padding(.vertical, 10)
                 
                 HStack {
                     DirectionPadView { direction in
@@ -34,14 +34,14 @@ struct JoyStickView: View {
                         print("isMoving: \(isMoving)")
                     }
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: geometry.size.width * 0.38)
+                    .frame(maxWidth: geometry.size.width * 0.3)
                     .padding(.horizontal)
                     
                     ActionButtonsView { action in
                         print("Action is \(action)")
                     }
                 }
-                .frame(maxHeight: geometry.size.height * 0.38)
+                .frame(maxHeight: geometry.size.height * 0.25)
                 
                 Spacer()
                 
@@ -52,6 +52,23 @@ struct JoyStickView: View {
             }
             .padding()
             .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .onAppear(){
+            OrientationHelper.forceLandscapeOnLaunch = true
+            OrientationHelper.forceLandscape()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                OrientationHelper.forceLandscapeOnLaunch = true
+                OrientationHelper.forceLandscape()
+            }
+        }
+        .onDisappear(){
+            OrientationHelper.forceLandscapeOnLaunch = false
+            OrientationHelper.forcePortrait()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            OrientationHelper.forceLandscape()
         }
     }
 }
