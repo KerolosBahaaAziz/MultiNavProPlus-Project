@@ -23,7 +23,7 @@ final class OrientationHelper {
     static func forcePortrait() {
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
         
-        scene.requestGeometryUpdate(.iOS(interfaceOrientations: [.landscapeLeft , .landscapeRight, .portrait])) { error in
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { error in
             print("Orientation update failed: \(error.localizedDescription)")
         }
     }
