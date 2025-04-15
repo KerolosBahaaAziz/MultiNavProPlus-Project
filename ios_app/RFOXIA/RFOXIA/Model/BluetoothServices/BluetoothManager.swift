@@ -4,7 +4,6 @@
 //
 //  Created by Kerlos on 12/04/2025.
 //
-
 import Foundation
 import CoreBluetooth
 
@@ -12,10 +11,14 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var centralManager: CBCentralManager!
     private var connectedPeripheral: CBPeripheral?
     private var messageCharacteristic: CBCharacteristic?
+    private var controlCharacteristic: CBCharacteristic?
     
     @Published var isBluetoothOn = false
     @Published var discoveredPeripherals: [CBPeripheral] = []
     @Published var receivedMessages: [String] = []  // Store received messages
+    
+    let chatCharacteristicUUID = CBUUID(string: "1234")
+    let controlCharacteristicUUID = CBUUID(string: "5678")
     
     override init() {
         super.init()
@@ -36,16 +39,23 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     // Sending message via Bluetooth
     func sendMessage(_ message: String) {
-        guard let peripheral = connectedPeripheral, let characteristic = messageCharacteristic else {
+        guard let peripheral = connectedPeripheral , let characteristic = messageCharacteristic else {
             print("Bluetooth connection or characteristic not available")
             return
         }
         
-        let messageData = message.data(using: .utf8)!
-        peripheral.writeValue(messageData, for: characteristic, type: .withResponse)
+        if let messageData = message.data(using: .utf8){
+            peripheral.writeValue(messageData, for: characteristic, type: .withResponse)
+        }
         
     }
     
+    func sendCommandToMicrocontroller(_ command: String) {
+        guard let peripheral = connectedPeripheral, let charachterestic = controlCharacteristic else { return }
+
+        let commandData = command.data(using: .utf8)!
+        peripheral.writeValue(commandData, for: charachterestic, type: .withResponse)
+    }
     // MARK: - CBCentralManagerDelegate
     
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
@@ -96,8 +106,11 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         
         // Assuming we have a known characteristic for message exchange
         for characteristic in service.characteristics ?? [] {
-            if characteristic.uuid == CBUUID(string: "YOUR_CHARACTERISTIC_UUID") {
+            if characteristic.uuid == chatCharacteristicUUID {
                 messageCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
+            }else if characteristic.uuid == controlCharacteristicUUID{
+                controlCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
             }
         }
@@ -105,17 +118,32 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     // Receiving data from peripheral (Bluetooth)
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        guard error == nil else { return }
-        
+           guard error == nil else { return }
+
         if characteristic == messageCharacteristic {
-            if let messageData = characteristic.value,
-               let message = String(data: messageData, encoding: .utf8) {
-                // Update the received messages
-                DispatchQueue.main.async {
-                    self.receivedMessages.append(message)
-                }
+               if let data = characteristic.value,
+                  let message = String(data: data, encoding: .utf8) {
+                   DispatchQueue.main.async {
+                       self.receivedMessages.append(message)
+                   }
+               }
+           } else if characteristic == controlCharacteristic {
+               if let data = characteristic.value,
+                  let response = String(data: data, encoding: .utf8) {
+                   print("Received control response: \(response)")
+                   // Handle the control response if needed
             }
         }
     }
-}
+    
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+            print("Notification setup failed: \(error.localizedDescription)")
+        } else if characteristic.isNotifying {
+            print("✅ Subscribed to notifications for \(characteristic.uuid)")
+        } else {
+            print("Notification set up for \(characteristic.uuid)")
+        }
+    }
 
+}
