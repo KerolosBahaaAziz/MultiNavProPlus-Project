@@ -12,9 +12,9 @@ struct RFOXIAApp: App {
     let persistenceController = PersistenceController.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
-    init() {
-        OrientationHelper.forcePortrait()
-    }
+//    init() {
+//        OrientationHelper.forcePortrait()
+//    }
     
     var body: some Scene {
         WindowGroup {

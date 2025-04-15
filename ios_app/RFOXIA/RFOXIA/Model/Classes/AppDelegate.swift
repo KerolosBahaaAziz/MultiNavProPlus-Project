@@ -8,10 +8,14 @@
 import UIKit
 
 class AppDelegate: NSObject, UIApplicationDelegate {
-    var orientationLock = UIInterfaceOrientationMask.all
 
-    func application(_ application: UIApplication,
-                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
-        return orientationLock
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        if OrientationHelper.forceLandscapeOnLaunch {
+            return [.landscapeLeft, .landscapeRight]
+        }
+        else {
+            return  [.landscapeLeft , .landscapeRight, .portrait]
+        }
     }
+
 }
