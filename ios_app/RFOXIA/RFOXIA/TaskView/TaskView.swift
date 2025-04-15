@@ -9,25 +9,61 @@ import SwiftUI
 
 struct TaskView: View {
     
-    private var tasks : [Task] = []
-    @State private var isOn : [Bool] = []
+    @Binding private var tasks: [Task]
+    @State private var isOn: [Bool]
+    var addActionPressed: ((Bool) -> Void)?
     
-    init(tasks: [Task]) {
-        self.tasks = tasks
+    // ✅ Updated init to accept Binding
+    init(tasks: Binding<[Task]>) {
+        self._tasks = tasks
+        self._isOn = State(initialValue: Array(repeating: false, count: tasks.wrappedValue.count))
     }
     
     var body: some View {
-        List{
-            ForEach(tasks, id: \.self) { task in
-                HStack{
-                    Text(task.action)
-                    Spacer()
+        NavigationStack {
+            ZStack {
+                BackgroundGradient.backgroundGradient
+                    .ignoresSafeArea()
+                VStack {
+                    List {
+                        ForEach(tasks.indices, id: \.self) { index in
+                            HStack {
+                                NavigationLink(destination: EmptyView()){
+                                    Text(tasks[index].action)
+                                    Spacer()
+                                    Toggle("", isOn: $isOn[index])
+                                }
+                            }
+                        }
+                        .onDelete(perform: deleteTask)
+                    }
+                    .listStyle(.plain)
+                    
+                    NavigationLink(destination: EmptyView()){
+                        Button(action: {
+                            addActionPressed?(true)
+                        }) {
+                            VStack {
+                                AddActionButton()
+                                Text("Add Action")
+                                    .font(.subheadline)
+                            }
+                            .padding(.top)
+                        }
+                    }
+                    
                 }
             }
         }
     }
+    private func deleteTask(at offsets: IndexSet) {
+        tasks.remove(atOffsets: offsets)
+        isOn.remove(at: offsets.first!)
+    }
 }
 
+
 #Preview {
-    TaskView(tasks: [Task(action: "action1"),Task(action: "action2"),Task(action: "action3")])
+    @Previewable @State var tasks : [Task] = [Task(action: "action1"),Task(action: "action2"),Task(action: "action3"),Task(action: "action4"),Task(action: "action5"),Task(action: "action6"),Task(action: "action7"),Task(action: "action8"),Task(action: "action9"),Task(action: "action10")]
+    TaskView(tasks: $tasks)
 }
