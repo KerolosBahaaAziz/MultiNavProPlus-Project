@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct ActivatorButtonView: View {
-    var onActionPressed: ((ActivatorType , Bool) -> Void)?
-    @State var isActivated: [ActivatorType: Bool] = [
-        .aButton: false,
-        .bButton: false,
-        .cButton: false,
-        .dButton: false
+    var onActionPressed: ((String , Bool) -> Void)?
+    @State var isActivated: [String: Bool] = [
+        "a.circle": false,
+        "b.circle": false,
+        "c.circle": false,
+        "d.circle": false
     ]
     enum ActivatorType {
         case aButton
@@ -25,34 +25,34 @@ struct ActivatorButtonView: View {
     var body: some View {
         HStack(spacing: 10) {
             Button(action: {
-                toggleButtonState(for: .aButton)
+                toggleButtonState(for: "a.circle")
             }) {
                 ActivatorButton(shape: .aButton,
-                                isActivated: isActivated[.aButton] ?? false)
+                                isActivated: isActivated["a.circle"] ?? false)
             }
             Button(action: {
-                toggleButtonState(for: .bButton)
+                toggleButtonState(for: "b.circle")
             }) {
                 ActivatorButton(shape: .bButton,
-                                isActivated: isActivated[.bButton] ?? false)
+                                isActivated: isActivated["b.circle"] ?? false)
             }
             
             Button(action: {
-                toggleButtonState(for: .cButton)
+                toggleButtonState(for: "c.circle")
             }) {
                 ActivatorButton(shape: .cButton,
-                                isActivated: isActivated[.cButton] ?? false)
+                                isActivated: isActivated["c.circle"] ?? false)
             }
             
             Button(action: {
-                toggleButtonState(for: .dButton)
+                toggleButtonState(for: "d.circle")
             }) {
                 ActivatorButton(shape: .dButton,
-                                isActivated: isActivated[.dButton] ?? false)
+                                isActivated: isActivated["d.circle"] ?? false)
             }
         }
     }
-    private func toggleButtonState(for button : ActivatorType){
+    private func toggleButtonState(for button : String){
         isActivated[button]?.toggle()
         onActionPressed?(button , isActivated[button] ?? false)
     }

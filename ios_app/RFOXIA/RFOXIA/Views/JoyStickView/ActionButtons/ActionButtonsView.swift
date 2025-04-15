@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ActionButtonsView: View {
-    var onActionPressed: ((ShapeType) -> Void)?
+    var onActionPressed: ((String) -> Void)?
     
     enum ShapeType {
         case circle
@@ -20,20 +20,20 @@ struct ActionButtonsView: View {
     var body: some View {
         VStack(spacing: 10) {
             Button(action: {
-                onActionPressed?(.triangle)
+                onActionPressed?("triangle")
             }) {
                 ShapeButton(shape: .triangle)
             }
 
             HStack(spacing: 70) {
                 Button(action: {
-                    onActionPressed?(.square)
+                    onActionPressed?("square")
                 }) {
                     ShapeButton(shape: .square)
                 }
                 
                 Button(action: {
-                    onActionPressed?(.circle)
+                    onActionPressed?("circle")
                 }) {
                     ShapeButton(shape: .circle)
                 }
@@ -41,7 +41,7 @@ struct ActionButtonsView: View {
             }
 
             Button(action: {
-                onActionPressed?(.xshape)
+                onActionPressed?("xmark")
             }) {
                 ShapeButton(shape: .xshape)
             }

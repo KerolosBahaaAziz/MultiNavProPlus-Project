@@ -9,7 +9,7 @@ import SwiftUI
 
 struct DirectionPadView: View {
     
-    var onDirectionPressed: ((Direction) -> Void)?
+    var onDirectionPressed: ((String) -> Void)?
     
     enum Direction {
         case up
@@ -21,21 +21,21 @@ struct DirectionPadView: View {
     var body: some View {
         VStack(spacing : 10){
             Button(action: {
-                onDirectionPressed?(.up)
+                onDirectionPressed?("chevron.up")
             }){
                 ArrowButton(direction: .up)
             }
             HStack(spacing: 70){
                 
-                Button(action: { onDirectionPressed?(.left) }){
+                Button(action: { onDirectionPressed?("chevron.left") }){
                     ArrowButton(direction: .left)
                 }
                 
-                Button(action: { onDirectionPressed?(.right) }){
+                Button(action: { onDirectionPressed?("chevron.right") }){
                     ArrowButton(direction: .right)
                 }
             }
-            Button(action: { onDirectionPressed?(.down) }){
+            Button(action: { onDirectionPressed?("chevron.down") }){
                 ArrowButton(direction: .down)
             }
         }

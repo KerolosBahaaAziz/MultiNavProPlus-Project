@@ -10,10 +10,9 @@ import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
+    
     var body: some View {
-        // Pass the managed object context to BluetoothChatView
-        MainTabView()
+        JoyStickView()
             .environment(\.managedObjectContext, viewContext)
     }
 }

@@ -18,11 +18,14 @@ struct ModeButtons: View {
         }) {
             HStack {
                 Circle()
-                    .strokeBorder(Color.blue, lineWidth: 2)
+                    .strokeBorder(BackgroundGradient.backgroundGradient, lineWidth: 2)
                     .frame(width: 30, height: 30)
                     .overlay(
                         Circle()
-                            .fill(selection == index ? Color.blue : Color.clear)
+                            .fill(
+                                selection == index ? AnyShapeStyle(BackgroundGradient.backgroundGradient)
+                                : AnyShapeStyle(Color.clear)
+                            )
                             .padding(4)
                     )
                 
@@ -33,6 +36,7 @@ struct ModeButtons: View {
         }
     }
 }
+
 
 #Preview {
     @Previewable @State var selectedIndex: Int = 0

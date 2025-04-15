@@ -9,7 +9,6 @@ import SwiftUI
 
 struct SensorsReadingView: View {
     var body: some View {
-
         HStack{
             Text("26°C")
             Spacer()
