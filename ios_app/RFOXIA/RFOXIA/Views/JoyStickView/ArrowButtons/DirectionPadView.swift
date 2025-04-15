@@ -21,21 +21,21 @@ struct DirectionPadView: View {
     var body: some View {
         VStack(spacing : 10){
             Button(action: {
-                onDirectionPressed?("chevron.up")
+                onDirectionPressed?("up")
             }){
                 ArrowButton(direction: .up)
             }
             HStack(spacing: 70){
                 
-                Button(action: { onDirectionPressed?("chevron.left") }){
+                Button(action: { onDirectionPressed?("left") }){
                     ArrowButton(direction: .left)
                 }
                 
-                Button(action: { onDirectionPressed?("chevron.right") }){
+                Button(action: { onDirectionPressed?("right") }){
                     ArrowButton(direction: .right)
                 }
             }
-            Button(action: { onDirectionPressed?("chevron.down") }){
+            Button(action: { onDirectionPressed?("down") }){
                 ArrowButton(direction: .down)
             }
         }

@@ -11,9 +11,9 @@ struct ActionsAndDelaysView: View {
     
     @State private var taskName: String = ""
     @State private var showSecondPicker : Bool = false
-    @State private var selectedDate = Date()
     @State private var selectedMode : Int = 0
-    @State private var selectedButtons : [String] = []
+    @State private var selectedButtons : [ButtonHistoryItem] = []
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         ScrollView{
@@ -23,18 +23,33 @@ struct ActionsAndDelaysView: View {
                     .padding()
                 
                 DirectionPadView { direction in
-                    selectedButtons.append("\(direction)")
-                    print("Selected direction: \(direction)")
+                    let item = ButtonHistoryItem(
+                        type: .direction(direction),
+                        value: direction,
+                        timestamp: Date()
+                    )
+                    selectedButtons.append(item)
+                    print("\(direction)")
                 }
                 
                 ActionButtonsView { action in
-                    selectedButtons.append("\(action)")
-                    print("Selected action: \(action)")
+                    let item = ButtonHistoryItem(
+                        type: .action(action),
+                        value: action,
+                        timestamp: Date()
+                    )
+                    selectedButtons.append(item)
+                    print("\(action)")
                 }
                 
                 ActivatorButtonView { action, isActivated in
-                    selectedButtons.append("\(action)")
-                    print("\(action) is \(isActivated ? "activated" : "deactivated")")
+                    let status = isActivated ? "ON" : "OFF"
+                    let item = ButtonHistoryItem(
+                        type: .activator(action),
+                        value: "\(action) - \(status)",
+                        timestamp: Date()
+                    )
+                    selectedButtons.append(item)
                 }
                 
                 ModeButtonsView(selectedIndex: $selectedMode)
@@ -56,55 +71,50 @@ struct ActionsAndDelaysView: View {
                     .background(BackgroundGradient.backgroundGradient)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
+                    
                 }
                 .padding()
-                Text("Button & Delay History:")
-                    .font(.headline)
-                    .padding(.top)
-                
-                ForEach(selectedButtons.indices, id: \.self) { index in
-                    HStack{
-                        if selectedButtons[index].contains(" seconds")
-                        {
-                            Text(selectedButtons[index])
-                                .padding()
-                        }else if selectedButtons[index].contains("mode")
-                        {
-                            Text(selectedButtons[index])
-                                .padding()
-                        }
-                        else{
-                            Image(systemName: selectedButtons[index])
-                                .padding()
-                        }
-                        Spacer()
-                        Button(action: {
-                            selectedButtons.remove(at: index)
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                        }
+                HistoryListView(items: $selectedButtons)
+            }
+            .sheet(isPresented: $showSecondPicker) {
+                SecondPickerSheet { seconds in
+                    guard let lastValue = selectedButtons.last else {
+                        let item = ButtonHistoryItem(
+                            type: .delay,
+                            value: "\(seconds) seconds",
+                            timestamp: Date()
+                        )
+                        selectedButtons.append(item)
+                        return
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
+                    if lastValue.value.contains("seconds"){
+                        return
+                    }
+                    let item = ButtonHistoryItem(
+                        type: .delay,
+                        value: "\(seconds) seconds",
+                        timestamp: Date()
+                    )
+                    selectedButtons.append(item)
                 }
             }
-        }
-        .sheet(isPresented: $showSecondPicker){
-            SecondPickerSheet(){ seconds in
-                guard let selectedDelay = selectedButtons.last else {
-                    selectedButtons.append("\(seconds) seconds")
-                    return
-                }
-                if selectedDelay.contains(" seconds")
-                {
-                    return
-                }else{
-                    selectedButtons.append("\(seconds) seconds")
+            .onChange(of: selectedMode) { _, newValue in
+                let item = ButtonHistoryItem(
+                    type: .mode,
+                    value: "Mode \(newValue + 1)",
+                    timestamp: Date()
+                )
+                selectedButtons.append(item)
+            }
+            .navigationTitle("Actions & Delays")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
                 }
             }
-        }
-        .onChange(of: selectedMode) { _ , newValue in                selectedButtons.append("mode \(newValue + 1)")
         }
     }
 }

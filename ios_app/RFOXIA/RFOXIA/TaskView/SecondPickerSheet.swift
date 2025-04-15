@@ -8,83 +8,103 @@
 import SwiftUI
 
 struct SecondPickerSheet: View {
+    var onDelaySelected: ((String) -> Void)?
+    @Environment(\.dismiss) private var dismiss
     
-    var addSecondPressed: ((String) -> Void)?
-    @Environment(\.dismiss) var dismiss
+    @State private var seconds = 0
+    @State private var milliseconds = 0
+    @State private var showAlert = false
+    @State private var alertMessage = ""
     
-    @State private var text: String = ""
-    @State private var second : Int = 1
-    @State private var milliSecond : Int = 0
-    @State private var showAlert : Bool = false
-    @State private var alertMessage : String = ""
+    private let secondsRange = Array(0...60)
+    private let millisecondsRange = Array(0...99)
     
-    let numbers = Array(0...60)
-    let milliNumbers = Array(1...99)
+    private var delayValue: String {
+        String(format: "%.2f", Double(seconds) + Double(milliseconds)/100)
+    }
+    
     var body: some View {
-        
-        VStack{
-            Text("Delay")
-                .font(.title)
-            TextField("Add Delay in Seconds", text: $text)
-                .textFieldStyle(.roundedBorder)
-                .font(.title)
-                .keyboardType(.decimalPad)
-
-            HStack{
-                Picker("select A number",selection: $second){
-                    ForEach(numbers,id: \.self){number in
-                        Text("\(number)")
-                            .tag(number)
-                    }
-                }.pickerStyle(.wheel)
+        NavigationStack {
+            VStack {
+                Text("Set Delay")
+                    .font(.title)
+                    .padding()
                 
-                Picker("select A number",selection: $milliSecond){
-                    ForEach(milliNumbers,id: \.self){number in
-                        Text("\(number)")
-                            .tag(number)
+                HStack(spacing: 20) {
+                    // Seconds Picker
+                    VStack {
+                        Text("Seconds")
+                            .font(.headline)
+                        Picker("", selection: $seconds) {
+                            ForEach(secondsRange, id: \.self) { value in
+                                Text("\(value)").tag(value)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(width: 120)
                     }
-                }.pickerStyle(.wheel)
+                    
+                    // Milliseconds Picker
+                    VStack {
+                        Text("Milliseconds")
+                            .font(.headline)
+                        Picker("", selection: $milliseconds) {
+                            ForEach(millisecondsRange, id: \.self) { value in
+                                Text(String(format: "%02d", value)).tag(value)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(width: 120)
+                    }
+                }
+                .frame(height: 200)
+                
+                Text("Selected delay: \(delayValue) seconds")
+                    .font(.headline)
+                    .padding()
+                
+                Spacer()
             }
-            .onChange(of: [second , milliSecond]){ _ ,newValue in
-                let seconds = newValue.first ?? 0
-                let milliSeconds = newValue.last ?? 0
-                text = "\(seconds).\(milliSeconds)"
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        validateAndAddDelay()
+                    }
+                }
             }
-
-            Button("Add Delay"){
-                checkValue()
+            .alert("Invalid Delay", isPresented: $showAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(alertMessage)
             }
-            .frame(maxWidth: .infinity)
-            .frame(maxHeight: 50)
-            .background(BackgroundGradient.backgroundGradient)
-            .foregroundStyle(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .padding()
-            Spacer()
-        }
-        .alert(isPresented: $showAlert){
-            Alert(title: Text("ERROR") ,message : Text(alertMessage))
+            .onAppear {
+                OrientationHelper.forcePortrait()
+            }
         }
     }
     
-    private func checkValue() -> Void {
-        guard !text.isEmpty else {
-            alertMessage = "Please enter a value in the text field"
+    private func validateAndAddDelay() {
+        let totalSeconds = Double(seconds) + Double(milliseconds)/100
+        
+        guard totalSeconds >= 0.1 else {
+            alertMessage = "Delay must be at least 0.1 seconds"
             showAlert = true
             return
         }
-        if isValidTwoDecimalNumber(text) ==  false{
-            alertMessage = "value must be in range of 0.1 to 60.99"
+        
+        guard totalSeconds <= 60.99 else {
+            alertMessage = "Delay cannot exceed 60.99 seconds"
             showAlert = true
             return
         }
-        addSecondPressed?(text)
+        
+        onDelaySelected?(delayValue)
         dismiss()
-    }
-    
-    private func isValidTwoDecimalNumber(_ input: String) -> Bool {
-        let pattern = #"^(?:[1-5]?\d(?:\.\d{1,2})?|60(?:\.0{1,2})?)$|^0\.[1-9]\d?$|^0\.\d[1-9]$"#
-        return input.range(of: pattern, options: .regularExpression) != nil
     }
 }
 
