@@ -1,7 +1,5 @@
 package com.example.multinav.joystick_Screen
 
-
-
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.size
@@ -11,11 +9,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 fun MyAnalogJoystick(
     modifier: Modifier = Modifier,
-    onAngleChange: (Float) -> Unit // Callback to provide the angle
+    onAngleChange: (Float) -> Unit // Callback to provide the angle (0 to 360)
 ) {
     var touchPosition by remember { mutableStateOf(Offset.Zero) }
     var isDragging by remember { mutableStateOf(false) }
@@ -26,22 +26,22 @@ fun MyAnalogJoystick(
         modifier = modifier
             .size(200.dp)
             .pointerInput(Unit) {
-                val centerX = size.width / 2f // Ensure these are Floats
-                val centerY = size.height / 2f // Ensure these are Floats
+                val centerX = size.width / 2f
+                val centerY = size.height / 2f
                 val center = Offset(centerX, centerY)
 
                 detectDragGestures(
                     onDragStart = { offset ->
                         isDragging = true
                         touchPosition = offset
-                        calculateAngle(center, touchPosition) { newAngle ->
+                        calculateAngle360(center, touchPosition) { newAngle ->
                             angle = newAngle
                             onAngleChange(angle)
                         }
                     },
                     onDrag = { change, _ ->
                         touchPosition = change.position
-                        calculateAngle(center, touchPosition) { newAngle ->
+                        calculateAngle360(center, touchPosition) { newAngle ->
                             angle = newAngle
                             onAngleChange(angle)
                         }
@@ -54,8 +54,8 @@ fun MyAnalogJoystick(
                 )
             }
     ) {
-        val centerX = size.width / 2f // Ensure these are Floats
-        val centerY = size.height / 2f // Ensure these are Floats
+        val centerX = size.width / 2f
+        val centerY = size.height / 2f
         val center = Offset(centerX, centerY)
 
         // Draw the base of the joystick
@@ -82,19 +82,18 @@ fun MyAnalogJoystick(
     }
 }
 
-private fun calculateAngle(center: Offset, touch: Offset, onAngleCalculated: (Float) -> Unit) {
+private fun calculateAngle360(center: Offset, touch: Offset, onAngleCalculated: (Float) -> Unit) {
     val deltaX = touch.x - center.x
     val deltaY = touch.y - center.y
 
     // Use atan2 to get the angle in radians (-PI to PI)
-    val radians = atan2(deltaY, deltaX).toDouble() // Convert to Double
+    val radians = atan2(deltaY, deltaX).toDouble()
 
-    // Convert radians to degrees (-180 to 180)
+    // Convert radians to degrees (0 to 360)
     var degrees = Math.toDegrees(radians).toFloat()
-
-    // Normalize to -360 to 360 (optional, but can be useful)
-    while (degrees <= -180f) degrees += 360f
-    while (degrees > 180f) degrees -= 360f
+    if (degrees < 0) {
+        degrees += 360f
+    }
 
     onAngleCalculated(degrees)
 }
@@ -107,8 +106,8 @@ private fun Offset.coerceInCircle(center: Offset, radius: Float): Offset {
     if (distanceSquared > radius * radius) {
         val angle = atan2(dy, dx)
         return Offset(
-            center.x + radius * kotlin.math.cos(angle),
-            center.y + radius * kotlin.math.sin(angle)
+            center.x + radius * cos(angle),
+            center.y + radius * sin(angle)
         )
     }
     return this
