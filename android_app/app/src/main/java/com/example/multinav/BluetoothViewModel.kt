@@ -1,7 +1,6 @@
 
 package com.example.multinav
 
-import BluetoothService
 import com.example.multinav.BluetoothDeviceData
 
 
@@ -16,114 +15,120 @@ import com.example.multinav.BluetoothDeviceData
     import kotlinx.coroutines.flow.update
     import kotlinx.coroutines.launch
 
-//    class BluetoothViewModel(
-//        private val bluetoothService: BluetoothService
-//    ): ViewModel() {
-//
-//        private val TAG = "Bluetooth"
-//
-//        private val _state = MutableStateFlow(BluetoothUiState())
-//        val state = _state.asStateFlow()
-//
-//        private var deviceConnectionJob: Job? = null
-//
-//        init {
-//            updatePairedDevices()
-//            viewModelScope.launch {
-//                bluetoothService.scannedDevices.collect { devices ->
-//                    Log.d(TAG, "Scanned devices updated: ${devices.size} devices")
-//                    _state.update { it.copy(
-//                        scannedDevices = devices,
-//                        isScanning = devices.isNotEmpty()
-//                    ) }
-//                }
-//            }
-//        }
-//
-//        fun startScan() {
-//            Log.d(TAG, "Starting scan")
-//            _state.update { it.copy(isScanning = true) }
-//            bluetoothService.startDiscovery()
-//        }
-//
-//        fun stopScan() {
-//            Log.d(TAG, "Stopping scan")
-//            _state.update { it.copy(isScanning = false) }
-//            bluetoothService.stopDiscovery()
-//        }
-//
-//        fun connectToDevice(device: BluetoothDeviceData, onSuccess: () -> Unit) {
-//            deviceConnectionJob?.cancel()
-//            deviceConnectionJob = viewModelScope.launch {
-//                _state.update { it.copy(isConnecting = true) }
-//                try {
-//                    if (bluetoothService.pairDevice(device)) {
-//                        updatePairedDevices()
-//                        _state.update { it.copy(
-//                            isConnecting = false,
-//                            isConnected = true,
-//                            errorMessage = null
-//                        ) }
-//                        onSuccess()
-//                    } else {
-//                        _state.update { it.copy(
-//                            isConnecting = false,
-//                            isConnected = false,
-//                            errorMessage = "Failed to pair with device"
-//                        ) }
-//                    }
-//                } catch(e: Exception) {
-//                    _state.update { it.copy(
-//                        isConnecting = false,
-//                        isConnected = false,
-//                        errorMessage = e.message
-//                    ) }
-//                }
-//            }
-//        }
-//
-//        private fun updatePairedDevices() {
-//            _state.update { it.copy(
-//                pairedDevices = bluetoothService.getPairedDevices()
-//            ) }
-//        }
-//
-//        override fun onCleared() {
-//            super.onCleared()
-//            bluetoothService.stopDiscovery()
-//        }
-//    }
-//
-
-
-
 class BluetoothViewModel(
     private val bluetoothService: BluetoothService
 ): ViewModel() {
-            private var deviceConnectionJob: Job? = null
-            private val TAG = "Bluetooth"
+    private var deviceConnectionJob: Job? = null
+    private val TAG = "Bluetooth"
 
-        private val _state = MutableStateFlow(BluetoothUiState())
-        val state = _state.asStateFlow()
+    private val _state = MutableStateFlow(BluetoothUiState())
+    val state = _state.asStateFlow()
+
+
+    init {
+        updatePairedDevices()
+    }
 
     fun openBluetoothSettings() {
         bluetoothService.openBluetoothSettings()
     }
 
-    // Update connectToDevice to only handle paired devices
+    private fun updatePairedDevices() {
+        _state.update {
+            it.copy(
+                pairedDevices = bluetoothService.getPairedDevices()
+            )
+        }
+    }
+
     fun connectToDevice(device: BluetoothDeviceData, onSuccess: () -> Unit) {
         deviceConnectionJob?.cancel()
         deviceConnectionJob = viewModelScope.launch {
-            if (state.value.pairedDevices.any { it.address == device.address }) {
-                _state.update { it.copy(isConnected = true) }
-                onSuccess()
-            } else {
-                openBluetoothSettings()
+            _state.update { it.copy(isConnecting = true) }
+            try {
+                if (bluetoothService.connectToDevice(device.address)) {
+                    _state.update {
+                        it.copy(
+                            isConnecting = false,
+                            isConnected = true,
+                            errorMessage = null
+                        )
+                    }
+                    onSuccess()
+                } else {
+                    _state.update {
+                        it.copy(
+                            isConnecting = false,
+                            isConnected = false,
+                            errorMessage = "Failed to connect"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isConnecting = false,
+                        isConnected = false,
+                        errorMessage = e.message
+                    )
+                }
+            }
+        }
+    }
+
+
+    // Add this method to navigate immediately and connect in background
+    fun connectToDeviceAndNavigate(device: BluetoothDeviceData, onNavigate: () -> Unit) {
+        // Navigate immediately
+        onNavigate()
+
+        // Then attempt connection in the background
+        deviceConnectionJob?.cancel()
+        deviceConnectionJob = viewModelScope.launch {
+            _state.update { it.copy(isConnecting = true) }
+            try {
+                if (bluetoothService.connectToDevice(device.address)) {
+                    _state.update {
+                        it.copy(
+                            isConnecting = false,
+                            isConnected = true,
+                            errorMessage = null
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isConnecting = false,
+                            isConnected = false,
+                            errorMessage = "Failed to connect"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isConnecting = false,
+                        isConnected = false,
+                        errorMessage = e.message
+                    )
+                }
+            }
+        }
+    }
+
+
+    fun sendMessage(message: String) {
+        viewModelScope.launch {
+            if (!bluetoothService.sendMessage(message)) {
+                _state.update {
+                    it.copy(
+                        errorMessage = "Failed to send message"
+                    )
+                }
             }
         }
     }
 }
-
 
     class BluetoothViewModelFactory(
         private val bluetoothService: BluetoothService

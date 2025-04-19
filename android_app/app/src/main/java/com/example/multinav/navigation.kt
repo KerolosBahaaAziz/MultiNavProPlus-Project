@@ -2,6 +2,8 @@ package com.example.multinav
 import ChatScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +23,10 @@ fun Navigation(
     bluetoothViewModel: BluetoothViewModel,
     startDestination: String = Screen.DeviceList.route
 ) {
+    val context = LocalContext.current
+
+    val bluetoothService = remember { BluetoothService(context) }
+
     val navController = rememberNavController()
 
     NavHost(
@@ -31,9 +37,9 @@ fun Navigation(
             BluetoothDeviceScreen(
                 state = bluetoothViewModel.state.collectAsState().value,
                 onDeviceClick = { device ->
-                    bluetoothViewModel.connectToDevice(
+                    bluetoothViewModel.connectToDeviceAndNavigate(
                         device = device,
-                        onSuccess = {
+                        onNavigate = {
                             navController.navigate(Screen.Chat.createRoute(device.address))
                         }
                     )
@@ -48,9 +54,9 @@ fun Navigation(
             val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
             deviceAddress?.let {
                 val chatViewModel: ChatViewModel = viewModel(
-                    factory = ChatViewModelFactory(deviceAddress)
+                    factory = ChatViewModelFactory(deviceAddress, bluetoothService)
                 )
-                ChatScreen(viewModel = chatViewModel)
+                ChatScreen(viewModel = chatViewModel, bluetoothService = bluetoothService)
             }
         }
     }
