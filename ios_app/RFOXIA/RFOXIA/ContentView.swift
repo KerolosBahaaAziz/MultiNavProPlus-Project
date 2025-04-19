@@ -11,14 +11,12 @@ import CoreData
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
-    
     var body: some View {
 //                BluetoothChatView()
         // Pass the managed object context to BluetoothChatView
 //        ActionsAndDelaysView()
         TaskView()
 //        JoyStickView()
-            .environment(\.managedObjectContext, viewContext)
     }
 }
 
