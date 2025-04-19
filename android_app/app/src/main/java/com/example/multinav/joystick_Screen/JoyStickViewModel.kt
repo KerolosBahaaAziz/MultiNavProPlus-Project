@@ -9,5 +9,5 @@ class JoyStickViewModel : ViewModel() {
     val isToggleButtonB = mutableStateOf(false)
     val isToggleButtonC = mutableStateOf(false)
     val isToggleButtonD = mutableStateOf(false)
-
+    val currentAngle = mutableStateOf(0f)
 }

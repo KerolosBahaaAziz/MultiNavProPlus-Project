@@ -1,6 +1,6 @@
 @file:JvmName("JoyStickViewModelKt")
 
-package com.example.joystick_Screen
+
 
 import android.util.Log
 
@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -39,13 +39,16 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.desgin.constants.Modes
-import com.example.widgets.AngleKnob
+import com.example.joystick_Screen.JoyStickViewModel
+import com.example.multinav.joystick_Screen.MyAnalogJoystick
+
 import com.example.widgets.BluetoothReaders
 import com.example.widgets.CircleIconButton
 import com.example.widgets.CircleToggleButton
 
 import com.example.widgets.FloatingButton
 import com.example.widgets.RadioButtonMode
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -141,12 +144,17 @@ fun JoyStickScreen(modifier: Modifier = Modifier, viewModel: JoyStickViewModel =
                         horizontalAlignment = Alignment.CenterHorizontally
 
                     ){
-                        Text(text = "180",
+                        Text(
+                            text = "Current Angle: ${ viewModel.currentAngle.value.roundToInt()} degrees",
                             modifier = Modifier.padding(8.dp)
                         )
-                        AngleKnob(
-                            modifier = Modifier.size(100.dp)
+                        MyAnalogJoystick(
+                            modifier = Modifier.size(200.dp),
+                            onAngleChange = { angle ->
+                                viewModel.currentAngle.value = angle
+                            }
                         )
+
                     }
 
 
