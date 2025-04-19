@@ -18,4 +18,5 @@ data class Task(
     val buttonB: Char = 'B',
     val buttonC: Char = 'C',
     val buttonD: Char = 'D',
+    val mode: String
     )
