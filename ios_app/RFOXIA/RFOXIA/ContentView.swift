@@ -12,10 +12,10 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
     var body: some View {
-//                BluetoothChatView()
+                BluetoothChatView()
         // Pass the managed object context to BluetoothChatView
 //        ActionsAndDelaysView()
-        TaskView()
+//        TaskView()
 //        JoyStickView()
     }
 }
