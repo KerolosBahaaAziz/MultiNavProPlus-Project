@@ -6,44 +6,91 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.colorResource
+
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.multinav.chat.ChatViewModel
 
-
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.multinav.chat.Message
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.multinav.BluetoothService
 import com.example.multinav.R
+import com.example.multinav.chat.ChatViewModelFactory
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Refresh
 
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview(showSystemUi = true)
 @Composable
-fun ChatScreen(viewModel: ChatViewModel = viewModel ()) {
+fun ChatScreen(
+    deviceAddress: String? = null,
+    bluetoothService: BluetoothService,
+    onNavigateBack: () -> Unit = {},
+    viewModel: ChatViewModel = viewModel(
+        factory = ChatViewModelFactory(deviceAddress, bluetoothService)
+    )
+) {
     val messages by viewModel.messages.collectAsState()
+    val connectionState by viewModel.connectionState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat" , color = Color.Black)
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Chat", color = Color.Black)
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Connection status indicator
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(
+                                    color = when (connectionState) {
+                                        is ChatViewModel.ConnectionState.Connected -> Color.Green
+                                        is ChatViewModel.ConnectionState.Connecting -> Color.Yellow
+                                        is ChatViewModel.ConnectionState.Error -> Color.Red
+                                        else -> Color.Gray
+                                    },
+                                    shape = CircleShape
+                                )
+                        )
+                    }
                 },
+                actions = {
+                    // Add retry connection button when disconnected or error
+                    if (connectionState is ChatViewModel.ConnectionState.Disconnected ||
+                        connectionState is ChatViewModel.ConnectionState.Error
+                    ) {
+                        IconButton(
+                            onClick = {
+                                viewModel.receiveMessage("Attempting to reconnect...")
+
+                                deviceAddress?.let { viewModel.connectToDevice(it) }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh, // Use a refresh icon
+                                contentDescription = "Retry Connection",
+                                tint = Color.White
                             )
+                        }
+                    }
+                }
+            )
         },
         content = { paddingValues ->
             Column(
@@ -63,17 +110,34 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel ()) {
                     .padding(paddingValues)
                     .padding(16.dp)
             ) {
-                messages.forEach { message ->
-                    MessageBubble(message)
+                // Messages list
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    items(messages) { message ->
+                        MessageBubble(message)
+                    }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                MessageInput(viewModel)
+                // Input area (disabled when not connected)
+                MessageInput(
+                    viewModel = viewModel,
+                    // enabled = connectionState is ChatViewModel.ConnectionState.Connected
+                      enabled = true
+
+                )
+
+
             }
         }
     )
 }
+
+
 @Composable
 fun MessageBubble(message: Message) {
     Box(
@@ -87,80 +151,89 @@ fun MessageBubble(message: Message) {
             color = Color.White,
             modifier = Modifier
                 .background(
-                    color = if (message.isSentByUser) Color(0xFF0A74DA) else Color(0xFF6C757D),
+                    color = when {
+                        message.isSentByUser -> Color(0xFF0A74DA)    // Blue for sent messages
+                        else -> Color(0xFF6C757D)                    // Gray for received messages
+                    },
                     shape = MaterialTheme.shapes.medium
                 )
                 .padding(8.dp)
         )
     }
 }
+
 @Composable
-fun MessageInput(viewModel: ChatViewModel) {
+fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
     var inputText by remember { mutableStateOf("") }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White, shape = MaterialTheme.shapes.small),
+            .background(
+                color = if (enabled) Color.White else Color.LightGray,
+                shape = MaterialTheme.shapes.small
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .weight(1f)
-                .padding(end = 8.dp) // Add padding to separate text from icons
+                .padding(end = 8.dp)
         ) {
             BasicTextField(
                 value = inputText,
                 onValueChange = { inputText = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp)
+                    .padding(8.dp),
+                enabled = enabled
             )
 
             if (inputText.isEmpty()) {
                 Text(
-                    text = "Type a message...",
+                    text = if (enabled) "Type a message..." else "Not connected",
                     color = Color.Gray,
                     modifier = Modifier.padding(8.dp)
                 )
             }
         }
 
-        IconButton(onClick = {
-            viewModel.sendMessage(inputText)
-            inputText = ""
-        }) {
+        IconButton(
+            onClick = {
+                if (inputText.isNotEmpty()) {
+                    viewModel.sendMessage(inputText)
+                    inputText = ""
+                }
+            },
+            enabled = enabled && inputText.isNotEmpty()
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_send),
-                contentDescription = "Send"
+                contentDescription = "Send",
+                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
             )
         }
 
-        IconButton(onClick = {
-            viewModel.sendVoice()
-        }) {
+        IconButton(
+            onClick = { viewModel.sendVoice() },
+            enabled = enabled
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_mic),
-                contentDescription = "Mic"
+                contentDescription = "Mic",
+                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
             )
         }
 
-        IconButton(onClick = {
-            viewModel.makePhoneCall()
-        }) {
+        IconButton(
+            onClick = { viewModel.makePhoneCall() },
+            enabled = enabled
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_cal),
-                contentDescription = "Call"
+                contentDescription = "Call",
+                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
             )
         }
-    }
-}
-
-class ChatViewModelFactory : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
-            return ChatViewModel() as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
