@@ -1,5 +1,6 @@
 package com.example.multinav
 
+        import JoyStickScreen
         import android.os.Bundle
         import androidx.activity.ComponentActivity
         import androidx.activity.compose.setContent
@@ -17,7 +18,23 @@ package com.example.multinav
                 setContent {
                     MultiNavTheme {
                         Navigation(bluetoothViewModel)
+                                     //JoyStickScreen()
+
                     }
                 }
             }
         }
+
+
+//class MainActivity : ComponentActivity() {
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//        setContent {
+//            MultiNavTheme {
+//                //    ChatScreen()
+//                JoyStickScreen()
+//
+//            }
+//        }
+//    }
+//}
