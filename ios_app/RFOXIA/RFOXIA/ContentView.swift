@@ -18,8 +18,10 @@ struct ContentView: View {
         //        ActionsAndDelaysView()
         //        TaskView()
 //                JoyStickView()
-        ApplePayView()
 //        GoogleSignInView()
+        BluetoothChatView()
+            .environment(\.managedObjectContext, viewContext)
+    
     }
 }
 
