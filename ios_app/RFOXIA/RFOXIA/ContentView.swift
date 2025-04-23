@@ -10,13 +10,16 @@ import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
+//    let applePayHandler = ApplePayHandler()
     
     var body: some View {
-                BluetoothChatView()
+        //                BluetoothChatView()
         // Pass the managed object context to BluetoothChatView
-//        ActionsAndDelaysView()
-//        TaskView()
-//        JoyStickView()
+        //        ActionsAndDelaysView()
+        //        TaskView()
+//                JoyStickView()
+        ApplePayView()
+//        GoogleSignInView()
     }
 }
 
