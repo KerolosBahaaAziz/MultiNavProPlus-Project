@@ -24,55 +24,16 @@ struct BluetoothChatView: View {
     
     @StateObject private var bluetoothManager = BluetoothManager()  // Bluetooth manager
     
-    @State private var messages: [ChatMessage] = [
-        ChatMessage(text: "Hey! Ready to test Bluetooth chat?", isCurrentUser: false, senderName: "John"),
-        ChatMessage(text: "Yep! Looks like we're connected.", isCurrentUser: true, senderName: "Me"),
-        ChatMessage(text: "Awesome. No internet needed", isCurrentUser: false, senderName: "John"),
-        ChatMessage(text: "Exactly — just Swift and airwaves", isCurrentUser: true, senderName: "Me")
-    ]
+    @State private var messages: [ChatMessage] = []
     
-    let customColor = Color(red: 26/255, green: 61/255, blue: 120/255) // RGB (26, 61, 120)
-
+    let customColor = Color(red: 26/255, green: 61/255, blue: 120/255)
+    
     var body: some View {
         
         return VStack(spacing: 0) {
             
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(messages) { message in
-                        HStack(alignment: .top) {
-                            if message.isCurrentUser {
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 4) {
-                                    Text(message.text)
-                                        .padding()
-                                        .background(customColor) // Solid background for current user messages
-                                        .foregroundColor(.white)
-                                        .cornerRadius(16)
-                                }
-                                .frame(maxWidth: 250, alignment: .trailing)
-                            } else {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(message.senderName)
-                                        .font(.caption)
-                                        .foregroundColor(Color.white) // Sender name color
-                                    Text(message.text)
-                                        .padding()
-                                        .background(Color.white.opacity(0.8)) // Light background for received messages
-                                        .foregroundColor(.black)
-                                        .cornerRadius(16)
-                                }
-                                .frame(maxWidth: 250, alignment: .leading)
-                                Spacer()
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                }
-                .padding(.top)
-            }
-            .background(BackgroundGradient.backgroundGradient)
-            //Divider()
+            ChatMessagesView(messages: messages, customColor: customColor)
+                            .background(BackgroundGradient.backgroundGradient)
             
             // Input bar
             HStack {
@@ -125,7 +86,7 @@ struct BluetoothChatView: View {
             .onChange(of: bluetoothManager.receivedMessages) { newMessages in
                 // When a new message is received via Bluetooth, add it to the UI
                 for message in newMessages {
-                    let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: "John")
+                    let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
                     messages.append(newMessage)
                 }
             }

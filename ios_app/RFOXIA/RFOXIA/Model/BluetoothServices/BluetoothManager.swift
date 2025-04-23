@@ -9,16 +9,18 @@ import CoreBluetooth
 
 class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private var centralManager: CBCentralManager!
-    private var connectedPeripheral: CBPeripheral?
+    var connectedPeripheral: CBPeripheral?
     private var messageCharacteristic: CBCharacteristic?
     private var controlCharacteristic: CBCharacteristic?
     
     @Published var isBluetoothOn = false
     @Published var discoveredPeripherals: [CBPeripheral] = []
     @Published var receivedMessages: [String] = []  // Store received messages
-    
+    @Published var connectedDeviceName: String = "Unknown Device"
+
     let chatCharacteristicUUID = CBUUID(string: "1234")
     let controlCharacteristicUUID = CBUUID(string: "5678")
+    private var notifyCapableCharacteristics: [CBUUID: CBCharacteristic] = [:]
     
     override init() {
         super.init()
@@ -47,7 +49,6 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         if let messageData = message.data(using: .utf8){
             peripheral.writeValue(messageData, for: characteristic, type: .withResponse)
         }
-        
     }
     
     func sendCommandToMicrocontroller(_ command: String) {
@@ -78,6 +79,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         peripheral.discoverServices(nil)
         centralManager.stopScan()
         isBluetoothOn = true
+        connectedDeviceName = peripheral.name ?? "unknown"
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -103,7 +105,10 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         guard error == nil else { return }
-        
+        for characteristic in service.characteristics ?? [] {
+                print("📡 Discovered characteristic: \(characteristic.uuid)")
+            }
+        print("===============================")
         // Assuming we have a known characteristic for message exchange
         for characteristic in service.characteristics ?? [] {
             if characteristic.uuid == chatCharacteristicUUID {
@@ -112,6 +117,10 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             }else if characteristic.uuid == controlCharacteristicUUID{
                 controlCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
+            }
+            if characteristic.properties.contains(.notify) {
+                notifyCapableCharacteristics[characteristic.uuid] = characteristic
+                // Don't subscribe yet — do it when user enters the screen
             }
         }
     }
@@ -146,4 +155,19 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         }
     }
 
+    func enableNotifyForAll() {
+        guard let peripheral = connectedPeripheral else { return }
+
+        for (_, characteristic) in notifyCapableCharacteristics {
+            peripheral.setNotifyValue(true, for: characteristic)
+        }
+    }
+
+    func disableNotifyForAll() {
+        guard let peripheral = connectedPeripheral else { return }
+
+        for (_, characteristic) in notifyCapableCharacteristics {
+            peripheral.setNotifyValue(false, for: characteristic)
+        }
+    }
 }
