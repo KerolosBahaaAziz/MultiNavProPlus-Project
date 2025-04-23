@@ -26,17 +26,23 @@ struct TaskView: View {
                     List {
                         ForEach(tasks.indices, id: \.self) { index in
                             HStack {
-                                NavigationLink(destination: EmptyView()){
-                                    Text(tasks[index].action)
-                                    Spacer()
-                                    Toggle("", isOn: $isOn[index])
-                                }
+                                Text(tasks[index].action)
+                                    .frame(maxWidth: .infinity , alignment:  .leading)
+                                    .foregroundStyle(Color.white)
+                                Spacer()
+                                Toggle("", isOn: $isOn[index])
+                                    .labelsHidden()
                             }
+                            .listRowBackground(Color.clear)
                         }
                         .onDelete(perform: deleteTask)
                     }
                     .listStyle(.plain)
-                    NavigationLink(destination: ActionsAndDelaysView()){
+                    .scrollContentBackground(.hidden)
+                    
+                    NavigationLink {
+                        ActionsAndDelaysView()
+                    } label: {
                         AddActionButton()
                     }
                 }
@@ -52,6 +58,6 @@ struct TaskView: View {
 
 
 #Preview {
-
+    
     TaskView()
 }
