@@ -11,15 +11,16 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var centralManager: CBCentralManager!
     var connectedPeripheral: CBPeripheral?
     private var messageCharacteristic: CBCharacteristic?
-    private var controlCharacteristic: CBCharacteristic?
+    private var accelerometerCharacteristic: CBCharacteristic?
     
     @Published var isBluetoothOn = false
     @Published var discoveredPeripherals: [CBPeripheral] = []
     @Published var receivedMessages: [String] = []  // Store received messages
+    @Published var accelerometerMessages: String = ""
     @Published var connectedDeviceName: String = "Unknown Device"
 
     let chatCharacteristicUUID = CBUUID(string: "1234")
-    let controlCharacteristicUUID = CBUUID(string: "5678")
+    let accelerometerCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2101")
     private var notifyCapableCharacteristics: [CBUUID: CBCharacteristic] = [:]
     
     override init() {
@@ -52,7 +53,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     }
     
     func sendCommandToMicrocontroller(_ command: String) {
-        guard let peripheral = connectedPeripheral, let charachterestic = controlCharacteristic else { return }
+        guard let peripheral = connectedPeripheral, let charachterestic = accelerometerCharacteristic else { return }
 
         let commandData = command.data(using: .utf8)!
         peripheral.writeValue(commandData, for: charachterestic, type: .withResponse)
@@ -106,16 +107,16 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         guard error == nil else { return }
         for characteristic in service.characteristics ?? [] {
-                print("📡 Discovered characteristic: \(characteristic.uuid)")
-            }
+            print("📡 Discovered characteristic: \(characteristic.uuid)")
+        }
         print("===============================")
         // Assuming we have a known characteristic for message exchange
         for characteristic in service.characteristics ?? [] {
             if characteristic.uuid == chatCharacteristicUUID {
                 messageCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
-            }else if characteristic.uuid == controlCharacteristicUUID{
-                controlCharacteristic = characteristic
+            }else if characteristic.uuid == accelerometerCharacteristicUUID{
+                accelerometerCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
             }
             if characteristic.properties.contains(.notify) {
@@ -127,20 +128,22 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     // Receiving data from peripheral (Bluetooth)
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-           guard error == nil else { return }
+        guard error == nil else { return }
 
         if characteristic == messageCharacteristic {
-               if let data = characteristic.value,
-                  let message = String(data: data, encoding: .utf8) {
-                   DispatchQueue.main.async {
-                       self.receivedMessages.append(message)
-                   }
-               }
-           } else if characteristic == controlCharacteristic {
-               if let data = characteristic.value,
-                  let response = String(data: data, encoding: .utf8) {
-                   print("Received control response: \(response)")
-                   // Handle the control response if needed
+            if let data = characteristic.value,
+                let message = String(data: data, encoding: .utf8) {
+                DispatchQueue.main.async {
+                    self.receivedMessages.append(message)
+                }
+            }
+        } else if characteristic == accelerometerCharacteristic {
+            if let data = characteristic.value,
+                let value = String(data: data, encoding: .utf8) {
+                print("Received control response: \(value)")
+                DispatchQueue.main.async {
+                    self.accelerometerMessages = value
+                }
             }
         }
     }
@@ -170,4 +173,25 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             peripheral.setNotifyValue(false, for: characteristic)
         }
     }
+    
+    func enableNotify(for uuids: [CBUUID]) {
+        guard let peripheral = connectedPeripheral else { return }
+
+        for uuid in uuids {
+            if let characteristic = notifyCapableCharacteristics[uuid] {
+                peripheral.setNotifyValue(true, for: characteristic)
+            }
+        }
+    }
+    
+    func disableNotify(for uuids: [CBUUID]) {
+        guard let peripheral = connectedPeripheral else { return }
+
+        for uuid in uuids {
+            if let characteristic = notifyCapableCharacteristics[uuid] {
+                peripheral.setNotifyValue(false, for: characteristic)
+            }
+        }
+    }
+
 }

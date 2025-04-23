@@ -82,6 +82,7 @@ struct BluetoothChatView: View {
             .onAppear {
                 // Start scanning for Bluetooth devices when the view appears
                 bluetoothManager.scanForDevices()
+                bluetoothManager.enableNotify(for: [bluetoothManager.chatCharacteristicUUID])
             }
             .onChange(of: bluetoothManager.receivedMessages) { newMessages in
                 // When a new message is received via Bluetooth, add it to the UI
@@ -89,6 +90,8 @@ struct BluetoothChatView: View {
                     let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
                     messages.append(newMessage)
                 }
+            }.onDisappear{
+                bluetoothManager.disableNotify(for: [bluetoothManager.chatCharacteristicUUID])
             }
     }
 }
