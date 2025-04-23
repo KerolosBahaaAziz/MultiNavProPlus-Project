@@ -17,10 +17,11 @@ struct ContentView: View {
         // Pass the managed object context to BluetoothChatView
         //        ActionsAndDelaysView()
         //        TaskView()
-//                JoyStickView()
+                JoyStickView()
 //        GoogleSignInView()
-        BluetoothChatView()
-            .environment(\.managedObjectContext, viewContext)
+//        ApplePayView()
+//        BluetoothChatView()
+//            .environment(\.managedObjectContext, viewContext)
     
     }
 }
