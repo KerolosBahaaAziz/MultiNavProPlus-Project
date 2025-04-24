@@ -14,7 +14,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var accelerometerCharacteristic: CBCharacteristic?
     
     @Published var isBluetoothOn = false
-    @Published var discoveredPeripherals: [CBPeripheral] = []
+    @Published var isConnected = false
+    @Published var discoveredPeripherals: [(CBPeripheral, String)] = []
     @Published var receivedMessages: [String] = []  // Store received messages
     @Published var accelerometerMessages: String = ""
     @Published var connectedDeviceName: String = "Unknown Device"
@@ -70,10 +71,17 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         }
     }
     
-    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        if !discoveredPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
-            discoveredPeripherals.append(peripheral)
+    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
+                        advertisementData: [String : Any], rssi RSSI: NSNumber) {
+        let name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "Unknown Device"
+
+        if !discoveredPeripherals.contains(where: { $0.0.identifier == peripheral.identifier }) {
+            print("Found peripheral: \(peripheral), name: \(peripheral.name ?? "No Name")")
+            DispatchQueue.main.async {
+                self.discoveredPeripherals.append((peripheral, name))
+            }
         }
+        print("Found peripheral: \(peripheral), name: \(peripheral.name ?? "No Name")")
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -81,12 +89,18 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         centralManager.stopScan()
         isBluetoothOn = true
         connectedDeviceName = peripheral.name ?? "unknown"
+        DispatchQueue.main.async {
+                self.isConnected = true
+            }
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         isBluetoothOn = false
         self.connectedPeripheral = nil
         self.messageCharacteristic = nil
+        DispatchQueue.main.async {
+               self.isConnected = false
+           }
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {

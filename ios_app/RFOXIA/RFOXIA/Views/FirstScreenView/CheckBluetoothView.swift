@@ -51,7 +51,7 @@ struct CheckBluetoothView: View {
         }
         .onChange(of: bluetoothManager.receivedMessages) { newMessages in
             for message in newMessages {
-                let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: "John")
+                let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
                 messages.append(newMessage)
             }
         }
