@@ -29,9 +29,10 @@ import com.example.multinav.BluetoothService
 import com.example.multinav.R
 import com.example.multinav.chat.ChatViewModelFactory
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.runtime.LaunchedEffect
 import com.example.multinav.ConnectionState
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,16 +47,23 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
+    // Add this for auto-scrolling
+    val listState = rememberLazyListState()
+
+    // Auto-scroll to bottom when new messages arrive
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Chat", color = Color.Black)
-
                         Spacer(modifier = Modifier.width(8.dp))
-
-                        // Connection status indicator
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
@@ -72,91 +80,97 @@ fun ChatScreen(
                     }
                 },
                 actions = {
-                    // Add retry connection button when disconnected or error
                     if (connectionState is ConnectionState.Disconnected ||
                         connectionState is ConnectionState.Error
                     ) {
                         IconButton(
                             onClick = {
-                                viewModel.receiveMessage("Attempting to reconnect...")
-
                                 deviceAddress?.let { viewModel.connectToDevice(it) }
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Refresh, // Use a refresh icon
+                                imageVector = Icons.Default.Refresh,
                                 contentDescription = "Retry Connection",
-                                tint = Color.White
+                                tint = Color.Black
                             )
                         }
                     }
-                }
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.Black
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
-        },
-        content = { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF233992), // Dark Blue
-                                Color(0xFFA030C7), // Purple
-                                Color(0xFF1C0090)  // Magenta/Pink
-                            ),
-                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                            end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF233992),
+                            Color(0xFFA030C7),
+                            Color(0xFF1C0090)
                         )
                     )
-                    .padding(paddingValues)
-                    .padding(16.dp)
+                )
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            LazyColumn(
+                state = listState,  // Add this
+
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
-                // Messages list
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                    items(messages.filter { it.text.startsWith("BLE:") }) { message ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            contentAlignment = if (message.isSentByUser)
-                                Alignment.CenterEnd else Alignment.CenterStart
-                        ) {
-                            val displayText = message.text.removePrefix("BLE:")
-                            Text(
-                                text = displayText,
-                                color = Color.White,
-                                modifier = Modifier
-                                    .background(
-                                        color = when {
-                                            message.isSentByUser -> Color(0xFF0A74DA)
-                                            else -> Color(0xFF6C757D)
-                                        },
-                                        shape = MaterialTheme.shapes.medium
-                                    )
-                                    .padding(8.dp)
-                            )
+                items(messages) { message ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        contentAlignment = if (message.isSentByUser)
+                            Alignment.CenterEnd else Alignment.CenterStart
+                    ) {
+                        val displayText = if (message.text.startsWith("BLE:")) {
+                            message.text.removePrefix("BLE:")
+                        } else {
+                            message.text
                         }
+
+                        Text(
+                            text = displayText,
+                            color = Color.White,
+                            modifier = Modifier
+                                .background(
+                                    color = when {
+                                        message.isSentByUser -> Color(0xFF0A74DA)
+                                        else -> Color(0xFF6C757D)
+                                    },
+                                    shape = MaterialTheme.shapes.medium
+                                )
+                                .padding(8.dp)
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Input area (disabled when not connected)
-                MessageInput(
-                    viewModel = viewModel,
-                    enabled = connectionState is ConnectionState.Connected
-                )
-
-
             }
-        }
-    )
-}
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            MessageInput(
+                viewModel = viewModel,
+                enabled = connectionState is ConnectionState.Connected
+            )
+        }
+    }
+}
 
 @Composable
 fun BLEMessageBubble(message: Message) {

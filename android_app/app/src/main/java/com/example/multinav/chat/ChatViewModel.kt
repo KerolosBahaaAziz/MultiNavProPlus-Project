@@ -1,21 +1,31 @@
 package com.example.multinav.chat
 
+import android.annotation.SuppressLint
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.multinav.BluetoothService
 import com.example.multinav.ConnectionState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 data class Message(val text: String, val isSentByUser: Boolean)
 
+@SuppressLint("NewApi")
 class ChatViewModel(
     private val deviceAddress: String? = null,
     private val bluetoothService: BluetoothService
 ) : ViewModel() {
+
+    // Add a message queue for reliability
+    private val messageQueue = mutableListOf<String>()
+    private var isProcessingQueue = false
+
     private var hasReceivedAck = false
     private var hasSentAck = false
 
@@ -80,27 +90,48 @@ class ChatViewModel(
         // Monitor Bluetooth connection state
         viewModelScope.launch {
             bluetoothService.connectionStatus.collect { status ->
-                _connectionState.value = when (status) {
+                val newState = when (status) {
                     is BluetoothService.ConnectionStatus.Connected -> ConnectionState.Connected
                     is BluetoothService.ConnectionStatus.Connecting -> ConnectionState.Connecting
                     is BluetoothService.ConnectionStatus.Error -> ConnectionState.Error(status.message)
                     else -> ConnectionState.Disconnected
                 }
+
+                // Only update if state changed
+                if (_connectionState.value != newState) {
+                    _connectionState.value = newState
+                    handleConnectionStateChange(newState)
+
+                    // Add status message to chat
+                    when (newState) {
+                        is ConnectionState.Connected -> receiveMessage("Connected to device")
+                        is ConnectionState.Disconnected -> receiveMessage("Disconnected from device")
+                        is ConnectionState.Error -> receiveMessage("Connection error: ${(newState as ConnectionState.Error).message}")
+                        else -> {} // No message for connecting state
+                    }
+
+                    // Try to process queue when connected
+                    if (newState is ConnectionState.Connected) {
+                        processMessageQueue()
+                    }
+                }
             }
-        }// Add a message about attempting connection
-        receiveMessage("Attempting to connect to device...")
+        }
 
         // Start listening for incoming messages
         startMessageListener()
 
         // Try to connect if not already connected
         if (!bluetoothService.isConnected.value) {
-            deviceAddress?.let { connectToDevice(it) }
+            deviceAddress?.let {
+                receiveMessage("Attempting to connect to device...")
+                connectToDevice(it)
+            }
         } else {
             receiveMessage("Already connected to device")
+            // Send ACK if already connected
+            sendMessage("BLE:ACK_CONNECT")
         }
-
-
     }
 
     private fun startMessageListener() {
@@ -148,21 +179,55 @@ class ChatViewModel(
                 // Add message to UI
                 _messages.value = _messages.value + Message(message, true)
 
-                if (connectionState.value is ConnectionState.Connected) {
-                    val success = bluetoothService.sendMessage(message)
-                    if (!success) {
-                        receiveMessage("Failed to send BLE command")
-                    }
-                } else {
-                    receiveMessage("Not connected to BLE device")
-                }
+                // Add to queue and process
+                messageQueue.add(message)
+                processMessageQueue()
             } catch (e: Exception) {
-                Log.e("ChatViewModel", "Error sending BLE command", e)
+                Log.e("ChatViewModel", "Error sending message", e)
                 receiveMessage("Error: ${e.message}")
             }
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    private fun processMessageQueue() {
+        if (isProcessingQueue || messageQueue.isEmpty()) return
+
+        viewModelScope.launch {
+            isProcessingQueue = true
+            try {
+                while (messageQueue.isNotEmpty()) {
+                    if (connectionState.value !is ConnectionState.Connected) {
+                        // Stop processing if not connected
+                        break
+                    }
+
+                    val message = messageQueue.first()
+                    val success = bluetoothService.sendMessage(message)
+
+                    if (success) {
+                        // Remove from queue if sent successfully
+                        messageQueue.removeFirst()
+                    } else {
+                        // Stop processing on failure
+                        receiveMessage("Failed to send message")
+                        break
+                    }
+
+                    // Small delay between messages
+                    delay(100)
+                }
+            } finally {
+                isProcessingQueue = false
+
+                // If there are still messages and we're connected, try again
+                if (messageQueue.isNotEmpty() && connectionState.value is ConnectionState.Connected) {
+                    delay(1000) // Wait a bit before retrying
+                    processMessageQueue()
+                }
+            }
+        }
+    }
 
     fun receiveMessage(message: String) {
         viewModelScope.launch {
