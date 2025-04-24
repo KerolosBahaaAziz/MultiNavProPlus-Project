@@ -1,21 +1,18 @@
 package com.example.multinav
 
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothSocket
+import android.bluetooth.*
+import android.bluetooth.le.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.ParcelUuid
 import android.provider.Settings
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import java.io.IOException
-import java.util.UUID
-import android.Manifest // Add this import
-import android.util.Log
 
 class BluetoothService(private val context: Context) {
     private val bluetoothManager by lazy {
@@ -25,154 +22,178 @@ class BluetoothService(private val context: Context) {
         bluetoothManager?.adapter
     }
 
-    private var currentSocket: BluetoothSocket? = null
+    private var gattServer: BluetoothGattServer? = null
+    private var gattClient: BluetoothGatt? = null
+    private var messageCharacteristic: BluetoothGattCharacteristic? = null
+
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected
 
-    // For communication with UI
     private val _connectionStatus = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Disconnected)
     val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus
 
-    private val UUID_SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+    private var messageListener: ((String) -> Unit)? = null
 
-    // Connect to a paired device and navigate to chat screen
-    suspend fun connectAndChat(address: String, navigateToChat: () -> Unit): Boolean {
-        _connectionStatus.value = ConnectionStatus.Connecting
+    fun startAdvertising() {
+        if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_ADVERTISE)
+            != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
 
-        val result = withContext(Dispatchers.IO) {
+        val advertiser = bluetoothAdapter?.bluetoothLeAdvertiser
+        val settings = AdvertiseSettings.Builder()
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+            .setConnectable(true)
+            .build()
+
+        val data = AdvertiseData.Builder()
+            .setIncludeDeviceName(true)
+            .addServiceUuid(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID))
+            .build()
+
+        advertiser?.startAdvertising(settings, data, advertiseCallback)
+    }
+
+    private val advertiseCallback = object : AdvertiseCallback() {
+        override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
+            Log.d("BLE", "Advertising started")
+            startGattServer()
+        }
+
+        override fun onStartFailure(errorCode: Int) {
+            Log.e("BLE", "Advertising failed: $errorCode")
+            _connectionStatus.value = ConnectionStatus.Error("Failed to start advertising")
+        }
+    }
+
+    private fun startGattServer() {
+        if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT)
+            != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        gattServer = bluetoothManager?.openGattServer(context, gattServerCallback)
+        gattServer?.addService(BLEConfig.createChatService())
+    }
+
+    private val gattServerCallback = object : BluetoothGattServerCallback() {
+        override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                _isConnected.value = true
+                _connectionStatus.value = ConnectionStatus.Connected
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                _isConnected.value = false
+                _connectionStatus.value = ConnectionStatus.Disconnected
+            }
+        }
+
+        override fun onCharacteristicWriteRequest(
+            device: BluetoothDevice,
+            requestId: Int,
+            characteristic: BluetoothGattCharacteristic,
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray
+        ) {
+            if (characteristic.uuid == BLEConfig.MESSAGE_CHARACTERISTIC_UUID) {
+                val message = String(value)
+                messageListener?.invoke(message)
+                if (responseNeeded) {
+                    gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+                }
+            }
+        }
+    }
+
+    suspend fun connectToDevice(address: String): Boolean {
+        if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT)
+            != PackageManager.PERMISSION_GRANTED) {
+            return false
+        }
+
+        return withContext(Dispatchers.IO) {
             try {
-                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
-                    != PackageManager.PERMISSION_GRANTED) {
-                    _connectionStatus.value = ConnectionStatus.Error("Missing Bluetooth permissions")
-                    return@withContext false
-                }
-
-                // Cancel any ongoing discovery
-                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN)
-                    == PackageManager.PERMISSION_GRANTED) {
-                    bluetoothAdapter?.cancelDiscovery()
-                }
-
+                _connectionStatus.value = ConnectionStatus.Connecting
                 val device = bluetoothAdapter?.getRemoteDevice(address)
                 if (device == null) {
                     _connectionStatus.value = ConnectionStatus.Error("Device not found")
                     return@withContext false
                 }
 
-                // Close any existing connection
-                currentSocket?.close()
+                gattClient?.close()
+                gattClient = device.connectGatt(context, false, gattClientCallback)
+                true
+            } catch (e: Exception) {
+                Log.e("BLE", "Connection error", e)
+                _connectionStatus.value = ConnectionStatus.Error(e.message ?: "Unknown error")
+                false
+            }
+        }
+    }
 
-                try {
-                    // Create and connect socket
-                    currentSocket = device.createRfcommSocketToServiceRecord(UUID_SPP)
-                    currentSocket?.connect()
-
+    private val gattClientCallback = object : BluetoothGattCallback() {
+        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            when (newState) {
+                BluetoothProfile.STATE_CONNECTED -> {
                     _isConnected.value = true
                     _connectionStatus.value = ConnectionStatus.Connected
-                    return@withContext true
-                } catch (e: IOException) {
-                    // Try fallback method if standard connection fails
-                    try {
-                        Log.d("BluetoothService", "Trying fallback connection")
-                        val socket = device.javaClass.getMethod(
-                            "createRfcommSocket", Int::class.java
-                        ).invoke(device, 1) as BluetoothSocket
-
-                        currentSocket = socket
-                        socket.connect()
-
-                        _isConnected.value = true
-                        _connectionStatus.value = ConnectionStatus.Connected
-                        return@withContext true
-                    } catch (fallbackException: Exception) {
-                        Log.e("BluetoothService", "Connection failed", fallbackException)
-                        currentSocket?.close()
-                        currentSocket = null
-                        _isConnected.value = false
-                        _connectionStatus.value = ConnectionStatus.Error("Connection failed: ${e.message}")
-                        return@withContext false
-                    }
+                    gatt.discoverServices()
                 }
-            } catch (e: Exception) {
-                Log.e("BluetoothService", "Error connecting", e)
-                currentSocket = null
-                _isConnected.value = false
-                _connectionStatus.value = ConnectionStatus.Error("Error: ${e.message}")
-                return@withContext false
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    _isConnected.value = false
+                    _connectionStatus.value = ConnectionStatus.Disconnected
+                    gatt.close()
+                }
             }
         }
 
-        // If connection successful, navigate to chat screen
-        if (result) {
-            withContext(Dispatchers.Main) {
-                navigateToChat()
+        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                val service = gatt.getService(BLEConfig.CHAT_SERVICE_UUID)
+                messageCharacteristic = service?.getCharacteristic(BLEConfig.MESSAGE_CHARACTERISTIC_UUID)
             }
         }
 
-        return result
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
+        ) {
+            if (characteristic.uuid == BLEConfig.MESSAGE_CHARACTERISTIC_UUID) {
+                val message = String(value)
+                messageListener?.invoke(message)
+            }
+        }
     }
 
     suspend fun sendMessage(message: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                if (!_isConnected.value) {
-                    return@withContext false
-                }
+                if (!_isConnected.value) return@withContext false
 
-                currentSocket?.outputStream?.write(message.toByteArray())
-                currentSocket?.outputStream?.flush()
-                return@withContext true
-            } catch (e: IOException) {
-                Log.e("BluetoothService", "Error sending message", e)
-                // If sending fails, update connection status
-                if (_isConnected.value) {
-                    _isConnected.value = false
-                    _connectionStatus.value = ConnectionStatus.Error("Connection lost")
-                }
-                return@withContext false
-            }
-        }
-    }
-
-    // Receive messages (if needed)
-    suspend fun startListening(onMessageReceived: (String) -> Unit) {
-        withContext(Dispatchers.IO) {
-            val buffer = ByteArray(1024)
-            var bytes: Int
-
-            while (_isConnected.value) {
-                try {
-                    bytes = currentSocket?.inputStream?.read(buffer) ?: -1
-                    if (bytes > 0) {
-                        val message = String(buffer, 0, bytes)
-                        withContext(Dispatchers.Main) {
-                            onMessageReceived(message)
-                        }
+                messageCharacteristic?.let { characteristic ->
+                    characteristic.setValue(message.toByteArray())
+                    if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT)
+                        != PackageManager.PERMISSION_GRANTED) {
+                        return@withContext false
                     }
-                } catch (e: IOException) {
-                    Log.e("BluetoothService", "Error reading", e)
-                    break
-                }
+                    gattClient?.writeCharacteristic(characteristic)
+                    true
+                } ?: false
+            } catch (e: Exception) {
+                Log.e("BLE", "Send message error", e)
+                false
             }
         }
     }
 
-    fun disconnect() {
-        try {
-            currentSocket?.close()
-        } catch (e: IOException) {
-            Log.e("BluetoothService", "Error closing socket", e)
-        } finally {
-            currentSocket = null
-            _isConnected.value = false
-            _connectionStatus.value = ConnectionStatus.Disconnected
-        }
+    fun startListening(listener: (String) -> Unit) {
+        messageListener = listener
     }
-
-    // Add these methods to your BluetoothService class
 
     fun getPairedDevices(): List<BluetoothDeviceData> {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+        if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT)
             != PackageManager.PERMISSION_GRANTED) {
             return emptyList()
         }
@@ -186,8 +207,7 @@ class BluetoothService(private val context: Context) {
     }
 
     private fun isDeviceConnected(device: BluetoothDevice): Boolean {
-        return currentSocket?.isConnected == true &&
-                currentSocket?.remoteDevice?.address == device.address
+        return _isConnected.value && gattClient?.device?.address == device.address
     }
 
     fun openBluetoothSettings() {
@@ -196,84 +216,18 @@ class BluetoothService(private val context: Context) {
         context.startActivity(intent)
     }
 
-
-
-    suspend fun connectToDevice(address: String): Boolean {
-        _connectionStatus.value = ConnectionStatus.Connecting
-
-        return withContext(Dispatchers.IO) {
-            try {
-                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
-                    != PackageManager.PERMISSION_GRANTED) {
-                    _connectionStatus.value = ConnectionStatus.Error("Missing Bluetooth permissions")
-                    return@withContext false
-                }
-
-                // Cancel any ongoing discovery - this is important as discovery can interfere with connection
-                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN)
-                    == PackageManager.PERMISSION_GRANTED) {
-                    bluetoothAdapter?.cancelDiscovery()
-                }
-
-                val device = bluetoothAdapter?.getRemoteDevice(address)
-                if (device == null) {
-                    _connectionStatus.value = ConnectionStatus.Error("Device not found")
-                    return@withContext false
-                }
-
-                // Close any existing connection
-                currentSocket?.close()
-                currentSocket = null
-
-                // First try the standard connection method
-                try {
-                    Log.d("BluetoothService", "Attempting standard connection to $address")
-                    currentSocket = device.createRfcommSocketToServiceRecord(UUID_SPP)
-
-                    // Set socket timeout to avoid hanging
-                    currentSocket?.connect()
-
-                    Log.d("BluetoothService", "Standard connection successful")
-                    _isConnected.value = true
-                    _connectionStatus.value = ConnectionStatus.Connected
-                    return@withContext true
-                } catch (e: IOException) {
-                    Log.e("BluetoothService", "Standard connection failed: ${e.message}")
-                    currentSocket?.close()
-                    currentSocket = null
-
-                    // Try fallback method if standard connection fails
-                    try {
-                        Log.d("BluetoothService", "Attempting fallback connection")
-                        val method = device.javaClass.getMethod("createRfcommSocket", Int::class.java)
-                        currentSocket = method.invoke(device, 1) as BluetoothSocket
-
-                        // Set socket timeout to avoid hanging
-                        currentSocket?.connect()
-
-                        Log.d("BluetoothService", "Fallback connection successful")
-                        _isConnected.value = true
-                        _connectionStatus.value = ConnectionStatus.Connected
-                        return@withContext true
-                    } catch (fallbackException: Exception) {
-                        Log.e("BluetoothService", "Fallback connection failed: ${fallbackException.message}")
-                        currentSocket?.close()
-                        currentSocket = null
-                        _isConnected.value = false
-                        _connectionStatus.value = ConnectionStatus.Error("Connection failed: ${e.message}")
-                        return@withContext false
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("BluetoothService", "Error in connection process: ${e.message}")
-                currentSocket = null
-                _isConnected.value = false
-                _connectionStatus.value = ConnectionStatus.Error("Error: ${e.message}")
-                return@withContext false
-            }
+    fun disconnect() {
+        if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT)
+            != PackageManager.PERMISSION_GRANTED) {
+            return
         }
+        gattClient?.disconnect()
+        gattClient?.close()
+        gattServer?.close()
+        _isConnected.value = false
+        _connectionStatus.value = ConnectionStatus.Disconnected
     }
-    // Status class for UI updates
+
     sealed class ConnectionStatus {
         object Disconnected : ConnectionStatus()
         object Connecting : ConnectionStatus()
@@ -281,4 +235,3 @@ class BluetoothService(private val context: Context) {
         data class Error(val message: String) : ConnectionStatus()
     }
 }
-
