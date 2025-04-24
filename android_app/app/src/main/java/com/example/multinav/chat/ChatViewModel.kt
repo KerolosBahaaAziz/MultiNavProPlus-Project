@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.multinav.BluetoothService
+import com.example.multinav.ConnectionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -31,7 +32,7 @@ class ChatViewModel(
         // Monitor Bluetooth connection state
         viewModelScope.launch {
             bluetoothService.connectionStatus.collect { status ->
-                _connectionState.value = when(status) {
+                _connectionState.value = when (status) {
                     is BluetoothService.ConnectionStatus.Connected -> ConnectionState.Connected
                     is BluetoothService.ConnectionStatus.Connecting -> ConnectionState.Connecting
                     is BluetoothService.ConnectionStatus.Error -> ConnectionState.Error(status.message)
@@ -113,7 +114,6 @@ class ChatViewModel(
         }
     }
 
-}
 
     fun receiveMessage(message: String) {
         viewModelScope.launch {
@@ -138,19 +138,17 @@ class ChatViewModel(
         }
     }
 
-    // Add ConnectionState sealed class
-    sealed class ConnectionState {
-        object Disconnected : ConnectionState()
-        object Connecting : ConnectionState()
-        object Connected : ConnectionState()
-        data class Error(val message: String) : ConnectionState()
-    }
+
+
 
     override fun onCleared() {
         super.onCleared()
         bluetoothService.disconnect()
     }
 }
+
+
+
 
 class ChatViewModelFactory(
     private val deviceAddress: String? = null,

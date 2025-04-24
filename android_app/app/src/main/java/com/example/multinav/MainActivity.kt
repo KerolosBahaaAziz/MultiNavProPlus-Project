@@ -18,10 +18,10 @@ package com.example.multinav
                 super.onCreate(savedInstanceState)
                 setContent {
                     MultiNavTheme {
-                        ChatScreen(
-
-                            bluetoothService = bluetoothService,)
-
+                        Navigation(
+                            bluetoothViewModel = bluetoothViewModel,
+                            startDestination = Screen.DeviceList.route
+                        )
 
                     }
                 }

@@ -30,6 +30,7 @@ import com.example.multinav.R
 import com.example.multinav.chat.ChatViewModelFactory
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Refresh
+import com.example.multinav.ConnectionState
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,9 +61,9 @@ fun ChatScreen(
                                 .size(12.dp)
                                 .background(
                                     color = when (connectionState) {
-                                        is ChatViewModel.ConnectionState.Connected -> Color.Green
-                                        is ChatViewModel.ConnectionState.Connecting -> Color.Yellow
-                                        is ChatViewModel.ConnectionState.Error -> Color.Red
+                                        is ConnectionState.Connected -> Color.Green
+                                        is ConnectionState.Connecting -> Color.Yellow
+                                        is ConnectionState.Error -> Color.Red
                                         else -> Color.Gray
                                     },
                                     shape = CircleShape
@@ -72,8 +73,8 @@ fun ChatScreen(
                 },
                 actions = {
                     // Add retry connection button when disconnected or error
-                    if (connectionState is ChatViewModel.ConnectionState.Disconnected ||
-                        connectionState is ChatViewModel.ConnectionState.Error
+                    if (connectionState is ConnectionState.Disconnected ||
+                        connectionState is ConnectionState.Error
                     ) {
                         IconButton(
                             onClick = {
@@ -147,7 +148,7 @@ fun ChatScreen(
                 // Input area (disabled when not connected)
                 MessageInput(
                     viewModel = viewModel,
-                    enabled = connectionState is ChatViewModel.ConnectionState.Connected
+                    enabled = connectionState is ConnectionState.Connected
                 )
 
 
