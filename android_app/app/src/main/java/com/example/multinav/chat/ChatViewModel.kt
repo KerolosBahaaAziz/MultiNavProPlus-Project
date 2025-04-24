@@ -16,6 +16,54 @@ class ChatViewModel(
     private val deviceAddress: String? = null,
     private val bluetoothService: BluetoothService
 ) : ViewModel() {
+    private var hasReceivedAck = false
+    private var hasSentAck = false
+
+    private fun handleIncomingMessage(message: String) {
+        when (message) {
+            "BLE:ACK_CONNECT" -> {
+                if (!hasReceivedAck) {
+                    hasReceivedAck = true
+                    receiveMessage("Partner device connected")
+                    if (!hasSentAck) {
+                        // Send ACK back if not sent yet
+                        sendMessage("BLE:ACK_CONNECT")
+                        hasSentAck = true
+                    }
+                }
+            }
+            else -> receiveMessage(message)
+        }
+    }
+
+
+    fun disconnect() {
+        viewModelScope.launch {
+            // Send disconnect message before closing
+            sendMessage("BLE:ACK_DISCONNECT")
+            bluetoothService.disconnect()
+            hasReceivedAck = false
+            hasSentAck = false
+            receiveMessage("Disconnected from device")
+        }
+    }
+
+
+    // Reset ACK states when connection changes
+    private fun handleConnectionStateChange(state: ConnectionState) {
+        when (state) {
+            is ConnectionState.Connected -> {
+                // State will be reset when connection is established
+                hasReceivedAck = false
+                hasSentAck = false
+            }
+            is ConnectionState.Disconnected -> {
+                hasReceivedAck = false
+                hasSentAck = false
+            }
+            else -> {} // No action needed for other states
+        }
+    }
 
     private val _messages = MutableStateFlow<List<Message>>(
         listOf(
@@ -59,7 +107,7 @@ class ChatViewModel(
         viewModelScope.launch {
             try {
                 bluetoothService.startListening { receivedMessage ->
-                    receiveMessage(receivedMessage)
+                    handleIncomingMessage(receivedMessage)
                 }
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error in message listener", e)
@@ -67,6 +115,7 @@ class ChatViewModel(
             }
         }
     }
+
 
     fun connectToDevice(address: String) {
         viewModelScope.launch {
@@ -129,13 +178,6 @@ class ChatViewModel(
     fun makePhoneCall() {
         // Placeholder for call functionality
         receiveMessage("Call functionality not implemented yet")
-    }
-
-    fun disconnect() {
-        viewModelScope.launch {
-            bluetoothService.disconnect()
-            receiveMessage("Disconnected from device")
-        }
     }
 
 

@@ -39,6 +39,14 @@ class BluetoothService(private val context: Context) {
     private var messageListener: ((String) -> Unit)? = null
     private val scanResults = mutableMapOf<String, BluetoothDevice>()
 
+
+    private fun sendConnectionAck() {
+        viewModelScope.launch {
+            sendMessage("BLE:ACK_CONNECT")
+        }
+    }
+
+
     fun startScanning() {
         if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN)
             != PackageManager.PERMISSION_GRANTED) {
@@ -159,6 +167,9 @@ class BluetoothService(private val context: Context) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 _isConnected.value = true
                 _connectionStatus.value = ConnectionStatus.Connected
+
+                sendConnectionAck()
+
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 _isConnected.value = false
                 _connectionStatus.value = ConnectionStatus.Disconnected
@@ -234,6 +245,9 @@ class BluetoothService(private val context: Context) {
                     _isConnected.value = true
                     _connectionStatus.value = ConnectionStatus.Connected
                     gatt.discoverServices()
+
+                    sendConnectionAck()
+
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     _isConnected.value = false
