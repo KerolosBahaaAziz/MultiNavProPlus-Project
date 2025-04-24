@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,7 +28,8 @@ import androidx.compose.ui.unit.dp
 fun BluetoothDeviceScreen(
     state: BluetoothUiState,
     onDeviceClick: (BluetoothDeviceData) -> Unit,
-    bluetoothViewModel: BluetoothViewModel
+    bluetoothViewModel: BluetoothViewModel = viewModel(),
+    navController: NavController
 ) {
     Scaffold(
         topBar = {
@@ -72,7 +75,16 @@ fun BluetoothDeviceScreen(
                 items(state.pairedDevices) { device ->
                     DeviceItem(
                         device = device,
-                        onClick = { onDeviceClick(device) }
+                        onClick = {   bluetoothViewModel.connectToDeviceAndNavigate(
+                            device = device,
+                            onNavigate = {
+                                // Navigate to chat screen with device address
+                                navController.navigate(
+                                    Screen.Chat.createRoute(device.address)
+                                )
+                            }
+                        )
+                        }
                     )
                 }
             }

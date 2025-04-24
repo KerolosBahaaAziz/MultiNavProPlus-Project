@@ -94,25 +94,26 @@ class ChatViewModel(
         if (message.isBlank()) return
 
         viewModelScope.launch {
-            // Add message to UI immediately
-            _messages.value = _messages.value + Message(message, true)
+            try {
+                // Add message to UI
+                _messages.value = _messages.value + Message(message, true)
 
-            // Only attempt to send if connected
-            if (connectionState.value is ConnectionState.Connected) {
-                try {
+                if (connectionState.value is ConnectionState.Connected) {
                     val success = bluetoothService.sendMessage(message)
                     if (!success) {
-                        receiveMessage("Failed to send message")
+                        receiveMessage("Failed to send BLE command")
                     }
-                } catch (e: Exception) {
-                    Log.e("ChatViewModel", "Error sending message", e)
-                    receiveMessage("Error sending message: ${e.message}")
+                } else {
+                    receiveMessage("Not connected to BLE device")
                 }
-            } else {
-                receiveMessage("Cannot send message: Not connected")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error sending BLE command", e)
+                receiveMessage("Error: ${e.message}")
             }
         }
     }
+
+}
 
     fun receiveMessage(message: String) {
         viewModelScope.launch {

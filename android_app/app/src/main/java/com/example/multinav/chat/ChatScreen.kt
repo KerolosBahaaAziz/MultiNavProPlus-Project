@@ -116,8 +116,29 @@ fun ChatScreen(
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    items(messages) { message ->
-                        MessageBubble(message)
+                    items(messages.filter { it.text.startsWith("BLE:") }) { message ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            contentAlignment = if (message.isSentByUser)
+                                Alignment.CenterEnd else Alignment.CenterStart
+                        ) {
+                            val displayText = message.text.removePrefix("BLE:")
+                            Text(
+                                text = displayText,
+                                color = Color.White,
+                                modifier = Modifier
+                                    .background(
+                                        color = when {
+                                            message.isSentByUser -> Color(0xFF0A74DA)
+                                            else -> Color(0xFF6C757D)
+                                        },
+                                        shape = MaterialTheme.shapes.medium
+                                    )
+                                    .padding(8.dp)
+                            )
+                        }
                     }
                 }
 
@@ -126,9 +147,7 @@ fun ChatScreen(
                 // Input area (disabled when not connected)
                 MessageInput(
                     viewModel = viewModel,
-                    // enabled = connectionState is ChatViewModel.ConnectionState.Connected
-                      enabled = true
-
+                    enabled = connectionState is ChatViewModel.ConnectionState.Connected
                 )
 
 
@@ -139,7 +158,7 @@ fun ChatScreen(
 
 
 @Composable
-fun MessageBubble(message: Message) {
+fun BLEMessageBubble(message: Message) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -201,7 +220,8 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
         IconButton(
             onClick = {
                 if (inputText.isNotEmpty()) {
-                    viewModel.sendMessage(inputText)
+                    val bleCommand = formatBLECommand(inputText)
+                    viewModel.sendMessage(bleCommand)
                     inputText = ""
                 }
             },
@@ -236,4 +256,10 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
             )
         }
     }
+}
+
+private fun formatBLECommand(input: String): String {
+    // Format command for your BLE device
+    // Example: Convert "LED ON" to "BLE:LED_ON"
+    return "BLE:${input.uppercase().replace(" ", "_")}"
 }

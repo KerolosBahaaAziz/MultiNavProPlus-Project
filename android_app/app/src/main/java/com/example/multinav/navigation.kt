@@ -24,10 +24,9 @@ fun Navigation(
     startDestination: String = Screen.DeviceList.route
 ) {
     val context = LocalContext.current
-
+    val navController = rememberNavController()
     val bluetoothService = remember { BluetoothService(context) }
 
-    val navController = rememberNavController()
 
     NavHost(
         navController = navController,
@@ -44,7 +43,8 @@ fun Navigation(
                         }
                     )
                 },
-                bluetoothViewModel = bluetoothViewModel
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController
             )
         }
 
@@ -56,8 +56,13 @@ fun Navigation(
                 val chatViewModel: ChatViewModel = viewModel(
                     factory = ChatViewModelFactory(deviceAddress, bluetoothService)
                 )
-                ChatScreen(viewModel = chatViewModel, bluetoothService = bluetoothService)
+                ChatScreen(
+                    viewModel = chatViewModel,
+                    bluetoothService = bluetoothService,
+                    onNavigateBack = { navController.popBackStack() })
             }
         }
     }
 }
+
+

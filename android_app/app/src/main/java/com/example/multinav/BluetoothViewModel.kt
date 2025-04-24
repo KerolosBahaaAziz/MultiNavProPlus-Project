@@ -78,9 +78,16 @@ class BluetoothViewModel(
 
 
     // Add this method to navigate immediately and connect in background
-    fun connectToDeviceAndNavigate(device: BluetoothDeviceData, onNavigate: () -> Unit) {
+    fun connectToDeviceAndNavigate(
+        device: BluetoothDeviceData,
+        onNavigate: () -> Unit) {
         // Navigate immediately
-        onNavigate()
+        viewModelScope.launch {
+            val success = bluetoothService.connectToDevice(device.address)
+            if (success) {
+                onNavigate()
+            }
+        }
 
         // Then attempt connection in the background
         deviceConnectionJob?.cancel()
