@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,17 +34,36 @@ fun BluetoothDeviceScreen(
     bluetoothViewModel: BluetoothViewModel = viewModel(),
     navController: NavController
 ) {
+    val isServerMode = remember { mutableStateOf(true) }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Bluetooth Devices") },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            isServerMode.value = !isServerMode.value
+                            if (isServerMode.value) {
+                                bluetoothViewModel.startServer()
+                            } else {
+                                bluetoothViewModel.startClient()
+                            }
+                        }
+                    ) {
+                        Text(
+                            if (isServerMode.value) "Switch to Client" else "Switch to Server",
+                            color = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White
                 )
             )
         }
-    ) { padding ->
+    )  { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -10,6 +10,7 @@ package com.example.multinav
         import com.example.multinav.ui.theme.MultiNavTheme
         import android.Manifest
         import android.os.Build
+        import android.util.Log
 
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +24,9 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-            bluetoothViewModel.startBluetoothOperations()
+            // Initialize Bluetooth - default to server mode
+            bluetoothViewModel.startServer()
+            Log.i("TAG", "perrmission checked: ")
         }
     }
 
@@ -41,7 +44,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        val permissions = mutableListOf<String>()
+        val permissions = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.addAll(

@@ -19,17 +19,32 @@ package com.example.multinav
 
         init {
             updatePairedDevices()
-            startBluetoothOperations()
         }
 
-        fun startBluetoothOperations() {
+        fun startServer() {
             viewModelScope.launch {
                 try {
+                    bluetoothService.stopScanning()
                     bluetoothService.startAdvertising()
+                    _state.update { it.copy(
+                        isScanning = false,
+                        errorMessage = null
+                    )}
+                } catch (e: Exception) {
+                    Log.e("BluetoothViewModel", "Failed to start server", e)
+                    _state.update { it.copy(errorMessage = "Failed to start server: ${e.message}") }
+                }
+            }
+        }
+
+        fun startClient() {
+            viewModelScope.launch {
+                try {
+                    bluetoothService.stopAdvertising()
                     startScanning()
                 } catch (e: Exception) {
-                    Log.e("BluetoothViewModel", "Failed to start BLE operations", e)
-                    _state.update { it.copy(errorMessage = "Failed to start BLE: ${e.message}") }
+                    Log.e("BluetoothViewModel", "Failed to start client", e)
+                    _state.update { it.copy(errorMessage = "Failed to start client: ${e.message}") }
                 }
             }
         }
@@ -38,7 +53,7 @@ package com.example.multinav
             viewModelScope.launch {
                 _state.update { it.copy(isScanning = true) }
                 try {
-                    bluetoothService.startAdvertising()
+                    bluetoothService.startScanning()
                 } catch (e: Exception) {
                     _state.update {
                         it.copy(
@@ -60,47 +75,13 @@ package com.example.multinav
             }
         }
 
-        fun connectToDevice(device: BluetoothDeviceData, onSuccess: () -> Unit) {
-            deviceConnectionJob?.cancel()
-            deviceConnectionJob = viewModelScope.launch {
-                _state.update { it.copy(isConnecting = true) }
-                try {
-                    if (bluetoothService.connectToDevice(device.address)) {
-                        _state.update {
-                            it.copy(
-                                isConnecting = false,
-                                isConnected = true,
-                                errorMessage = null
-                            )
-                        }
-                        onSuccess()
-                    } else {
-                        _state.update {
-                            it.copy(
-                                isConnecting = false,
-                                isConnected = false,
-                                errorMessage = "Failed to connect"
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("BluetoothViewModel", "Connection error", e)
-                    _state.update {
-                        it.copy(
-                            isConnecting = false,
-                            isConnected = false,
-                            errorMessage = e.message
-                        )
-                    }
-                }
-            }
-        }
-
         fun connectToDeviceAndNavigate(
             device: BluetoothDeviceData,
             onNavigate: () -> Unit
         ) {
-            viewModelScope.launch {
+            deviceConnectionJob?.cancel()
+            deviceConnectionJob = viewModelScope.launch {
+                _state.update { it.copy(isConnecting = true) }
                 try {
                     val success = bluetoothService.connectToDevice(device.address)
                     if (success) {
@@ -129,23 +110,6 @@ package com.example.multinav
                             isConnected = false,
                             errorMessage = e.message
                         )
-                    }
-                }
-            }
-        }
-
-        fun sendMessage(message: String) {
-            viewModelScope.launch {
-                try {
-                    if (!bluetoothService.sendMessage(message)) {
-                        _state.update {
-                            it.copy(errorMessage = "Failed to send message")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("BluetoothViewModel", "Send message error", e)
-                    _state.update {
-                        it.copy(errorMessage = "Send error: ${e.message}")
                     }
                 }
             }
