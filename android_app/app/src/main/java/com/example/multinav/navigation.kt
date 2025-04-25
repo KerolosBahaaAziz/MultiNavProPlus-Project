@@ -21,11 +21,13 @@ sealed class Screen(val route: String) {
 @Composable
 fun Navigation(
     bluetoothViewModel: BluetoothViewModel,
-    startDestination: String = Screen.DeviceList.route
+    startDestination: String = Screen.DeviceList.route,
+            chatViewModel: ChatViewModel
+
 ) {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val bluetoothService = remember { BluetoothService(context) }
+    val bluetoothService = bluetoothViewModel.bluetoothService // Access the shared BluetoothService from BluetoothViewModel
 
 
     NavHost(
@@ -53,9 +55,9 @@ fun Navigation(
         ) { backStackEntry ->
             val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
             deviceAddress?.let {
-                val chatViewModel: ChatViewModel = viewModel(
-                    factory = ChatViewModelFactory(deviceAddress, bluetoothService)
-                )
+//                val chatViewModel: ChatViewModel = viewModel(
+//                    factory = ChatViewModelFactory(deviceAddress, bluetoothService)
+//                )
                 ChatScreen(
                     viewModel = chatViewModel,
                     bluetoothService = bluetoothService,

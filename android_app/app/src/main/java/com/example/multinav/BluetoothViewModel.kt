@@ -16,7 +16,7 @@ package com.example.multinav
     import kotlin.coroutines.cancellation.CancellationException
 
 class BluetoothViewModel(
-    private val bluetoothService: BluetoothService
+    val bluetoothService: BluetoothService
 ) : ViewModel() {
     private var deviceConnectionJob: Job? = null
     private var refreshJob: Job? = null

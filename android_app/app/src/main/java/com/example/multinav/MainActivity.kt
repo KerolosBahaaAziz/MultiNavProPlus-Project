@@ -1,22 +1,30 @@
 package com.example.multinav
 
-        import ChatScreen
-        import JoyStickScreen
-        import android.os.Bundle
-        import androidx.activity.ComponentActivity
-        import androidx.activity.compose.setContent
-        import androidx.activity.result.contract.ActivityResultContracts
-        import androidx.activity.viewModels
-        import com.example.multinav.ui.theme.MultiNavTheme
-        import android.Manifest
-        import android.os.Build
-        import android.util.Log
+import ChatScreen
+import JoyStickScreen
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import com.example.multinav.ui.theme.MultiNavTheme
+import android.Manifest
+import android.os.Build
+import android.util.Log
+import com.example.multinav.chat.ChatViewModel
+import com.example.multinav.chat.ChatViewModelFactory
 
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
+
     private val bluetoothViewModel by viewModels<BluetoothViewModel> {
         BluetoothViewModelFactory(bluetoothService)
+    }
+
+
+    private val chatViewModel by viewModels<ChatViewModel> {
+        ChatViewModelFactory(null, bluetoothService)
     }
 
     private val permissionLauncher = registerForActivityResult(
@@ -37,7 +45,9 @@ class MainActivity : ComponentActivity() {
             MultiNavTheme {
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
-                    startDestination = Screen.DeviceList.route
+                    startDestination = Screen.DeviceList.route,
+                            chatViewModel = chatViewModel // Pass the shared ChatViewModel
+
                 )
             }
         }
