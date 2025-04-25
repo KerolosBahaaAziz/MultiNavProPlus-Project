@@ -1,38 +1,29 @@
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.Modifier
+package com.example.multinav.chat
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
-
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.multinav.chat.ChatViewModel
-
-import com.example.multinav.chat.Message
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.multinav.BluetoothService
 import com.example.multinav.R
-import com.example.multinav.chat.ChatViewModelFactory
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.runtime.LaunchedEffect
-import com.example.multinav.ConnectionState
+import com.example.multinav.chat.ChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,18 +31,18 @@ fun ChatScreen(
     deviceAddress: String? = null,
     bluetoothService: BluetoothService,
     onNavigateBack: () -> Unit = {},
-//    viewModel: ChatViewModel = viewModel(
-//        factory = ChatViewModelFactory(deviceAddress, bluetoothService)
-//    )
-    viewModel: ChatViewModel // Require shared ChatViewModel
+    viewModel: ChatViewModel
 ) {
     val messages by viewModel.messages.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
-    // Add this for auto-scrolling
-    val listState = rememberLazyListState()
+    // Log connection state for debugging
+    LaunchedEffect(connectionState) {
+        println("ChatScreen: Connection state changed to $connectionState")
+    }
 
     // Auto-scroll to bottom when new messages arrive
+    val listState = rememberLazyListState()
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
@@ -70,9 +61,9 @@ fun ChatScreen(
                                 .size(12.dp)
                                 .background(
                                     color = when (connectionState) {
-                                        is ConnectionState.Connected -> Color.Green
-                                        is ConnectionState.Connecting -> Color.Yellow
-                                        is ConnectionState.Error -> Color.Red
+                                        is BluetoothService.ConnectionStatus.Connected -> Color.Green
+                                        is BluetoothService.ConnectionStatus.Connecting -> Color.Yellow
+                                        is BluetoothService.ConnectionStatus.Error -> Color.Red
                                         else -> Color.Gray
                                     },
                                     shape = CircleShape
@@ -81,8 +72,8 @@ fun ChatScreen(
                     }
                 },
                 actions = {
-                    if (connectionState is ConnectionState.Disconnected ||
-                        connectionState is ConnectionState.Error
+                    if (connectionState is BluetoothService.ConnectionStatus.Disconnected ||
+                        connectionState is BluetoothService.ConnectionStatus.Error
                     ) {
                         IconButton(
                             onClick = {
@@ -126,8 +117,7 @@ fun ChatScreen(
                 .padding(16.dp)
         ) {
             LazyColumn(
-                state = listState,  // Add this
-
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -145,16 +135,13 @@ fun ChatScreen(
                         } else {
                             message.text
                         }
-
                         Text(
                             text = displayText,
                             color = Color.White,
                             modifier = Modifier
                                 .background(
-                                    color = when {
-                                        message.isSentByUser -> Color(0xFF0A74DA)
-                                        else -> Color(0xFF6C757D)
-                                    },
+                                    color = if (message.isSentByUser) Color(0xFF0A74DA)
+                                    else Color(0xFF6C757D),
                                     shape = MaterialTheme.shapes.medium
                                 )
                                 .padding(8.dp)
@@ -162,44 +149,18 @@ fun ChatScreen(
                     }
                 }
             }
-
             Spacer(modifier = Modifier.height(8.dp))
-
             MessageInput(
                 viewModel = viewModel,
-                enabled = connectionState is ConnectionState.Connected
+                enabled = connectionState is BluetoothService.ConnectionStatus.Connected
             )
         }
     }
 }
 
 @Composable
-fun BLEMessageBubble(message: Message) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        contentAlignment = if (message.isSentByUser) Alignment.CenterEnd else Alignment.CenterStart
-    ) {
-        Text(
-            text = message.text,
-            color = Color.White,
-            modifier = Modifier
-                .background(
-                    color = when {
-                        message.isSentByUser -> Color(0xFF0A74DA)    // Blue for sent messages
-                        else -> Color(0xFF6C757D)                    // Gray for received messages
-                    },
-                    shape = MaterialTheme.shapes.medium
-                )
-                .padding(8.dp)
-        )
-    }
-}
-
-@Composable
 fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
-    var inputText by remember { mutableStateOf("") }
+    var inputText by rememberSaveable { mutableStateOf("") }
 
     Row(
         modifier = Modifier
@@ -223,7 +184,6 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
                     .padding(8.dp),
                 enabled = enabled
             )
-
             if (inputText.isEmpty()) {
                 Text(
                     text = if (enabled) "Type a message..." else "Not connected",
@@ -232,7 +192,6 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
                 )
             }
         }
-
         IconButton(
             onClick = {
                 if (inputText.isNotEmpty()) {
@@ -249,7 +208,6 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
                 tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
             )
         }
-
         IconButton(
             onClick = { viewModel.sendVoice() },
             enabled = enabled
@@ -260,7 +218,6 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
                 tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
             )
         }
-
         IconButton(
             onClick = { viewModel.makePhoneCall() },
             enabled = enabled
@@ -275,7 +232,5 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
 }
 
 private fun formatBLECommand(input: String): String {
-    // Format command for your BLE device
-    // Example: Convert "LED ON" to "BLE:LED_ON"
     return "BLE:${input.uppercase().replace(" ", "_")}"
 }
