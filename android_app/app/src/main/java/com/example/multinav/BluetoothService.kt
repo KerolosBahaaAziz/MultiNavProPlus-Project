@@ -350,6 +350,29 @@ class BluetoothService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
+    fun startLeScan(onDeviceFound: (BluetoothDevice) -> Unit) {
+        val scanner = bluetoothAdapter?.bluetoothLeScanner
+        val scanFilter = ScanFilter.Builder()
+            .setServiceUuid(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID))
+            .build()
+
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+
+        val scanCallback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                val device = result.device
+                Log.d("BLE", "Found device: ${device.name} (${device.address})")
+                onDeviceFound(device)
+            }
+        }
+
+        scanner?.startScan(listOf(scanFilter), settings, scanCallback)
+        isScanning = true
+    }
+
+    @SuppressLint("MissingPermission")
     private fun sendAsServer(message: String): Boolean {
         notifyCharacteristic?.let { characteristic ->
             characteristic.value = message.toByteArray()

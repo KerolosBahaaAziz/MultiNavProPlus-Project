@@ -1,5 +1,6 @@
 package com.example.multinav
 
+    import android.annotation.SuppressLint
     import android.util.Log
     import androidx.lifecycle.ViewModel
     import androidx.lifecycle.ViewModelProvider
@@ -83,23 +84,40 @@ class BluetoothViewModel(
         }
     }
 
-    private fun startScanning() {
-        viewModelScope.launch {
-            _state.update { it.copy(isScanning = true) }
-            try {
-                bluetoothService.startScanning()
-                startPeriodicRefresh()
-            } catch (e: Exception) {
-                stopPeriodicRefresh()
-                _state.update {
-                    it.copy(
-                        isScanning = false,
-                        errorMessage = "Scanning failed: ${e.message}"
-                    )
-                }
+//    private fun startScanning() {
+//        viewModelScope.launch {
+//            _state.update { it.copy(isScanning = true) }
+//            try {
+//                bluetoothService.startScanning()
+//                startPeriodicRefresh()
+//            } catch (e: Exception) {
+//                stopPeriodicRefresh()
+//                _state.update {
+//                    it.copy(
+//                        isScanning = false,
+//                        errorMessage = "Scanning failed: ${e.message}"
+//                    )
+//                }
+//            }
+//        }
+//    }
+@SuppressLint("MissingPermission")
+fun startScanning() {
+    viewModelScope.launch {
+        bluetoothService.startLeScan { device ->
+            _state.update { state ->
+                val newDevice = BluetoothDeviceData(
+                    name = device.name ?: "Unknownnnn",
+                    address = device.address,
+                    isConnected = false
+                )
+                state.copy(
+                    scannedDevices = state.scannedDevices + newDevice
+                )
             }
         }
     }
+}
 
     fun stopScanning() {
         viewModelScope.launch {

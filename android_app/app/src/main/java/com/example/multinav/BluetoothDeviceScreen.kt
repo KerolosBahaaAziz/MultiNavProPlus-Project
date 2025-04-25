@@ -91,6 +91,15 @@ fun BluetoothDeviceScreen(
                 fontWeight = FontWeight.Bold
             )
 
+            // Add scan button
+            Button(
+                onClick = { bluetoothViewModel.startScanning() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (state.isScanning) "Stop Scanning" else "Start Scanning")
+            }
+
+
             LazyColumn(
                 modifier = Modifier.weight(1f)
             ) {
