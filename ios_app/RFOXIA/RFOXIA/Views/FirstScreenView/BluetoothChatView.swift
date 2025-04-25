@@ -20,7 +20,10 @@ struct ChatMessage: Identifiable {
 
 struct BluetoothChatView: View {
     @State private var inputText = ""
-    @State private var isRecording = false // For voice recording state
+    @State var isRecording = false // For voice recording state
+    @State var navigateToSubscribe = false
+    @State var alertItem: AlertInfo?
+    
     
     @StateObject private var bluetoothManager = BluetoothManager()  // Bluetooth manager
     
@@ -29,70 +32,72 @@ struct BluetoothChatView: View {
     let customColor = Color(red: 26/255, green: 61/255, blue: 120/255)
     
     var body: some View {
-        
+         NavigationStack{
         return VStack(spacing: 0) {
-            
-            ChatMessagesView(messages: messages, customColor: customColor)
-                            .background(BackgroundGradient.backgroundGradient)
-            
-            // Input bar
-            HStack {
-                TextField("Type a message...", text: $inputText)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .frame(minHeight: 36)
-                    .foregroundColor(customColor) // Text color
+                ChatMessagesView(messages: messages, customColor: customColor)
+                    .background(BackgroundGradient.backgroundGradient)
                 
-                Button(action: {
-                    // Send the message via Bluetooth
-                    bluetoothManager.sendMessage(inputText)
+                // Input bar
+                HStack {
+                    TextField("Type a message...", text: $inputText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .frame(minHeight: 36)
+                        .foregroundColor(customColor) // Text color
                     
-                    // Update local UI with the sent message
-                    let newMessage = ChatMessage(text: inputText, isCurrentUser: true, senderName: "Me")
-                    messages.append(newMessage)
-                    inputText = "" // Clear input after sending
-                }) {
-                    Image(systemName: "paperplane.fill")
-                        .foregroundColor(customColor) // Paper plane color
-                        .padding(8)
-                }
-                
-                Button(action: {
+                    Button(action: {
+                        // Send the message via Bluetooth
+                        bluetoothManager.sendMessage(inputText)
+                        
+                        // Update local UI with the sent message
+                        let newMessage = ChatMessage(text: inputText, isCurrentUser: true, senderName: "Me")
+                        messages.append(newMessage)
+                        inputText = "" // Clear input after sending
+                    }) {
+                        Image(systemName: "paperplane.fill")
+                            .foregroundColor(customColor) // Paper plane color
+                            .padding(8)
+                    }
                     // Add voice recording functionality later
-                }) {
-                    Image(systemName: isRecording ? "mic.fill" : "mic")
-                        .foregroundColor(isRecording ? .red : customColor) // Microphone button color
-                        .padding(8)
+                    Button(action: handleMicTapped) {
+                        Image(systemName: isRecording ? "mic.fill" : "mic")
+                            .foregroundColor(isRecording ? .red : customColor) // Microphone button color
+                            .padding(8)
+                    }.alert(info: $alertItem)
+                    
+                    // Phone call button (UI only)
+                    Button(action: {
+                        // Add phone call functionality later
+                    }) {
+                        Image(systemName: "phone.fill")
+                            .foregroundColor(customColor) // Phone icon color
+                            .padding(8)
+                    }
                 }
+                .padding()
+                .background(Color.white) // Background for the input bar
+                .cornerRadius(8)
+                .padding(.bottom, 0)
+                .padding(.leading, 0)
                 
-                // Phone call button (UI only)
-                Button(action: {
-                    // Add phone call functionality later
-                }) {
-                    Image(systemName: "phone.fill")
-                        .foregroundColor(customColor) // Phone icon color
-                        .padding(8)
+                NavigationLink(destination: ApplePayView(), isActive: $navigateToSubscribe) {
+                        EmptyView()
                 }
-            }
-            .padding()
-            .background(Color.white) // Background for the input bar
-            .cornerRadius(8)
-            .padding(.bottom, 0)
-            .padding(.leading, 0)
-        }.background(BackgroundGradient.backgroundGradient)
-            .onAppear {
-                // Start scanning for Bluetooth devices when the view appears
-                bluetoothManager.scanForDevices()
-                bluetoothManager.enableNotify(for: [bluetoothManager.chatCharacteristicUUID])
-            }
-            .onChange(of: bluetoothManager.receivedMessages) { newMessages in
-                // When a new message is received via Bluetooth, add it to the UI
-                for message in newMessages {
-                    let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
-                    messages.append(newMessage)
+            }.background(BackgroundGradient.backgroundGradient)
+                .onAppear {
+                    // Start scanning for Bluetooth devices when the view appears
+                    bluetoothManager.scanForDevices()
+                    bluetoothManager.enableNotify(for: [bluetoothManager.chatCharacteristicUUID])
                 }
-            }.onDisappear{
-                bluetoothManager.disableNotify(for: [bluetoothManager.chatCharacteristicUUID])
-            }
+                .onChange(of: bluetoothManager.receivedMessages) { newMessages in
+                    // When a new message is received via Bluetooth, add it to the UI
+                    for message in newMessages {
+                        let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
+                        messages.append(newMessage)
+                    }
+                }.onDisappear{
+                    bluetoothManager.disableNotify(for: [bluetoothManager.chatCharacteristicUUID])
+                }
+        }
     }
 }
 
