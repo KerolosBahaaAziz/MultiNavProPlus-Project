@@ -25,6 +25,8 @@ class ChatViewModel(
     // Add a message queue for reliability
     private val messageQueue = mutableListOf<String>()
     private var isProcessingQueue = false
+    private var hasShownFailureMessage = false // Flag to prevent spamming failure messages
+
 
     private var hasReceivedAck = false
     private var hasSentAck = false
@@ -66,6 +68,7 @@ class ChatViewModel(
                 // State will be reset when connection is established
                 hasReceivedAck = false
                 hasSentAck = false
+                hasShownFailureMessage = false // Reset failure message flag on reconnect
 
                 // Reinitialize listener to ensure it's set
                 startMessageListener()
@@ -196,7 +199,11 @@ class ChatViewModel(
             try {
                 while (messageQueue.isNotEmpty()) {
                     if (connectionState.value !is ConnectionState.Connected) {
-                        // Stop processing if not connected
+                        // Stop processing if not connected and show failure message only once
+                        if (!hasShownFailureMessage) {
+                            receiveMessage("Failed to send message(s): Not connected")
+                            hasShownFailureMessage = true
+                        }
                         break
                     }
 
@@ -206,9 +213,13 @@ class ChatViewModel(
                     if (success) {
                         // Remove from queue if sent successfully
                         messageQueue.removeFirst()
+                        hasShownFailureMessage = false // Reset on successful send
                     } else {
-                        // Stop processing on failure
-                        receiveMessage("Failed to send message")
+                        // Stop processing on failure and show message only once
+                        if (!hasShownFailureMessage) {
+                            receiveMessage("Failed to send message")
+                            hasShownFailureMessage = true
+                        }
                         break
                     }
 
@@ -218,15 +229,15 @@ class ChatViewModel(
             } finally {
                 isProcessingQueue = false
 
-                // If there are still messages and we're connected, try again
+                // If there are still messages and we're connected, retry after a longer delay
+                // Use a longer delay to avoid spamming attempts
                 if (messageQueue.isNotEmpty() && connectionState.value is ConnectionState.Connected) {
-                    delay(1000) // Wait a bit before retrying
+                    delay(5000) // Wait longer (5 seconds) before retrying to avoid spamming
                     processMessageQueue()
                 }
             }
         }
     }
-
     fun receiveMessage(message: String) {
         viewModelScope.launch {
             Log.d("ChatViewModel", "Adding received message to UI: $message")
