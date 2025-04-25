@@ -1,41 +1,212 @@
 package com.example.multinav.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.multinav.BluetoothService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 data class Message(val text: String, val isSentByUser: Boolean)
 
-class ChatViewModel : ViewModel() {
+class ChatViewModel(
+    private val deviceAddress: String? = null,
+    private val bluetoothService: BluetoothService
+) : ViewModel() {
+    private val messageQueue = mutableListOf<String>()
+    private var isProcessingQueue = false
+    private var hasShownFailureMessage = false
+
+    private val _connectionState = MutableStateFlow<BluetoothService.ConnectionStatus>(
+        BluetoothService.ConnectionStatus.Disconnected
+    )
+    val connectionState: StateFlow<BluetoothService.ConnectionStatus> = _connectionState
 
     private val _messages = MutableStateFlow<List<Message>>(
-        listOf(
-            Message("Hello!", false),
-            Message("Hi there!", true)
-        )
+        listOf(Message("Welcome to Bluetooth Chat", false))
     )
+    val messages: StateFlow<List<Message>> = _messages
 
-       val messages: StateFlow<List<Message>> = _messages
+
+
+    init {
+        viewModelScope.launch {
+            try {
+                if (!bluetoothService.isBluetoothEnabled()) {
+                    bluetoothService.enableBluetooth()
+                    receiveMessage("Please enable Bluetooth")
+                    return@launch
+                }
+                bluetoothService.connectionStatus.collect { status ->
+                    if (_connectionState.value != status) {
+                        _connectionState.value = status
+                        handleConnectionStateChange(status)
+                        when (status) {
+                            is BluetoothService.ConnectionStatus.Connected ->
+                                receiveMessage("Connected to device")
+                            is BluetoothService.ConnectionStatus.Disconnected ->
+                                receiveMessage("Disconnected from device")
+                            is BluetoothService.ConnectionStatus.Error ->
+                                receiveMessage("Connection error: ${status.message}")
+                            else -> {}
+                        }
+                        if (status is BluetoothService.ConnectionStatus.Connected) {
+                            processMessageQueue()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error collecting connection status", e)
+                _connectionState.value = BluetoothService.ConnectionStatus.Error(
+                    "Failed to monitor connection: ${e.message}"
+                )
+            }
+        }
+        startMessageListener()
+        if (!bluetoothService.isConnected.value) {
+            deviceAddress?.let {
+                receiveMessage("Attempting to connect to device...")
+                connectToDevice(it)
+            }
+        } else {
+            receiveMessage("Already connected to device")
+        }
+    }
+
+    private fun handleConnectionStateChange(state: BluetoothService.ConnectionStatus) {
+        when (state) {
+            is BluetoothService.ConnectionStatus.Connected -> {
+                hasShownFailureMessage = false
+                startMessageListener()
+            }
+            is BluetoothService.ConnectionStatus.Disconnected -> {
+                messageQueue.clear()
+            }
+            else -> {}
+        }
+    }
+
+    private fun startMessageListener() {
+        Log.d("ChatViewModel", "Starting message listener")
+        bluetoothService.startListening { receivedMessage ->
+            Log.d("ChatViewModel", "Message received via listener: $receivedMessage")
+            receiveMessage(receivedMessage)
+        }
+    }
+
+    fun connectToDevice(address: String) {
+        viewModelScope.launch {
+            try {
+                _connectionState.value = BluetoothService.ConnectionStatus.Connecting
+                receiveMessage("Connecting to device...")
+                val success = bluetoothService.connectToDevice(address)
+                if (success) {
+                    _connectionState.value = BluetoothService.ConnectionStatus.Connected
+                    receiveMessage("Connected successfully")
+                } else {
+                    _connectionState.value = BluetoothService.ConnectionStatus.Error("Connection failed")
+                    receiveMessage("Failed to connect to device")
+                }
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Connection error", e)
+                _connectionState.value = BluetoothService.ConnectionStatus.Error(
+                    e.message ?: "Unknown error"
+                )
+                receiveMessage("Connection error: ${e.message}")
+            }
+        }
+    }
 
     fun sendMessage(message: String) {
+        if (message.isBlank()) return
         viewModelScope.launch {
-            _messages.value = _messages.value + Message(message, true)
+            try {
+                _messages.value = _messages.value + Message(message, true)
+                messageQueue.add(message)
+                processMessageQueue()
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error sending message", e)
+                receiveMessage("Error: ${e.message}")
+            }
+        }
+    }
+
+    private fun processMessageQueue() {
+        if (isProcessingQueue || messageQueue.isEmpty()) return
+        viewModelScope.launch {
+            isProcessingQueue = true
+            try {
+                while (messageQueue.isNotEmpty()) {
+                    if (connectionState.value !is BluetoothService.ConnectionStatus.Connected) {
+                        if (!hasShownFailureMessage) {
+                            receiveMessage("Failed to send message(s): Not connected")
+                            hasShownFailureMessage = true
+                        }
+                        break
+                    }
+                    val message = messageQueue.first()
+                    val success = bluetoothService.sendMessage(message)
+                    if (success) {
+                        messageQueue.removeFirst()
+                        hasShownFailureMessage = false
+                    } else {
+                        if (!hasShownFailureMessage) {
+                            receiveMessage("Failed to send message")
+                            hasShownFailureMessage = true
+                        }
+                        break
+                    }
+                    delay(100)
+                }
+            } finally {
+                isProcessingQueue = false
+                if (messageQueue.isNotEmpty() && connectionState.value is BluetoothService.ConnectionStatus.Connected) {
+                    delay(5000)
+                    processMessageQueue()
+                }
+            }
         }
     }
 
     fun receiveMessage(message: String) {
         viewModelScope.launch {
+            Log.d("ChatViewModel", "Adding received message to UI: $message")
             _messages.value = _messages.value + Message(message, false)
         }
     }
 
     fun sendVoice() {
-
+        receiveMessage("Voice messages not implemented yet")
     }
 
     fun makePhoneCall() {
-        TODO("Not yet implemented")
+        receiveMessage("Call functionality not implemented yet")
+    }
+
+    fun disconnect() {
+        viewModelScope.launch {
+            bluetoothService.disconnect()
+            receiveMessage("Disconnected from device")
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        bluetoothService.disconnect()
+    }
+}
+
+class ChatViewModelFactory(
+    private val deviceAddress: String? = null,
+    private val bluetoothService: BluetoothService
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
+            return ChatViewModel(deviceAddress, bluetoothService) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
