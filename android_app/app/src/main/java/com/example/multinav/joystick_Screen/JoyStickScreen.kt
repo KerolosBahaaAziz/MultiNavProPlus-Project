@@ -40,6 +40,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.desgin.constants.Modes
 import com.example.joystick_Screen.JoyStickViewModel
+import com.example.joystick_Screen.JoyStickViewModelFactory
+import com.example.multinav.BluetoothService
 import com.example.multinav.joystick_Screen.MyAnalogJoystick
 
 import com.example.widgets.BluetoothReaders
@@ -52,7 +54,13 @@ import kotlin.math.roundToInt
 
 
 @Composable
-fun JoyStickScreen(modifier: Modifier = Modifier, viewModel: JoyStickViewModel = viewModel()) {
+fun JoyStickScreen(
+    modifier: Modifier = Modifier,
+    bluetoothService: BluetoothService,
+    viewModel: JoyStickViewModel = viewModel(
+        factory = JoyStickViewModelFactory(bluetoothService)
+    )
+) {
 
     Scaffold()
     { innerPadding ->
@@ -203,8 +211,10 @@ fun JoyStickScreen(modifier: Modifier = Modifier, viewModel: JoyStickViewModel =
                     buttonName = "A",
                     isToggled = viewModel.isToggleButtonA,
                     onButtonClick = {
-                    toggled ->
-                    Log.e("ToggleButton A","${toggled}+A") }
+                        isPressed ->
+                        viewModel.onButtonAClick(isPressed)
+                        Log.e("buttonA",isPressed.toString())
+                    }
                 )
 
                 CircleToggleButton(
@@ -252,10 +262,12 @@ fun JoyStickScreen(modifier: Modifier = Modifier, viewModel: JoyStickViewModel =
 
 
 
-    @Preview(showSystemUi = true)
-    @Composable
-    private fun SecondScreenPre() {
-        JoyStickScreen()
-    }
-
+//    @Preview(showSystemUi = true)
+//    @Composable
+//    private fun SecondScreenPre() {
+//        JoyStickScreen(
+//            bluetoothService = bluetoothService
+//        )
+//    }
+//
 
