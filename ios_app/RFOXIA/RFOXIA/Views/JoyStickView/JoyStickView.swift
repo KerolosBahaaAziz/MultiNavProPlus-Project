@@ -12,12 +12,14 @@ struct JoyStickView: View {
     @State var selectedMode : Int = 0
     @Environment(\.scenePhase) var scenePhase
     @State var tasks : [Task] = [Task(action: "action1"),Task(action: "action2"),Task(action: "action3"),Task(action: "action4"),Task(action: "action5"),Task(action: "action6"),Task(action: "action7"),Task(action: "action8"),Task(action: "action9"),Task(action: "action10")]
-    
+    @StateObject var bluetoothManager = BluetoothManager()
+    @State var sendCommand = SendCommands()
+    @State var temp : String = "a"
     var body: some View {
         NavigationStack{
             GeometryReader { geometry in
                 VStack(spacing: 16) {
-                    SensorsReadingView()
+                    SensorsReadingView(temp: "\(temp)", humidity: "48", pressure: "1013", status: "Good")
                     
                     ModeButtonsView(selectedIndex: $selectedMode)
                         .padding(.horizontal)
@@ -30,6 +32,7 @@ struct JoyStickView: View {
                     HStack {
                         DirectionPadView { direction in
                             print("direction is \(direction)")
+                            sendCommand.sendCommand(command: "o")
                         }
                         
                         rotatingKnobView(selection: $value, range: -500...500) { isMoving in
@@ -40,6 +43,7 @@ struct JoyStickView: View {
                         .padding(.horizontal)
                         
                         ActionButtonsView { action in
+                            sendCommand.sendCommand(command: "f")
                             print("Action is \(action)")
                         }
                     }
@@ -47,6 +51,7 @@ struct JoyStickView: View {
                     
                     Spacer()
                     ActivatorButtonView { action, isActivated in
+                        sendCommand.sendCommand(command: "i")
                         print("\(action) is \(isActivated)")
                     }
                     .padding(.bottom)
@@ -64,6 +69,7 @@ struct JoyStickView: View {
             }
         }
         .onAppear(){
+            bluetoothManager.enableNotify(for:[bluetoothManager.accelerometerCharacteristicUUID])
             OrientationHelper.forceLandscapeOnLaunch = true
             OrientationHelper.forceLandscape()
         }
@@ -74,6 +80,8 @@ struct JoyStickView: View {
             }
         }
         .onDisappear(){
+            bluetoothManager.disableNotify(for: [bluetoothManager.accelerometerCharacteristicUUID])
+            
             OrientationHelper.forceLandscapeOnLaunch = false
             OrientationHelper.forcePortrait()
         }
@@ -84,6 +92,10 @@ struct JoyStickView: View {
             if oldValue != newValue{
                 print("selectedMode changed to \(newValue + 1)")
             }
+        }
+        .onReceive(bluetoothManager.$accelerometerMessages) { message in
+            guard !message.isEmpty else { return }
+            temp = message
         }
         
     }

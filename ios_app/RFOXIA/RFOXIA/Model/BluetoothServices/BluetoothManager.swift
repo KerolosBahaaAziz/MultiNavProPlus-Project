@@ -20,7 +20,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var connectedDeviceName: String = "Unknown Device"
 
     let chatCharacteristicUUID = CBUUID(string: "1234")
-    let accelerometerCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2101")
+    let accelerometerCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21EDAE82ED19")
     private var notifyCapableCharacteristics: [CBUUID: CBCharacteristic] = [:]
     
     override init() {
