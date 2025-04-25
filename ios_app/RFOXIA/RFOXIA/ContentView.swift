@@ -10,6 +10,8 @@ import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject var bluetoothManager: BluetoothManager
+
 //    let applePayHandler = ApplePayHandler()
     
     var body: some View {
@@ -24,7 +26,9 @@ struct ContentView: View {
 //            .environment(\.managedObjectContext, viewContext)
 //        CheckBluetoothView()
     
-        MainTabView()
+//        MainTabView()
+//            .environment(\.managedObjectContext, viewContext)
+        DeviceListView()
             .environment(\.managedObjectContext, viewContext)
     }
 }

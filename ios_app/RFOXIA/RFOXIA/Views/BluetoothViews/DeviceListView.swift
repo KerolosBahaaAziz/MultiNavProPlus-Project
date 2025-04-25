@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct DeviceListView: View {
-    @ObservedObject var bluetoothManager = BluetoothManager()
+    @EnvironmentObject var bluetoothManager: BluetoothManager  // Use the environment object here
 
     var body: some View {
         NavigationStack {
@@ -37,9 +37,9 @@ struct DeviceListView: View {
             .navigationTitle("Select a Device")
             .onAppear {
                 bluetoothManager.scanForDevices()
-            }.alert("Connetion Failed", isPresented: $bluetoothManager.showConnectionError) {
+            }.alert("Connection Failed", isPresented: $bluetoothManager.showConnectionError) {
                 Button("OK", role: .cancel) { }
-            }message: {
+            } message: {
                 Text(bluetoothManager.connectionErrorMessage)
             }
         }
