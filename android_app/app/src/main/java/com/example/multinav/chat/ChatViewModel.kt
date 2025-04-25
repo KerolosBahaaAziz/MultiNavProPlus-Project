@@ -66,6 +66,10 @@ class ChatViewModel(
                 // State will be reset when connection is established
                 hasReceivedAck = false
                 hasSentAck = false
+
+                // Reinitialize listener to ensure it's set
+                startMessageListener()
+
             }
             is ConnectionState.Disconnected -> {
                 hasReceivedAck = false
@@ -135,15 +139,10 @@ class ChatViewModel(
     }
 
     private fun startMessageListener() {
-        viewModelScope.launch {
-            try {
-                bluetoothService.startListening { receivedMessage ->
-                    handleIncomingMessage(receivedMessage)
-                }
-            } catch (e: Exception) {
-                Log.e("ChatViewModel", "Error in message listener", e)
-                receiveMessage("Error receiving messages: ${e.message}")
-            }
+        Log.d("ChatViewModel", "Starting message listener")
+        bluetoothService.startListening { receivedMessage ->
+            Log.d("ChatViewModel", "Message received via listener: $receivedMessage")
+            handleIncomingMessage(receivedMessage)
         }
     }
 
@@ -189,7 +188,6 @@ class ChatViewModel(
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun processMessageQueue() {
         if (isProcessingQueue || messageQueue.isEmpty()) return
 
@@ -231,6 +229,7 @@ class ChatViewModel(
 
     fun receiveMessage(message: String) {
         viewModelScope.launch {
+            Log.d("ChatViewModel", "Adding received message to UI: $message")
             _messages.value = _messages.value + Message(message, false)
         }
     }

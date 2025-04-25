@@ -419,7 +419,10 @@ class BluetoothService(private val context: Context) {
             if (characteristic.uuid == BLEConfig.WRITE_CHARACTERISTIC_UUID) {
                 val message = String(value)
                 Log.d("BLE", "Server received message: $message from ${device.address}")
-                messageListener?.invoke(message)
+                messageListener?.let { listener ->
+                    Log.d("BLE", "Invoking listener with message: $message")
+                    listener(message)
+                } ?: Log.w("BLE", "No listener set for received message: $message")
 
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
@@ -663,13 +666,15 @@ class BluetoothService(private val context: Context) {
         }
     }
 
-    // Start listening for messages
+    // Start listening for messages, ensuring the latest listener is used
     fun startListening(listener: (String) -> Unit) {
-        messageListener = { message ->
-            Log.d("BLE", "Received message: $message")
-            listener(message)
-        }
-        Log.d("BLE", "Started listening for messages")
+        Log.d("BLE", "Setting new message listener")
+        messageListener = listener
+    }
+    // Clear listener when no longer needed (optional, for cleanup)
+    fun clearListener() {
+        Log.d("BLE", "Clearing message listener")
+        messageListener = null
     }
 
     // Get paired devices
