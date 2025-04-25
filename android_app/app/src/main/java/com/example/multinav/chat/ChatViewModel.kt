@@ -211,7 +211,7 @@ class ChatViewModel(
 
                     if (success) {
                         // Remove from queue if sent successfully
-                        messageQueue.removeFirst()
+                        messageQueue.removeAt(0)
                         hasShownFailureMessage = false // Reset on successful send
                     } else {
                         // Stop processing on failure and show message only once
