@@ -44,28 +44,28 @@ fun BluetoothDeviceScreen(
                 title = { Text("Bluetooth Devices") },
                 actions = {
                     IconButton(
-                        onClick = { bluetoothViewModel.startScanning() }
+                        onClick = { bluetoothViewModel.startClient() }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh"
                         )
                     }
-                    TextButton(
-                        onClick = {
-                            isServerMode.value = !isServerMode.value
-                            if (isServerMode.value) {
-                                bluetoothViewModel.startServer()
-                            } else {
-                                bluetoothViewModel.startClient()
-                            }
-                        }
-                    ) {
-                        Text(
-                            if (isServerMode.value) "Switch to Client" else "Switch to Server",
-                            color = Color.White
-                        )
-                    }
+//                    TextButton(
+//                        onClick = {
+//                            isServerMode.value = !isServerMode.value
+//                            if (isServerMode.value) {
+//                                bluetoothViewModel.startServer()
+//                            } else {
+//                                bluetoothViewModel.startClient()
+//                            }
+//                        }
+//                    ) {
+//                        Text(
+//                            if (isServerMode.value) "Switch to Client" else "Switch to Server",
+//                            color = Color.White
+//                        )
+//                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -92,11 +92,6 @@ fun BluetoothDeviceScreen(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Paired Devices (${state.pairedDevices.size})",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
             Button(
                 onClick = {
                     if (state.isScanning) {
@@ -116,6 +111,14 @@ fun BluetoothDeviceScreen(
                         .padding(16.dp)
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Paired Devices (${state.pairedDevices.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
             LazyColumn(
                 modifier = Modifier.weight(1f)
             ) {

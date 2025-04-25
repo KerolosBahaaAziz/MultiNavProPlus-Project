@@ -25,6 +25,7 @@ import com.example.multinav.BluetoothService
 import com.example.multinav.R
 import com.example.multinav.chat.ChatViewModel
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -70,37 +71,13 @@ fun ChatScreen(
                                 )
                         )
                     }
-                },
-                actions = {
-                    if (connectionState is BluetoothService.ConnectionStatus.Disconnected ||
-                        connectionState is BluetoothService.ConnectionStatus.Error
-                    ) {
-                        IconButton(
-                            onClick = {
-                                deviceAddress?.let { viewModel.connectToDevice(it) }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Retry Connection",
-                                tint = Color.Black
-                            )
-                        }
-                    }
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = Color.Black
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+
+
+                }
             )
-        }
-    ) { padding ->
+            }
+        )
+                    { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
