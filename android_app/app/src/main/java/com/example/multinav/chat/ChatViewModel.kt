@@ -16,7 +16,6 @@ import kotlinx.coroutines.launch
 
 data class Message(val text: String, val isSentByUser: Boolean)
 
-@SuppressLint("NewApi")
 class ChatViewModel(
     private val deviceAddress: String? = null,
     private val bluetoothService: BluetoothService

@@ -40,9 +40,10 @@ fun ChatScreen(
     deviceAddress: String? = null,
     bluetoothService: BluetoothService,
     onNavigateBack: () -> Unit = {},
-    viewModel: ChatViewModel = viewModel(
-        factory = ChatViewModelFactory(deviceAddress, bluetoothService)
-    )
+//    viewModel: ChatViewModel = viewModel(
+//        factory = ChatViewModelFactory(deviceAddress, bluetoothService)
+//    )
+    viewModel: ChatViewModel // Require shared ChatViewModel
 ) {
     val messages by viewModel.messages.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()

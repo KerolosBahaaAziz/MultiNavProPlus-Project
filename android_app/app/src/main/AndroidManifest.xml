@@ -3,7 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
 
 
-    <!-- BLE permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -16,7 +15,6 @@
 
     <!-- Optional voice features -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
     <!-- Declare BLE feature requirement -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"

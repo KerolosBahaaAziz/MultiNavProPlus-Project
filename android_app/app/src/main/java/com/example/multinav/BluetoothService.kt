@@ -1,3 +1,4 @@
+
 package com.example.multinav
 
 import android.annotation.SuppressLint
@@ -216,7 +217,13 @@ class BluetoothService(private val context: Context) {
             // Store characteristics before adding service
             writeCharacteristic = service.getCharacteristic(BLEConfig.WRITE_CHARACTERISTIC_UUID)
             notifyCharacteristic = service.getCharacteristic(BLEConfig.NOTIFY_CHARACTERISTIC_UUID)
-
+            if (writeCharacteristic == null || notifyCharacteristic == null) {
+                Log.e("BLE", "Failed to initialize characteristics")
+                _connectionStatus.value = ConnectionStatus.Error("Failed to initialize characteristics")
+                gattServer?.close()
+                gattServer = null
+                return
+            }
             // Add the service
             val success = gattServer?.addService(service) ?: false
 
@@ -256,6 +263,8 @@ class BluetoothService(private val context: Context) {
                 val device = bluetoothAdapter?.getRemoteDevice(address)
                 if (device == null) {
                     _connectionStatus.value = ConnectionStatus.Error("Device not found")
+                    Log.e("BLE", "Device not found for address: $address")
+
                     return@withContext false
                 }
 
@@ -269,16 +278,19 @@ class BluetoothService(private val context: Context) {
                 }
 
                 // Connect with autoConnect=false for immediate connection
+                Log.d("BLE", "Initiating connection to $address")
                 gattClient = device.connectGatt(context, false, gattClientCallback, BluetoothDevice.TRANSPORT_LE)
 
                 if (gattClient == null) {
                     _connectionStatus.value = ConnectionStatus.Error("Failed to create GATT client")
+                    Log.e("BLE", "Failed to create GATT client for $address")
+
                     return@withContext false
                 }
 
                 // Wait for connection to establish (max 5 seconds)
                 var timeout = 0
-                while (!_isConnected.value && timeout < 50) {
+                while (!_isConnected.value && timeout < 100) {
                     delay(100)
                     timeout++
 
@@ -288,8 +300,11 @@ class BluetoothService(private val context: Context) {
 
                 if (!_isConnected.value) {
                     _connectionStatus.value = ConnectionStatus.Error("Connection timeout")
+                    Log.e("BLE", "Connection timeout for $address")
+
                     return@withContext false
                 }
+                Log.d("BLE", "Connection successful to $address")
 
                 return@withContext true
             } catch (e: CancellationException) {
@@ -303,7 +318,6 @@ class BluetoothService(private val context: Context) {
         }
     }
 
-    // Send a message
     @SuppressLint("MissingPermission")
     suspend fun sendMessage(message: String): Boolean {
         return withContext(Dispatchers.IO) {
@@ -312,8 +326,6 @@ class BluetoothService(private val context: Context) {
                     Log.e("BLE", "Cannot send message: Not connected")
                     return@withContext false
                 }
-
-                // Try to send as server first
                 if (gattServer != null) {
                     val success = sendAsServer(message)
                     if (success) {
@@ -321,8 +333,6 @@ class BluetoothService(private val context: Context) {
                         return@withContext true
                     }
                 }
-
-                // If server send failed or we're not a server, try as client
                 if (gattClient != null) {
                     val success = sendAsClient(message)
                     if (success) {
@@ -330,7 +340,6 @@ class BluetoothService(private val context: Context) {
                         return@withContext true
                     }
                 }
-
                 Log.e("BLE", "Failed to send message: No valid connection")
                 return@withContext false
             } catch (e: Exception) {
@@ -345,23 +354,40 @@ class BluetoothService(private val context: Context) {
         notifyCharacteristic?.let { characteristic ->
             characteristic.value = message.toByteArray()
             var success = false
-
-            // Notify all connected clients
-            gattServer?.connectedDevices?.forEach { device ->
-                success = gattServer?.notifyCharacteristicChanged(device, characteristic, false) ?: false
-                Log.d("BLE", "Server sent message: $message to ${device.address}, success: $success")
+            try {
+                val connectedDevices = bluetoothManager?.getConnectedDevices(BluetoothProfile.GATT_SERVER) ?: emptyList()
+                if (connectedDevices.isEmpty()) {
+                    Log.e("BLE", "No connected devices found for server send operation")
+                    return false
+                }
+                Log.d("BLE", "Found ${connectedDevices.size} connected device(s) for server send")
+                for (device in connectedDevices) {
+                    val result = gattServer?.notifyCharacteristicChanged(device, characteristic, false) ?: false
+                    success = success || result
+                    Log.d("BLE", "Server sent message: $message to ${device.address}, success: $result")
+                }
+                if (!success) {
+                    Log.e("BLE", "Failed to notify any connected device of message: $message")
+                }
+                return success
+            } catch (e: Exception) {
+                Log.e("BLE", "Error in sendAsServer while getting connected devices or notifying", e)
+                return false
             }
-
-            return success
         }
+        Log.e("BLE", "Notify characteristic not set for server send")
         return false
     }
 
     @SuppressLint("MissingPermission")
     private fun sendAsClient(message: String): Boolean {
         val service = gattClient?.getService(BLEConfig.CHAT_SERVICE_UUID)
-        val characteristic = service?.getCharacteristic(BLEConfig.WRITE_CHARACTERISTIC_UUID)
+        if (service == null) {
+            Log.e("BLE", "Chat service not found for client send")
+            return false
+        }
 
+        val characteristic = service.getCharacteristic(BLEConfig.WRITE_CHARACTERISTIC_UUID)
         if (characteristic != null) {
             characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
             characteristic.value = message.toByteArray()
@@ -369,7 +395,7 @@ class BluetoothService(private val context: Context) {
             Log.d("BLE", "Client sent message: $message, success: $success")
             return success
         } else {
-            Log.e("BLE", "Write characteristic not found for client")
+            Log.e("BLE", "Write characteristic not found for client send")
             return false
         }
     }
@@ -426,6 +452,8 @@ class BluetoothService(private val context: Context) {
 
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+                    Log.d("BLE", "Sent response to write request from ${device.address}")
+
                 }
             }
         }
@@ -456,7 +484,7 @@ class BluetoothService(private val context: Context) {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             try {
-                Log.d("BLE", "Client connection state change: $status -> $newState")
+                Log.d("BLE", "Client connection state change: $status -> $newState for ${gatt.device?.address ?: "Unknown"}")
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
                         _isConnected.value = true
@@ -466,7 +494,7 @@ class BluetoothService(private val context: Context) {
                         Handler(Looper.getMainLooper()).postDelayed({
                             try {
                                 if (_isConnected.value && gatt.device != null) {
-                                    Log.d("BLE", "Starting service discovery")
+                                    Log.d("BLE", "Starting service discovery for ${gatt.device.address}")
                                     val success = gatt.discoverServices()
                                     Log.d("BLE", "Service discovery initiated: $success")
                                 }
@@ -487,7 +515,6 @@ class BluetoothService(private val context: Context) {
                 Log.e("BLE", "Error in onConnectionStateChange", e)
             }
         }
-
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             try {
@@ -595,10 +622,11 @@ class BluetoothService(private val context: Context) {
         ) {
             try {
                 val message = String(value)
-                Log.d("BLE", "Received message: $message from characteristic: ${characteristic.uuid}")
-
+                Log.d("BLE", "Client received message: $message from characteristic: ${characteristic.uuid}")
                 if (characteristic.uuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID) {
-                    messageListener?.invoke(message)
+                    messageListener?.invoke(message) ?: Log.w("BLE", "No listener set for received message: $message on client")
+                } else {
+                    Log.w("BLE", "Received message on unexpected characteristic: ${characteristic.uuid}")
                 }
             } catch (e: Exception) {
                 Log.e("BLE", "Error handling characteristic change", e)
@@ -627,8 +655,16 @@ class BluetoothService(private val context: Context) {
         ) {
             try {
                 Log.d("BLE", "Descriptor write completed with status: $status for ${descriptor.uuid}")
-                if (descriptor.uuid == BLEConfig.CLIENT_CONFIG_UUID && status == BluetoothGatt.GATT_SUCCESS) {
-                    Log.d("BLE", "Notifications successfully enabled")
+                if (descriptor.uuid == BLEConfig.CLIENT_CONFIG_UUID) {
+                    if (status == BluetoothGatt.GATT_SUCCESS) {
+                        Log.d("BLE", "Notifications successfully enabled")
+                    } else {
+                        Log.e("BLE", "Failed to enable notifications, status: $status")
+                        notifyCharacteristic?.let {
+                            retryEnableNotifications(gatt,
+                                it, attempt = 1)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("BLE", "Error in onDescriptorWrite", e)
@@ -642,28 +678,60 @@ class BluetoothService(private val context: Context) {
             try {
                 // First enable notifications at the GATT level
                 val success = gatt.setCharacteristicNotification(it, true)
-                Log.d("BLE", "Set characteristic notification: $success")
+                Log.d("BLE", "Set characteristic notification for ${characteristic.uuid}: $success")
 
-                // Add a delay before writing to the descriptor
+                // Write to the Client Characteristic Configuration Descriptor (CCCD) to enable notifications
                 Handler(Looper.getMainLooper()).postDelayed({
                     try {
-                        // Then write to the CCCD
-                        val descriptor = it.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+                        val descriptor = characteristic.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
                         if (descriptor != null) {
                             descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                             val writeSuccess = gatt.writeDescriptor(descriptor)
-                            Log.d("BLE", "Write descriptor: $writeSuccess")
+                            Log.d("BLE", "Write descriptor to enable notifications: $writeSuccess for ${gatt.device?.address ?: "Unknown"}")
                         } else {
-                            Log.e("BLE", "Descriptor not found for enabling notifications")
+                            Log.e("BLE", "Descriptor not found for enabling notifications for ${characteristic.uuid}")
+                            retryEnableNotifications(gatt, characteristic, attempt = 1)
                         }
                     } catch (e: Exception) {
-                        Log.e("BLE", "Error in delayed descriptor write", e)
+                        Log.e("BLE", "Error in delayed descriptor write for notifications", e)
+                        retryEnableNotifications(gatt, characteristic, attempt = 1)
                     }
-                }, 300)
+                }, 500)
             } catch (e: Exception) {
-                Log.e("BLE", "Error enabling notifications", e)
+                Log.e("BLE", "Error enabling notifications for ${characteristic.uuid}", e)
+                // Retry enabling notifications on exception
+                retryEnableNotifications(gatt, characteristic, attempt = 1)
             }
+        } ?: Log.e("BLE", "Characteristic is null, cannot enable notifications")
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun retryEnableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, attempt: Int, maxAttempts: Int = 3) {
+        if (attempt > maxAttempts) {
+            Log.e("BLE", "Max retry attempts reached for enabling notifications on ${characteristic.uuid} for ${gatt.device?.address ?: "Unknown"}")
+            return
         }
+
+        Log.d("BLE", "Retrying to enable notifications, attempt $attempt of $maxAttempts for ${characteristic.uuid}")
+        Handler(Looper.getMainLooper()).postDelayed({
+            try {
+                val success = gatt.setCharacteristicNotification(characteristic, true)
+                Log.d("BLE", "Retry set characteristic notification for ${characteristic.uuid}: $success (attempt $attempt)")
+
+                val descriptor = characteristic.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+                if (descriptor != null) {
+                    descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    val writeSuccess = gatt.writeDescriptor(descriptor)
+                    Log.d("BLE", "Retry write descriptor to enable notifications: $writeSuccess (attempt $attempt) for ${gatt.device?.address ?: "Unknown"}")
+                } else {
+                    Log.e("BLE", "Descriptor still not found on retry attempt $attempt for ${characteristic.uuid}")
+                    retryEnableNotifications(gatt, characteristic, attempt + 1, maxAttempts)
+                }
+            } catch (e: Exception) {
+                Log.e("BLE", "Error in retry attempt $attempt for enabling notifications", e)
+                retryEnableNotifications(gatt, characteristic, attempt + 1, maxAttempts)
+            }
+        }, 500 * attempt.toLong()) // Increase delay with each attempt
     }
 
     // Start listening for messages, ensuring the latest listener is used

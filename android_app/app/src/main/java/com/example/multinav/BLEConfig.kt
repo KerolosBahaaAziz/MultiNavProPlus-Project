@@ -3,6 +3,7 @@ package com.example.multinav
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
+import android.util.Log
 import java.util.UUID
 
 object BLEConfig {
@@ -27,6 +28,7 @@ object BLEConfig {
             BluetoothGattCharacteristic.PROPERTY_WRITE,
             BluetoothGattCharacteristic.PERMISSION_WRITE
         )
+        Log.d("BLEConfig", "Write characteristic created: $WRITE_CHARACTERISTIC_UUID")
 
         // Notify characteristic (for receiving data)
         val notifyCharacteristic = BluetoothGattCharacteristic(
@@ -34,6 +36,7 @@ object BLEConfig {
             BluetoothGattCharacteristic.PROPERTY_NOTIFY,
             BluetoothGattCharacteristic.PERMISSION_READ
         )
+        Log.d("BLEConfig", "Notify characteristic created: $NOTIFY_CHARACTERISTIC_UUID")
 
         // Add descriptor for enabling notifications
         val descriptor = BluetoothGattDescriptor(
@@ -45,6 +48,7 @@ object BLEConfig {
 
         service.addCharacteristic(writeCharacteristic)
         service.addCharacteristic(notifyCharacteristic)
+        Log.d("BLEConfig", "Service created with ${service.characteristics.size} characteristics")
         return service
     }
 }
