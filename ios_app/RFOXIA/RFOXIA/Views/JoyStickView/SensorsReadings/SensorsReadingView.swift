@@ -8,15 +8,19 @@
 import SwiftUI
 
 struct SensorsReadingView: View {
+    @State var temp : String
+    @State var humidity : String
+    @State var pressure : String
+    @State var status : String
     var body: some View {
         HStack{
-            Text("26°C")
+            Text("\(temp)°C")
             Spacer()
-            Text("48%")
+            Text("\(humidity)%")
             Spacer()
-            Text("1013hPa")
+            Text("\(pressure)hPa")
             Spacer()
-            Text("Good")
+            Text("\(status)")
         }
         .font(.system(size: 33))
         .background(in: .rect, fillStyle: .init(eoFill: true))
@@ -24,5 +28,5 @@ struct SensorsReadingView: View {
 }
 
 #Preview {
-    SensorsReadingView()
+    SensorsReadingView(temp: "26", humidity: "48", pressure: "1013", status: "Good")
 }

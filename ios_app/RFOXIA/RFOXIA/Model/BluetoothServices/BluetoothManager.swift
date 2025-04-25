@@ -24,9 +24,11 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var showConnectionError: Bool = false
 
     let chatCharacteristicUUID = CBUUID(string: "1234")
+
     let accelerometerCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2101")
     let sendDirectionCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2102")
     
+
     private var notifyCapableCharacteristics: [CBUUID: CBCharacteristic] = [:]
     
     override init() {
