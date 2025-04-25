@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,10 +23,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,14 @@ fun BluetoothDeviceScreen(
             TopAppBar(
                 title = { Text("Bluetooth Devices") },
                 actions = {
+                    IconButton(
+                        onClick = { bluetoothViewModel.startScanning() }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh"
+                        )
+                    }
                     TextButton(
                         onClick = {
                             isServerMode.value = !isServerMode.value
@@ -63,7 +73,7 @@ fun BluetoothDeviceScreen(
                 )
             )
         }
-    )  { padding ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -81,46 +91,75 @@ fun BluetoothDeviceScreen(
                     Text("Search & Pair Devices")
                 }
             }
-
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Paired Devices Section
             Text(
                 text = "Paired Devices (${state.pairedDevices.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-
-            // Add scan button
             Button(
-                onClick = { bluetoothViewModel.startScanning() },
+                onClick = {
+                    if (state.isScanning) {
+                        bluetoothViewModel.stopScanning()
+                    } else {
+                        bluetoothViewModel.startScanning()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (state.isScanning) "Stop Scanning" else "Start Scanning")
             }
-
-
+            if (state.isScanning) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(16.dp)
+                )
+            }
             LazyColumn(
                 modifier = Modifier.weight(1f)
             ) {
                 items(state.pairedDevices) { device ->
                     DeviceItem(
                         device = device,
-                        onClick = {   bluetoothViewModel.connectToDeviceAndNavigate(
-                            device = device,
-                            onNavigate = {
-                                // Navigate to chat screen with device address
-                                navController.navigate(
-                                    Screen.Chat.createRoute(device.address)
-                                )
-                            }
-                        )
+                        onClick = {
+                            bluetoothViewModel.connectToDeviceAndNavigate(
+                                device = device,
+                                onNavigate = {
+                                    navController.navigate(
+                                        Screen.Chat.createRoute(device.address)
+                                    )
+                                }
+                            )
                         }
                     )
                 }
+                if (state.scannedDevices.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Scanned Devices (${state.scannedDevices.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+                    }
+                    items(state.scannedDevices) { device ->
+                        DeviceItem(
+                            device = device,
+                            onClick = {
+                                bluetoothViewModel.connectToDeviceAndNavigate(
+                                    device = device,
+                                    onNavigate = {
+                                        navController.navigate(
+                                            Screen.Chat.createRoute(device.address)
+                                        )
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
             }
-
-            // Error Message
             state.errorMessage?.let { error ->
                 Card(
                     modifier = Modifier
@@ -176,6 +215,13 @@ private fun DeviceItem(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                device.rssi?.let {
+                    Text(
+                        text = "RSSI: $it dBm",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             if (device.isConnected) {
                 Text(

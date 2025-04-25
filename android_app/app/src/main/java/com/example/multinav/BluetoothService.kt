@@ -70,8 +70,8 @@ class BluetoothService(private val context: Context) {
 
             // Create minimal advertising data
             val settings = AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED) // Changed to BALANCED
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_LOW) // Changed to LOW
                 .setConnectable(true)
                 .build()
 
@@ -144,13 +144,15 @@ class BluetoothService(private val context: Context) {
             .build()
 
         val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setScanMode(ScanSettings.SCAN_MODE_BALANCED) // Changed to BALANCED
             .build()
 
         scanner?.startScan(listOf(scanFilter), settings, scanCallback)
         isScanning = true
         Log.d("BLE", "Started scanning")
     }
+
+
 
     // Stop scanning
     @SuppressLint("MissingPermission")
@@ -254,9 +256,14 @@ class BluetoothService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    suspend fun connectToDevice(address: String): Boolean {
+    suspend fun connectToDevice(address: String, attempt: Int = 1, maxAttempts: Int = 3): Boolean {
         return withContext(Dispatchers.IO) {
             try {
+                if (attempt > maxAttempts) {
+                    _connectionStatus.value = ConnectionStatus.Error("Max connection attempts reached")
+                    Log.e("BLE", "Max connection attempts reached for $address")
+                    return@withContext false
+                }
                 stopScanning()
                 stopAdvertising()
                 _connectionStatus.value = ConnectionStatus.Connecting
@@ -264,59 +271,56 @@ class BluetoothService(private val context: Context) {
                 if (device == null) {
                     _connectionStatus.value = ConnectionStatus.Error("Device not found")
                     Log.e("BLE", "Device not found for address: $address")
-
                     return@withContext false
                 }
-
-                // Close any existing connection
                 try {
                     gattClient?.close()
                     gattClient = null
                 } catch (e: Exception) {
                     Log.e("BLE", "Error closing existing GATT client", e)
-                    // Continue anyway
                 }
-
-                // Connect with autoConnect=false for immediate connection
-                Log.d("BLE", "Initiating connection to $address")
+                Log.d("BLE", "Initiating connection to $address (attempt $attempt)")
                 gattClient = device.connectGatt(context, false, gattClientCallback, BluetoothDevice.TRANSPORT_LE)
-
                 if (gattClient == null) {
                     _connectionStatus.value = ConnectionStatus.Error("Failed to create GATT client")
                     Log.e("BLE", "Failed to create GATT client for $address")
-
                     return@withContext false
                 }
-
-                // Wait for connection to establish (max 5 seconds)
                 var timeout = 0
                 while (!_isConnected.value && timeout < 100) {
                     delay(100)
                     timeout++
-
-                    // Check if the coroutine was cancelled
                     ensureActive()
                 }
-
                 if (!_isConnected.value) {
                     _connectionStatus.value = ConnectionStatus.Error("Connection timeout")
                     Log.e("BLE", "Connection timeout for $address")
-
-                    return@withContext false
+                    // Retry after a delay
+                    delay(2000L * attempt)
+                    return@withContext connectToDevice(address, attempt + 1, maxAttempts)
                 }
                 Log.d("BLE", "Connection successful to $address")
-
+                // Save connected device address
+                saveLastConnectedDevice(address)
                 return@withContext true
             } catch (e: CancellationException) {
-                // Rethrow cancellation exceptions to properly cancel the coroutine
                 throw e
             } catch (e: Exception) {
-                Log.e("BLE", "Connection error", e)
+                Log.e("BLE", "Connection error on attempt $attempt", e)
                 _connectionStatus.value = ConnectionStatus.Error(e.message ?: "Unknown error")
-                false
+                // Retry after a delay
+                delay(2000L * attempt)
+                return@withContext connectToDevice(address, attempt + 1, maxAttempts)
             }
         }
     }
+
+    private fun saveLastConnectedDevice(address: String) {
+        val prefs = context.getSharedPreferences("BLEPrefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("lastConnectedDevice", address).apply()
+        Log.d("BLE", "Saved last connected device: $address")
+    }
+
 
     @SuppressLint("MissingPermission")
     suspend fun sendMessage(message: String): Boolean {
@@ -350,26 +354,29 @@ class BluetoothService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun startLeScan(onDeviceFound: (BluetoothDevice) -> Unit) {
+    fun startLeScan(onDeviceFound: (BluetoothDevice, Int) -> Unit) {
+        if (isScanning) return
+
         val scanner = bluetoothAdapter?.bluetoothLeScanner
         val scanFilter = ScanFilter.Builder()
             .setServiceUuid(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID))
             .build()
 
         val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setScanMode(ScanSettings.SCAN_MODE_BALANCED) // Balanced for battery efficiency
             .build()
 
         val scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val device = result.device
-                Log.d("BLE", "Found device: ${device.name} (${device.address})")
-                onDeviceFound(device)
+                val rssi = result.rssi
+                Log.d("BLE", "Found device: ${device.name} (${device.address}), RSSI: $rssi")
+                onDeviceFound(device, rssi)
             }
         }
-
         scanner?.startScan(listOf(scanFilter), settings, scanCallback)
         isScanning = true
+        Log.d("BLE", "Started scanning with balanced mode")
     }
 
     @SuppressLint("MissingPermission")
@@ -384,14 +391,17 @@ class BluetoothService(private val context: Context) {
                     return false
                 }
                 Log.d("BLE", "Found ${connectedDevices.size} connected device(s) for server send")
-                for (device in connectedDevices) {
-                    val result = gattServer?.notifyCharacteristicChanged(device, characteristic, false) ?: false
-                    success = success || result
-                    Log.d("BLE", "Server sent message: $message to ${device.address}, success: $result")
-                }
-                if (!success) {
-                    Log.e("BLE", "Failed to notify any connected device of message: $message")
-                }
+                // Batch notifications to reduce overhead
+                Handler(Looper.getMainLooper()).postDelayed({
+                    for (device in connectedDevices) {
+                        val result = gattServer?.notifyCharacteristicChanged(device, characteristic, false) ?: false
+                        success = success || result
+                        Log.d("BLE", "Server sent message: $message to ${device.address}, success: $result")
+                    }
+                    if (!success) {
+                        Log.e("BLE", "Failed to notify any connected device of message: $message")
+                    }
+                }, 100) // Small delay to batch notifications
                 return success
             } catch (e: Exception) {
                 Log.e("BLE", "Error in sendAsServer while getting connected devices or notifying", e)
@@ -849,6 +859,22 @@ class BluetoothService(private val context: Context) {
         context.startActivity(intent)
     }
 
+
+    @SuppressLint("MissingPermission")
+    fun isBluetoothEnabled(): Boolean {
+        val enabled = bluetoothAdapter?.isEnabled == true
+        Log.d("BLE", "Checking Bluetooth enabled: $enabled")
+        return enabled
+    }
+
+    fun enableBluetooth() {
+        if (!isBluetoothEnabled()) {
+            Log.d("BLE", "Bluetooth is disabled, opening settings")
+            openBluetoothSettings()
+        } else {
+            Log.d("BLE", "Bluetooth is already enabled")
+        }
+    }
 
 
     sealed class ConnectionStatus {
