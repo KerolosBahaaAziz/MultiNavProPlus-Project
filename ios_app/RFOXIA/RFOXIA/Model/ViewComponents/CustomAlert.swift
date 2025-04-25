@@ -14,8 +14,8 @@ struct AlertInfo: Identifiable {
     let title: String
     let message: String
     let confirmText: String
-    let cancelText: String
-    let confirmAction: () -> Void
+    let cancelText: String?
+    let confirmAction: (() -> Void)?
 }
 
 
@@ -26,7 +26,7 @@ extension View{
                     title: Text(alert.title),
                     message: Text(alert.message),
                     primaryButton: .default(Text(alert.confirmText), action: alert.confirmAction),
-                    secondaryButton: .cancel(Text(alert.cancelText))
+                    secondaryButton: .cancel(Text(alert.cancelText ?? "Cancel"))
                 )
             }
         }

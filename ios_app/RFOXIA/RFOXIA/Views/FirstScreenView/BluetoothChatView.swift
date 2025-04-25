@@ -20,9 +20,9 @@ struct ChatMessage: Identifiable {
 
 struct BluetoothChatView: View {
     @State private var inputText = ""
-    @State private var isRecording = false // For voice recording state
-    @State private var navigateToSubscribe = false
-    @State private var alertItem: AlertInfo?
+    @State var isRecording = false // For voice recording state
+    @State var navigateToSubscribe = false
+    @State var alertItem: AlertInfo?
     
     
     @StateObject private var bluetoothManager = BluetoothManager()  // Bluetooth manager
@@ -99,33 +99,6 @@ struct BluetoothChatView: View {
                 }
         }
     }
-    
-    func handleMicTapped() {
-            let isSubscribed = UserDefaults.standard.bool(forKey: "isSubscribed")
-
-            if isSubscribed {
-                startRecording()
-            } else {
-                alertItem = AlertInfo(
-                    title: "Notice",
-                    message: "To use voice, subscribe for $1/month.",
-                    confirmText: "Subscribe",
-                    cancelText: "Cancel",
-                    confirmAction: {
-                    navigateToSubscribe = true
-                        
-                    }
-                )
-                print("is anvigate : \(navigateToSubscribe)")
-            }
-        }
-    
-    func startRecording() {
-            // Your actual mic recording logic
-            print("Start recording")
-            isRecording = true
-        }
-
 }
 
 // MARK: - Preview

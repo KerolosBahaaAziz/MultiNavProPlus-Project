@@ -12,6 +12,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     var connectedPeripheral: CBPeripheral?
     private var messageCharacteristic: CBCharacteristic?
     private var accelerometerCharacteristic: CBCharacteristic?
+    private var sendDirectionCharacteristic: CBCharacteristic?
     
     @Published var isBluetoothOn = false
     @Published var isConnected = false
@@ -19,9 +20,13 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var receivedMessages: [String] = []  // Store received messages
     @Published var accelerometerMessages: String = ""
     @Published var connectedDeviceName: String = "Unknown Device"
+    @Published var connectionErrorMessage: String = ""
+    @Published var showConnectionError: Bool = false
 
     let chatCharacteristicUUID = CBUUID(string: "1234")
     let accelerometerCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2101")
+    let sendDirectionCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2102")
+    
     private var notifyCapableCharacteristics: [CBUUID: CBCharacteristic] = [:]
     
     override init() {
@@ -54,11 +59,12 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     }
     
     func sendCommandToMicrocontroller(_ command: String) {
-        guard let peripheral = connectedPeripheral, let charachterestic = accelerometerCharacteristic else { return }
+        guard let peripheral = connectedPeripheral, let charachterestic = sendDirectionCharacteristic else { return }
 
         let commandData = command.data(using: .utf8)!
         peripheral.writeValue(commandData, for: charachterestic, type: .withResponse)
     }
+    
     // MARK: - CBCentralManagerDelegate
     
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
@@ -90,21 +96,24 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         isBluetoothOn = true
         connectedDeviceName = peripheral.name ?? "unknown"
         DispatchQueue.main.async {
-                self.isConnected = true
-            }
+            self.isConnected = true
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         isBluetoothOn = false
         self.connectedPeripheral = nil
         self.messageCharacteristic = nil
+        self.sendDirectionCharacteristic = nil
         DispatchQueue.main.async {
-               self.isConnected = false
-           }
+            self.isConnected = false
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         print("Failed to connect to peripheral: \(error?.localizedDescription ?? "Unknown error")")
+        self.connectionErrorMessage = error?.localizedDescription ?? "Unknown error"
+        self.showConnectionError = true
     }
     
     // MARK: - CBPeripheralDelegate
@@ -123,7 +132,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         for characteristic in service.characteristics ?? [] {
             print("📡 Discovered characteristic: \(characteristic.uuid)")
         }
-        print("===============================")
+        print("===============================================")
         // Assuming we have a known characteristic for message exchange
         for characteristic in service.characteristics ?? [] {
             if characteristic.uuid == chatCharacteristicUUID {
@@ -132,7 +141,10 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             }else if characteristic.uuid == accelerometerCharacteristicUUID{
                 accelerometerCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
+            }else if characteristic.uuid == sendDirectionCharacteristicUUID{
+                sendDirectionCharacteristic = characteristic
             }
+            
             if characteristic.properties.contains(.notify) {
                 notifyCapableCharacteristics[characteristic.uuid] = characteristic
                 // Don't subscribe yet — do it when user enters the screen
@@ -164,7 +176,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
-            print("Notification setup failed: \(error.localizedDescription)")
+            print("Notification setup failed for: \(characteristic.uuid) and error is: \(error.localizedDescription)")
         } else if characteristic.isNotifying {
             print("✅ Subscribed to notifications for \(characteristic.uuid)")
         } else {

@@ -37,6 +37,10 @@ struct DeviceListView: View {
             .navigationTitle("Select a Device")
             .onAppear {
                 bluetoothManager.scanForDevices()
+            }.alert("Connetion Failed", isPresented: $bluetoothManager.showConnectionError) {
+                Button("OK", role: .cancel) { }
+            }message: {
+                Text(bluetoothManager.connectionErrorMessage)
             }
         }
     }
