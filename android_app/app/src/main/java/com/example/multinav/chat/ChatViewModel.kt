@@ -16,7 +16,8 @@ data class Message(val text: String, val isSentByUser: Boolean)
 
 class ChatViewModel(
     private val deviceAddress: String? = null,
-    private val bluetoothService: BluetoothService
+    private val bluetoothService: BluetoothService,
+    private val isMobileDevice: Boolean = false // Add this property
 ) : ViewModel() {
     private val messageQueue = mutableListOf<String>()
     private var isProcessingQueue = false
@@ -188,7 +189,7 @@ class ChatViewModel(
                         break
                     }
                     val message = messageQueue.first()
-                    val success = bluetoothService.sendMessage(message)
+                    val success = bluetoothService.sendMessage(message, isMobileDevice )
                     if (success) {
                         messageQueue.removeAt(0)
                         hasShownFailureMessage = false
@@ -246,7 +247,9 @@ class ChatViewModel(
 
 class ChatViewModelFactory(
     private val deviceAddress: String? = null,
-    private val bluetoothService: BluetoothService
+    private val bluetoothService: BluetoothService,
+    private val isMobileDevice: Boolean = false // Add this to pass to ChatViewModel
+
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
