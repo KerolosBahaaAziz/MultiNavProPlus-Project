@@ -41,4 +41,5 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView()
+        .environmentObject(BluetoothManager())
 }
