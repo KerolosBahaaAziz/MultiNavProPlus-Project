@@ -54,6 +54,10 @@ class BluetoothService(private val context: Context) {
     private var lastConnectionStateChange = 0L
     private val connectionStateDebounceMs = 1000L // 1 second debounce
 
+    // Added: Variables for debouncing notifications
+    private var lastMessageReceivedTime = 0L
+    private var lastMessageReceived: String? = null
+    private val messageDebounceMs = 500L // 500ms debounce for notifications
 
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -755,9 +759,7 @@ class BluetoothService(private val context: Context) {
     private fun enableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic?) {
         characteristic?.let {
             try {
-                // First enable notifications at the GATT level
-                val success = gatt.setCharacteristicNotification(it, true)
-                Log.d("BLE", "Set characteristic notification for ${characteristic.uuid}: $success")
+
 
                 // Write to the Client Characteristic Configuration Descriptor (CCCD) to enable notifications
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -894,6 +896,11 @@ class BluetoothService(private val context: Context) {
 
         _isConnected.value = false
         _connectionStatus.value = ConnectionStatus.Disconnected
+
+        // Added: Reset debouncing variables on disconnect
+        lastMessageReceivedTime = 0L
+        lastMessageReceived = null
+
     }
 
     /**
