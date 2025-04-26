@@ -53,10 +53,16 @@ struct RegisterView: View {
 
                     Button(action: {
                         print("Register with email and password")
-                        EmailAuthHandler.shared.registerWithEmail(email: email, password: password, firstName: firstName, lastName: lastName) { success, message in
-                            self.registrationSuccess = success
-                            self.alertMessage = message
+                        if firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty {
+                            self.alertMessage = "Please fill all the fields."
+                            self.registrationSuccess = false
                             self.showAlert = true
+                        }else{
+                            EmailAuthHandler.shared.registerWithEmail(email: email, password: password, firstName: firstName, lastName: lastName) { success, message in
+                                self.registrationSuccess = success
+                                self.alertMessage = message
+                                self.showAlert = true
+                            }
                         }
                     }) {
                         Text("Register")
@@ -67,7 +73,9 @@ struct RegisterView: View {
                             .foregroundColor(.white)
                             .cornerRadius(12)
                             .padding(.horizontal, 40)
-                    }
+                    }//.disabled(firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty)
+                    //.opacity((firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty) ? 0.5 : 1)
+                    //.animation(.easeInOut, value: firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty)
 
                     Button(action: {
                         // Navigate manually to Sign In screen

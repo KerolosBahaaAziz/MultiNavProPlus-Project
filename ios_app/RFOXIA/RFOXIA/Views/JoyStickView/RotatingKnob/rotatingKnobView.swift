@@ -15,9 +15,9 @@ struct rotatingKnobView : View {
     @Binding var selection : Int
     private var range : ClosedRange<Int>
     private var step : Double = 1.0
-    private var onEditingChanged : ((Bool) -> Void)?
+    private var onEditingChanged : ((Int) -> Void)?
     
-    init(selection: Binding<Int>, range: ClosedRange<Int>, onEditingChanged: ((Bool) -> Void)? = nil){
+    init(selection: Binding<Int>, range: ClosedRange<Int>, onEditingChanged: ((Int) -> Void)? = nil){
         self._selection = selection
         self.range = range
         self.onEditingChanged = onEditingChanged
@@ -38,7 +38,7 @@ struct rotatingKnobView : View {
                         }
                         .onEnded { _ in
                             lastDragValue = nil
-                            onEditingChanged?(false)
+                            onEditingChanged?(selection)
                             rotation = .degrees(0)
                             cumulativeRotation = .degrees(0)
                         }
@@ -67,6 +67,7 @@ struct rotatingKnobView : View {
             }
         }
     }
+    
     private func updateValue(with value : DragGesture.Value , in size : CGSize){
         if let lastDragValue = lastDragValue {
             let location = value.location
@@ -79,7 +80,7 @@ struct rotatingKnobView : View {
             withAnimation(.spring()){
                 rotation = cumulativeRotation
             }
-            onEditingChanged?(true)
+            //onEditingChanged?(true)
         }
         lastDragValue = value.location
     }

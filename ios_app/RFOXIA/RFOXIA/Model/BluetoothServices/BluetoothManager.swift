@@ -14,26 +14,51 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var accelerometerCharacteristic: CBCharacteristic?
     private var sendDirectionCharacteristic: CBCharacteristic?
     
+    private let storage: StorageService
+    
     @Published var isBluetoothOn = false
     @Published var isConnected = false
     @Published var discoveredPeripherals: [(CBPeripheral, String)] = []
-    @Published var receivedMessages: [String] = []  // Store received messages
-    @Published var accelerometerMessages: String = ""
-    @Published var connectedDeviceName: String = "Unknown Device"
+    @Published var receivedMessages: [String] {
+        didSet {
+            storage.save(receivedMessages, forKey: "receivedMessages")
+        }
+    }
+    @Published var accelerometerMessages: Int {
+        didSet {
+            storage.saveInt(accelerometerMessages, forKey: "accelerometerMessages")
+        }
+    }
+    @Published var connectedDeviceName: String {
+        didSet {
+            storage.saveString(connectedDeviceName, forKey: "connectedDeviceName")
+        }
+    }
     @Published var connectionErrorMessage: String = ""
     @Published var showConnectionError: Bool = false
-
+    
     let chatCharacteristicUUID = CBUUID(string: "1234")
-    let accelerometerCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2101")
-    let sendDirectionCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2102")
+    
+    let accelerometerCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21EDAE82ED19")
+    let sendDirectionCharacteristicUUID = CBUUID(string: "0000FE41-8E22-4541-9D4C-21EDAE82ED19")
+    
     
     private var notifyCapableCharacteristics: [CBUUID: CBCharacteristic] = [:]
     
-    override init() {
+    init(storage: StorageService = StorageService()) {
+        self.storage = storage
+        self.connectedDeviceName = storage.loadString(forKey: "connectedDeviceName") ?? "Unknown Device"
+        self.receivedMessages = storage.load([String].self, forKey: "receivedMessages") ?? []
+        self.accelerometerMessages = storage.loadInt(forKey: "accelerometerMessages")
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
     
+    //    override init() {
+    //        super.init()
+    //        centralManager = CBCentralManager(delegate: self, queue: nil)
+    //    }
+    //
     // Start scanning for peripherals
     func scanForDevices() {
         centralManager.scanForPeripherals(withServices: nil, options: nil)
@@ -59,10 +84,26 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     }
     
     func sendCommandToMicrocontroller(_ command: String) {
-        guard let peripheral = connectedPeripheral, let charachterestic = sendDirectionCharacteristic else { return }
-
-        let commandData = command.data(using: .utf8)!
-        peripheral.writeValue(commandData, for: charachterestic, type: .withoutResponse)
+        guard let peripheral = connectedPeripheral,
+              let characteristic = sendDirectionCharacteristic else {
+            print("Error: Missing peripheral or characteristic.")
+            return
+        }
+        
+        // Get the first 2 characters of the string
+        let trimmedCommand = String(command.prefix(2))
+        
+        guard trimmedCommand.utf8.count == 2 else {
+            print("❌ Command contains non-ASCII characters")
+            return
+        }
+        // Convert to Data using UTF-8 encoding
+        guard let commandData = trimmedCommand.data(using: .utf8) else {
+            print("Error: Couldn't convert command to Data.")
+            return
+        }
+        
+        peripheral.writeValue(commandData, for: characteristic, type: .withoutResponse)
     }
     
     // MARK: - CBCentralManagerDelegate
@@ -80,7 +121,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                         advertisementData: [String : Any], rssi RSSI: NSNumber) {
         let name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "Unknown Device"
-
+        
         if !discoveredPeripherals.contains(where: { $0.0.identifier == peripheral.identifier }) {
             print("Found peripheral: \(peripheral), name: \(peripheral.name ?? "No Name")")
             DispatchQueue.main.async {
@@ -155,20 +196,25 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     // Receiving data from peripheral (Bluetooth)
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard error == nil else { return }
-
+        
         if characteristic == messageCharacteristic {
-            if let data = characteristic.value,
-                let message = String(data: data, encoding: .utf8) {
-                DispatchQueue.main.async {
-                    self.receivedMessages.append(message)
+            if let data = characteristic.value{
+                print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
+                if let message = String(data: data, encoding: .utf8) {
+                    DispatchQueue.main.async {
+                        self.receivedMessages.append(message)
+                    }
                 }
             }
         } else if characteristic == accelerometerCharacteristic {
-            if let data = characteristic.value,
-                let value = String(data: data, encoding: .utf8) {
-                print("Received control response: \(value)")
+            if let data = characteristic.value{
+                print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
+                let value = data.withUnsafeBytes {
+                            $0.load(as: Int32.self)
+                        }
+                print("✅ Received accelerometer value: \(value)")
                 DispatchQueue.main.async {
-                    self.accelerometerMessages = value
+                    self.accelerometerMessages = Int(value)
                 }
             }
         }
@@ -183,18 +229,18 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             print("Notification set up for \(characteristic.uuid)")
         }
     }
-
+    
     func enableNotifyForAll() {
         guard let peripheral = connectedPeripheral else { return }
-
+        
         for (_, characteristic) in notifyCapableCharacteristics {
             peripheral.setNotifyValue(true, for: characteristic)
         }
     }
-
+    
     func disableNotifyForAll() {
         guard let peripheral = connectedPeripheral else { return }
-
+        
         for (_, characteristic) in notifyCapableCharacteristics {
             peripheral.setNotifyValue(false, for: characteristic)
         }
@@ -202,7 +248,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     func enableNotify(for uuids: [CBUUID]) {
         guard let peripheral = connectedPeripheral else { return }
-
+        
         for uuid in uuids {
             if let characteristic = notifyCapableCharacteristics[uuid] {
                 peripheral.setNotifyValue(true, for: characteristic)
@@ -212,12 +258,12 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     func disableNotify(for uuids: [CBUUID]) {
         guard let peripheral = connectedPeripheral else { return }
-
+        
         for uuid in uuids {
             if let characteristic = notifyCapableCharacteristics[uuid] {
                 peripheral.setNotifyValue(false, for: characteristic)
             }
         }
     }
-
+    
 }

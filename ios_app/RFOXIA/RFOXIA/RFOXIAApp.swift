@@ -11,8 +11,8 @@ import SwiftUI
 struct RFOXIAApp: App {
     let persistenceController = PersistenceController.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
-//    init() {
+    let bluetoothManager = BluetoothManager(storage: StorageService())
+    //    init() {
 //        OrientationHelper.forcePortrait()
 //    }
     
@@ -20,6 +20,7 @@ struct RFOXIAApp: App {
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environmentObject(bluetoothManager)
         }
     }
 }

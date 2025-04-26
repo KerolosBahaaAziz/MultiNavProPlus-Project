@@ -9,8 +9,9 @@ import SwiftUI
 
 struct TaskView: View {
     
-    @State private var tasks: [Task] = Array(1...10).map { Task(action: "action\($0)") }
     @State private var isOn: [Bool]
+    @FetchRequest(entity: History.entity(), sortDescriptors: []) var savedTasks: FetchedResults<History>
+    
     var addActionPressed: ((Bool) -> Void)?
     
     init() {
@@ -22,20 +23,18 @@ struct TaskView: View {
             ZStack {
                 BackgroundGradient.backgroundGradient
                     .ignoresSafeArea()
+                
                 VStack {
                     List {
-                        ForEach(tasks.indices, id: \.self) { index in
-                            HStack {
-                                Text(tasks[index].action)
-                                    .frame(maxWidth: .infinity , alignment:  .leading)
+                        // Saved Tasks from CoreData
+                        ForEach(savedTasks) { task in
+                            NavigationLink(destination: ActionsAndDelaysView(loadedTask: task)) {
+                                Text(task.taskName ?? "Unnamed Task")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundStyle(Color.white)
-                                Spacer()
-                                Toggle("", isOn: $isOn[index])
-                                    .labelsHidden()
                             }
                             .listRowBackground(Color.clear)
                         }
-                        .onDelete(perform: deleteTask)
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -50,11 +49,9 @@ struct TaskView: View {
             }
         }
     }
-    private func deleteTask(at offsets: IndexSet) {
-        tasks.remove(atOffsets: offsets)
-        isOn.remove(at: offsets.first!)
-    }
+    
 }
+
 
 
 #Preview {

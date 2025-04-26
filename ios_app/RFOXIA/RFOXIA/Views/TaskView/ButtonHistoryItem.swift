@@ -8,13 +8,13 @@
 import Foundation
 import SwiftUICore
 
-struct ButtonHistoryItem: Identifiable {
+struct ButtonHistoryItem: Identifiable, Codable{
     let id = UUID()
     let type: ButtonType
     let value: String
     let timestamp: Date
     
-    enum ButtonType {
+    enum ButtonType: Codable {
         case direction(String)
         case action(String)
         case activator(String)

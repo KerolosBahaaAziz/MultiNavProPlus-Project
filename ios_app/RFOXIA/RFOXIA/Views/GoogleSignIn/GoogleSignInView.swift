@@ -40,14 +40,20 @@ struct GoogleSignInView: View {
 
                     Button(action: {
                         print("sign in with email and password")
-                        EmailAuthHandler.shared.signInWithEmail(email: email, password: password) { success, message in
-                            self.alertMessage = message
-                            self.navigateToHome = true
-                            if success {
-                                UserDefaults.standard.set(true, forKey: "isLogin")
-                            } else {
-                                self.showAlert = true
-                                UserDefaults.standard.set(false, forKey: "isLogin")
+                        if email.isEmpty || password.isEmpty {
+                            self.alertMessage = "Please fill all the fields."
+                            self.navigateToHome = false
+                            self.showAlert = true
+                        }else{
+                            EmailAuthHandler.shared.signInWithEmail(email: email, password: password) { success, message in
+                                self.alertMessage = message
+                                self.navigateToHome = true
+                                if success {
+                                    UserDefaults.standard.set(true, forKey: "isLogin")
+                                } else {
+                                    self.showAlert = true
+                                    UserDefaults.standard.set(false, forKey: "isLogin")
+                                }
                             }
                         }
                     }) {
@@ -100,7 +106,7 @@ struct GoogleSignInView: View {
                         EmptyView()
                     }
                     
-                    NavigationLink(destination: BluetoothChatView(), isActive: $navigateToHome) {
+                    NavigationLink(destination: DeviceListView(), isActive: $navigateToHome) {
                         EmptyView()
                     }
                     .hidden()
