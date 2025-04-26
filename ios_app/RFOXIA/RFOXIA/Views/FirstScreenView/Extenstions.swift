@@ -12,7 +12,12 @@ extension BluetoothChatView{
         let isSubscribed = UserDefaults.standard.bool(forKey: "isSubscribed")
 
         if isSubscribed {
-            startRecording()
+                if isRecording {
+                    recorder.stopRecording()
+                } else {
+                    recorder.startRecording()
+                }
+                isRecording.toggle()
         } else {
             alertItem = AlertInfo(
                 title: "Notice",

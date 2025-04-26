@@ -22,14 +22,14 @@ struct ContentView: View {
 //                 JoyStickView()
 //        GoogleSignInView()
 //        ApplePayView()
-//        BluetoothChatView()
-//            .environment(\.managedObjectContext, viewContext)
+        BluetoothChatView()
+            .environment(\.managedObjectContext, viewContext)
 //        CheckBluetoothView()
     
 //        MainTabView()
 //            .environment(\.managedObjectContext, viewContext)
-        JoyStickView()
-            .environment(\.managedObjectContext, viewContext)
+//        MainTabView()
+//            .environment(\.managedObjectContext, viewContext)
     }
 }
 

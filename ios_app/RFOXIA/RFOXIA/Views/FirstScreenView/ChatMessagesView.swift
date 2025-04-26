@@ -13,38 +13,29 @@ struct ChatMessagesView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 8) {
                 ForEach(messages) { message in
                     HStack(alignment: .top) {
-                        if message.isCurrentUser {
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 4) {
-                                Text(message.text)
+                        if message.isCurrentUser { Spacer() }
+                        
+                        VStack(alignment: message.isCurrentUser ? .trailing : .leading, spacing: 4) {
+                            if case .text(let text) = message.type {
+                                Text(text)
                                     .padding()
-                                    .background(customColor)
-                                    .foregroundColor(.white)
+                                    .background(message.isCurrentUser ? customColor : Color.white.opacity(0.8))
+                                    .foregroundColor(message.isCurrentUser ? .white : .black)
                                     .cornerRadius(16)
+                            } else if case .voice(let url) = message.type {
+                                VoiceMessageBubble(recording: AudioRecorder.Recording(url: url, createdAt: message.createdAt))
                             }
-                            .frame(maxWidth: 250, alignment: .trailing)
-                        } else {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(message.senderName)
-                                    .font(.caption)
-                                    .foregroundColor(.white)
-                                Text(message.text)
-                                    .padding()
-                                    .background(Color.white.opacity(0.8))
-                                    .foregroundColor(.black)
-                                    .cornerRadius(16)
-                            }
-                            .frame(maxWidth: 250, alignment: .leading)
-                            Spacer()
                         }
+                        .frame(maxWidth: 250, alignment: message.isCurrentUser ? .trailing : .leading)
+                        
+                        if !message.isCurrentUser { Spacer() }
                     }
                     .padding(.horizontal)
                 }
             }
-            .padding(.top)
         }
     }
 }
