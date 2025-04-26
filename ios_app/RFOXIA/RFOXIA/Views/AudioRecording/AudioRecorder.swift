@@ -18,7 +18,7 @@ class AudioRecorder: NSObject, ObservableObject {
     
     let recordingSession = AVAudioSession.sharedInstance()
     
-    struct Recording: Identifiable {
+    struct Recording: Identifiable ,Equatable{
         let id = UUID()
         let url: URL
         let createdAt: Date
