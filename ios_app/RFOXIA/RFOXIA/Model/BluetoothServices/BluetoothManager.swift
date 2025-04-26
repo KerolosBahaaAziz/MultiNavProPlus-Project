@@ -62,7 +62,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         guard let peripheral = connectedPeripheral, let charachterestic = sendDirectionCharacteristic else { return }
 
         let commandData = command.data(using: .utf8)!
-        peripheral.writeValue(commandData, for: charachterestic, type: .withResponse)
+        peripheral.writeValue(commandData, for: charachterestic, type: .withoutResponse)
     }
     
     // MARK: - CBCentralManagerDelegate

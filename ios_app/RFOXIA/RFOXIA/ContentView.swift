@@ -13,7 +13,7 @@ struct ContentView: View {
 //    let applePayHandler = ApplePayHandler()
     
     var body: some View {
-        MainTabView()
+        RegisterView()
             .environment(\.managedObjectContext, viewContext)
     }
 }

@@ -70,10 +70,20 @@ class GoogleAuthHandler {
                     }
                 }
 
+                SubscriptionHandler.shared.checkSubscriptionStatus(safeEmail: email) { subscribe in
+                    if subscribe{
+                        UserDefaults.standard.set(true, forKey: "isSubscribed")
+                    }else{
+                        UserDefaults.standard.set(false, forKey: "isSubscribed")
+                    }
+                }
+                
                 print("✅ Signed in: \(email), \(name)")
                 completion(true)
             }
         }
     }
+    
+
 }
 

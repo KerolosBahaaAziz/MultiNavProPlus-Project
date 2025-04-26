@@ -97,7 +97,7 @@ struct BluetoothChatView: View {
                 }.onDisappear{
                     bluetoothManager.disableNotify(for: [bluetoothManager.chatCharacteristicUUID])
                 }
-        }
+         }.navigationBarBackButtonHidden(true)
     }
 }
 

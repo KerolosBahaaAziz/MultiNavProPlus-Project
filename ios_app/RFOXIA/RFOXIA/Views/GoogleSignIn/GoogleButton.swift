@@ -19,7 +19,7 @@ struct GoogleButton: View {
                            state: .normal, action: {
             action()
         })
-        .padding([.leading, .trailing] , 50)
+        .padding([.leading, .trailing] , 20)
     }
 }
 
