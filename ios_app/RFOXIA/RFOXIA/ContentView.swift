@@ -28,8 +28,10 @@ struct ContentView: View {
     
 //        MainTabView()
 //            .environment(\.managedObjectContext, viewContext)
-        JoyStickView()
-            .environment(\.managedObjectContext, viewContext)
+//        MainTabView()
+//            .environment(\.managedObjectContext, viewContext)
+        testView()
+
     }
 }
 
