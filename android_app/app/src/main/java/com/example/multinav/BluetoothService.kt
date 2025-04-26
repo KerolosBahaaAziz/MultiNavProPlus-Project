@@ -780,21 +780,27 @@ class BluetoothService(private val context: Context) {
         }
 
     }
+
+
     @SuppressLint("MissingPermission")
     private fun enableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic?) {
         if (characteristic == null) {
             Log.e("BLE", "Characteristic is null, cannot enable notifications")
             return
         }
-
         try {
             val descriptor = characteristic.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
             if (descriptor != null) {
+                Log.d("BLE", "Found CCCD descriptor for characteristic ${characteristic.uuid}")
                 descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 val writeSuccess = gatt.writeDescriptor(descriptor)
                 Log.d("BLE", "Write descriptor to enable notifications: $writeSuccess for ${gatt.device?.address ?: "Unknown"}")
+                if (!writeSuccess) {
+                    Log.e("BLE", "Failed to initiate descriptor write for enabling notifications")
+                    retryEnableNotifications(gatt, characteristic, attempt = 1)
+                }
             } else {
-                Log.e("BLE", "Descriptor not found for enabling notifications for ${characteristic.uuid}")
+                Log.e("BLE", "CCCD descriptor not found for characteristic ${characteristic.uuid}")
                 retryEnableNotifications(gatt, characteristic, attempt = 1)
             }
         } catch (e: Exception) {
@@ -830,6 +836,8 @@ class BluetoothService(private val context: Context) {
             retryEnableNotifications(gatt, characteristic, attempt + 1, maxAttempts)
         }
     }
+
+
     // Start listening for messages, ensuring the latest listener is used
     fun startListening(listener: (String) -> Unit) {
         Log.d("BLE", "Setting new message listener")
