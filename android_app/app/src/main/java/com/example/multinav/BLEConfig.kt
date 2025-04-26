@@ -12,7 +12,7 @@ object BLEConfig {
 
 
 //for BLE_WB
-  //  val CHAT_SERVICE_UUID: UUID = UUID.fromString("0020BC9A-7856-3412-7856-341278563412")
+   val CHAT_BLE_SERVICE_UUID: UUID = UUID.fromString("0020BC9A-7856-3412-7856-341278563412")
 
     // Characteristic for sending data (write)
     val WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")

@@ -58,7 +58,7 @@ fun Navigation(
 
         composable(Screen.DeviceList.route) {
             BluetoothDeviceScreen(
-                state = bluetoothViewModel.state.collectAsState().value,
+                state = bluetoothViewModel.uiState.collectAsState().value,
                 onDeviceClick = { device ->
                     bluetoothViewModel.connectToDeviceAndNavigate(
                         device = device,

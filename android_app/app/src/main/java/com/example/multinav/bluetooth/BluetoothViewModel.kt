@@ -12,7 +12,9 @@ package com.example.multinav.bluetooth
     import kotlinx.coroutines.TimeoutCancellationException
     import kotlinx.coroutines.delay
     import kotlinx.coroutines.flow.MutableStateFlow
+    import kotlinx.coroutines.flow.StateFlow
     import kotlinx.coroutines.flow.asStateFlow
+    import kotlinx.coroutines.flow.collectLatest
     import kotlinx.coroutines.flow.update
     import kotlinx.coroutines.isActive
     import kotlinx.coroutines.launch
@@ -24,30 +26,55 @@ class BluetoothViewModel(
 ) : ViewModel() {
     private var deviceConnectionJob: Job? = null
     private var refreshJob: Job? = null
-    private val _state = MutableStateFlow(BluetoothUiState())
-    val state = _state.asStateFlow()
+    private val _uiState = MutableStateFlow(BluetoothUiState())
+    val uiState: StateFlow<BluetoothUiState> = _uiState
 
     init {
-        updatePairedDevices()
-
-        // Monitor connection status
+        // Monitor Bluetooth state and fetch paired devices when enabled
         viewModelScope.launch {
-            bluetoothService.connectionStatus.collect { status ->
-                _state.update {
-                    it.copy(
-                        isConnecting = status is BluetoothService.ConnectionStatus.Connecting,
-                        isConnected = status is BluetoothService.ConnectionStatus.Connected,
-                        errorMessage = if (status is BluetoothService.ConnectionStatus.Error)
-                            status.message else null
+            bluetoothService.bluetoothState.collectLatest { isEnabled ->
+                Log.d("BluetoothViewModel", "Bluetooth state changed: $isEnabled")
+                _uiState.value = _uiState.value.copy(isBluetoothEnabled = isEnabled)
+                if (isEnabled) {
+                    fetchPairedDevices()
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        pairedDevices = emptyList(),
+                        errorMessage = "Bluetooth is disabled"
                     )
+                    bluetoothService.enableBluetooth()
                 }
+            }
+        }
+    }
 
-                // Update device list when connection status changes
-                if (status is BluetoothService.ConnectionStatus.Connected ||
-                    status is BluetoothService.ConnectionStatus.Disconnected
-                ) {
-                    updatePairedDevices()
-                }
+    private fun fetchPairedDevices() {
+        viewModelScope.launch {
+            try {
+                val pairedDevices = bluetoothService.getPairedDevices()
+                _uiState.value = _uiState.value.copy(
+                    pairedDevices = pairedDevices,
+                    errorMessage = if (pairedDevices.isEmpty()) "No paired devices found" else null
+                )
+                Log.d("BluetoothViewModel", "Fetched paired devices: $pairedDevices")
+            } catch (e: Exception) {
+                Log.e("BluetoothViewModel", "Error fetching paired devices", e)
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Error fetching paired devices: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun refreshDevices() {
+        viewModelScope.launch {
+            if (bluetoothService.isBluetoothEnabled()) {
+                fetchPairedDevices()
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Bluetooth is disabled. Please enable it to refresh devices."
+                )
+                bluetoothService.enableBluetooth()
             }
         }
     }
@@ -62,13 +89,13 @@ class BluetoothViewModel(
                 delay(200)
 
                 bluetoothService.startAdvertising()
-                _state.update { it.copy(
+                _uiState.update { it.copy(
                     isScanning = false,
                     errorMessage = null
                 )}
             } catch (e: Exception) {
                 Log.e("BluetoothViewModel", "Failed to start server", e)
-                _state.update { it.copy(errorMessage = "Failed to start server: ${e.message}") }
+                _uiState.update { it.copy(errorMessage = "Failed to start server: ${e.message}") }
             }
         }
     }
@@ -77,26 +104,26 @@ class BluetoothViewModel(
         viewModelScope.launch {
             try {
                 bluetoothService.stopAdvertising()
-                _state.update { it.copy(
+                _uiState.update { it.copy(
                     errorMessage = null
                 )}
                 startScanning()
             } catch (e: Exception) {
                 Log.e("BluetoothViewModel", "Failed to start client", e)
-                _state.update { it.copy(errorMessage = "Failed to start client: ${e.message}") }
+                _uiState.update { it.copy(errorMessage = "Failed to start client: ${e.message}") }
             }
         }
     }
 
 //    private fun startScanning() {
 //        viewModelScope.launch {
-//            _state.update { it.copy(isScanning = true) }
+//            _uiState.update { it.copy(isScanning = true) }
 //            try {
 //                bluetoothService.startScanning()
 //                startPeriodicRefresh()
 //            } catch (e: Exception) {
 //                stopPeriodicRefresh()
-//                _state.update {
+//                _uiState.update {
 //                    it.copy(
 //                        isScanning = false,
 //                        errorMessage = "Scanning failed: ${e.message}"
@@ -112,7 +139,7 @@ fun startScanning() {
             Log.d("BluetoothViewModel", "Starting BLE scan...")
             bluetoothService.stopScanning()
             Log.d("BluetoothViewModel", "Stopped previous scan")
-            _state.update {
+            _uiState.update {
                 Log.d("BluetoothViewModel", "Updating UI state to scanning")
                 it.copy(
                     isScanning = true,
@@ -122,7 +149,7 @@ fun startScanning() {
             }
             bluetoothService.startLeScan { device, rssi ->
                 Log.d("BluetoothViewModel", "Device found - Name: ${device.name ?: "Unknown"}, Address: ${device.address}, RSSI: $rssi")
-                _state.update { state ->
+                _uiState.update { state ->
                     val newDevice = BluetoothDeviceData(
                         name = device.name ?: "Unknown Device",
                         address = device.address,
@@ -144,7 +171,7 @@ fun startScanning() {
             stopScanning()
         } catch (e: Exception) {
             Log.e("BluetoothViewModel", "Scan failed with error: ${e.message}", e)
-            _state.update {
+            _uiState.update {
                 it.copy(
                     isScanning = false,
                     errorMessage = "Scan failed: ${e.message}"
@@ -158,14 +185,14 @@ fun startScanning() {
         viewModelScope.launch {
             stopPeriodicRefresh()
             bluetoothService.stopScanning()
-            _state.update { it.copy(isScanning = false) }
+            _uiState.update { it.copy(isScanning = false) }
         }
     }
 
     private fun startPeriodicRefresh() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
-            while (isActive && _state.value.isScanning) {
+            while (isActive && _uiState.value.isScanning) {
                 updatePairedDevices()
                 delay(2000) // Refresh every 2 seconds
             }
@@ -182,7 +209,7 @@ fun startScanning() {
     }
 
     private fun updatePairedDevices() {
-        _state.update {
+        _uiState.update {
             it.copy(pairedDevices = bluetoothService.getPairedDevices())
         }
     }
@@ -197,13 +224,13 @@ fun startScanning() {
         // Create a new connection job with error handling
         deviceConnectionJob = viewModelScope.launch {
             try {
-                _state.update { it.copy(isConnecting = true) }
+                _uiState.update { it.copy(isConnecting = true) }
 
                 // Use a timeout to prevent hanging
                 withTimeout(10000) { // 10 seconds timeout
                     val success = bluetoothService.connectToDevice(device.address)
                     if (success) {
-                        _state.update {
+                        _uiState.update {
                             it.copy(
                                 isConnecting = false,
                                 isConnected = true,
@@ -212,7 +239,7 @@ fun startScanning() {
                         }
                         onNavigate()
                     } else {
-                        _state.update {
+                        _uiState.update {
                             it.copy(
                                 isConnecting = false,
                                 isConnected = false,
@@ -223,7 +250,7 @@ fun startScanning() {
                 }
             } catch (e: TimeoutCancellationException) {
                 Log.e("BluetoothViewModel", "Connection timeout", e)
-                _state.update {
+                _uiState.update {
                     it.copy(
                         isConnecting = false,
                         isConnected = false,
@@ -233,7 +260,7 @@ fun startScanning() {
             } catch (e: CancellationException) {
                 // Handle cancellation gracefully
                 Log.d("BluetoothViewModel", "Connection cancelled", e)
-                _state.update {
+                _uiState.update {
                     it.copy(
                         isConnecting = false,
                         isConnected = false,
@@ -242,7 +269,7 @@ fun startScanning() {
                 }
             } catch (e: Exception) {
                 Log.e("BluetoothViewModel", "Connection error", e)
-                _state.update {
+                _uiState.update {
                     it.copy(
                         isConnecting = false,
                         isConnected = false,
@@ -256,7 +283,7 @@ fun startScanning() {
     fun disconnect() {
         viewModelScope.launch {
             bluetoothService.disconnect()
-            _state.update {
+            _uiState.update {
                 it.copy(
                     isConnected = false,
                     isConnecting = false

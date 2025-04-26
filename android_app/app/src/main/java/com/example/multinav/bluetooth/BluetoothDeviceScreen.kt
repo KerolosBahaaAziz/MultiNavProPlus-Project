@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -43,7 +44,7 @@ fun BluetoothDeviceScreen(
                 title = { Text("Bluetooth Devices") },
                 actions = {
                     IconButton(
-                        onClick = { bluetoothViewModel.startClient() }
+                        onClick = { bluetoothViewModel.refreshDevices() }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
@@ -79,6 +80,23 @@ fun BluetoothDeviceScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
+            if (!state.isBluetoothEnabled) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = "Bluetooth is disabled. Please enable it to see paired devices.",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+            //btn settings
             Button(
                 onClick = bluetoothViewModel::openBluetoothSettings,
                 modifier = Modifier.fillMaxWidth()
@@ -91,6 +109,8 @@ fun BluetoothDeviceScreen(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+
+            //btn scanning
             Button(
                 onClick = {
                     if (state.isScanning) {
@@ -101,15 +121,25 @@ fun BluetoothDeviceScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (state.isScanning) "Stop Scanning" else "Start Scanning")
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(if (state.isScanning) "Stop Scanning" else "Start Scanning")
+                }
+                if (state.isScanning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .padding( 8.dp),
+
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                }
             }
-            if (state.isScanning) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(16.dp)
-                )
-            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
