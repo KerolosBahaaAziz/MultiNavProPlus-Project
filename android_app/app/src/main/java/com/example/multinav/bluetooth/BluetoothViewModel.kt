@@ -1,10 +1,13 @@
-package com.example.multinav
+package com.example.multinav.bluetooth
 
     import android.annotation.SuppressLint
     import android.util.Log
     import androidx.lifecycle.ViewModel
     import androidx.lifecycle.ViewModelProvider
     import androidx.lifecycle.viewModelScope
+    import com.example.multinav.BluetoothDeviceData
+    import com.example.multinav.BluetoothService
+    import com.example.multinav.BluetoothUiState
     import kotlinx.coroutines.Job
     import kotlinx.coroutines.TimeoutCancellationException
     import kotlinx.coroutines.delay
@@ -41,7 +44,8 @@ class BluetoothViewModel(
 
                 // Update device list when connection status changes
                 if (status is BluetoothService.ConnectionStatus.Connected ||
-                    status is BluetoothService.ConnectionStatus.Disconnected) {
+                    status is BluetoothService.ConnectionStatus.Disconnected
+                ) {
                     updatePairedDevices()
                 }
             }
@@ -135,9 +139,9 @@ fun startScanning() {
                 }
             }
             Log.d("BluetoothViewModel", "Scan started, waiting 10 seconds...")
-            delay(10000)
+            delay(15000)
             Log.d("BluetoothViewModel", "10 seconds elapsed, stopping scan")
-            //stopScanning()
+            stopScanning()
         } catch (e: Exception) {
             Log.e("BluetoothViewModel", "Scan failed with error: ${e.message}", e)
             _state.update {

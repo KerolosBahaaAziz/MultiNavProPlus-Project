@@ -4,8 +4,10 @@ package com.example.multinav
 import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.bluetooth.le.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
@@ -42,8 +44,43 @@ class BluetoothService(private val context: Context) {
     private val _connectionStatus = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Disconnected)
     val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus
 
+    // Add Bluetooth state flow
+    private val _bluetoothState = MutableStateFlow(isBluetoothEnabled())
+    val bluetoothState: StateFlow<Boolean> = _bluetoothState
+
     private var messageListener: ((String) -> Unit)? = null
     private val scanResults = mutableMapOf<String, BluetoothDevice>()
+
+    private var lastConnectionStateChange = 0L
+    private val connectionStateDebounceMs = 1000L // 1 second debounce
+
+
+    private val bluetoothStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                BluetoothAdapter.ACTION_STATE_CHANGED -> {
+                    val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                    when (state) {
+                        BluetoothAdapter.STATE_ON -> {
+                            Log.d("BLE", "Bluetooth enabled")
+                            _bluetoothState.value = true
+                        }
+                        BluetoothAdapter.STATE_OFF -> {
+                            Log.d("BLE", "Bluetooth disabled")
+                            _bluetoothState.value = false
+                            disconnect()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    init {
+        // Register BroadcastReceiver for Bluetooth state changes
+        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        context.registerReceiver(bluetoothStateReceiver, filter)
+    }
 
     // Start advertising to be discovered
     @SuppressLint("MissingPermission")
@@ -423,6 +460,7 @@ class BluetoothService(private val context: Context) {
         val characteristic = service.getCharacteristic(BLEConfig.WRITE_CHARACTERISTIC_UUID)
         if (characteristic != null) {
             characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+         //   characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE //for ble
             characteristic.value = message.toByteArray()
             val success = gattClient?.writeCharacteristic(characteristic) ?: false
             Log.d("BLE", "Client sent message: $message, success: $success")
@@ -517,6 +555,14 @@ class BluetoothService(private val context: Context) {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             try {
+
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastConnectionStateChange < connectionStateDebounceMs) {
+                    Log.d("BLE", "Ignoring rapid connection state change: $status -> $newState")
+                    return
+                }
+                lastConnectionStateChange = currentTime
+
                 Log.d("BLE", "Client connection state change: $status -> $newState for ${gatt.device?.address ?: "Unknown"}")
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
@@ -874,6 +920,11 @@ class BluetoothService(private val context: Context) {
         } else {
             Log.d("BLE", "Bluetooth is already enabled")
         }
+    }
+
+    fun cleanup() {
+        context.unregisterReceiver(bluetoothStateReceiver)
+        disconnect()
     }
 
 
