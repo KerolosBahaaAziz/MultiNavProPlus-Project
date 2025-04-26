@@ -216,7 +216,6 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 DispatchQueue.main.async {
                     self.accelerometerMessages = Int(value)
                 }
-                //                }
             }
         }
     }

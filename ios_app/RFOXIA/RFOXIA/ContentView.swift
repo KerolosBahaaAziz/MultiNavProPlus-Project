@@ -28,7 +28,7 @@ struct ContentView: View {
     
 //        MainTabView()
 //            .environment(\.managedObjectContext, viewContext)
-        DeviceListView()
+        JoyStickView()
             .environment(\.managedObjectContext, viewContext)
     }
 }
@@ -36,4 +36,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        .environmentObject(BluetoothManager())
 }
