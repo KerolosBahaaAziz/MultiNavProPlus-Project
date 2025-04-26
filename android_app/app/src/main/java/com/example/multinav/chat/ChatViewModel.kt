@@ -35,51 +35,6 @@ class ChatViewModel(
 
 
 
-//    init {
-//
-//
-//        viewModelScope.launch {
-//            try {
-//                if (!bluetoothService.isBluetoothEnabled()) {
-//                    bluetoothService.enableBluetooth()
-//                    receiveMessage("Please enable Bluetooth")
-//                    return@launch
-//                }
-//                bluetoothService.connectionStatus.collect { status ->
-//                    if (_connectionState.value != status) {
-//                        _connectionState.value = status
-//                        handleConnectionStateChange(status)
-//                        when (status) {
-//                            is ConnectionStatus.Connected ->
-//                                receiveMessage("Connected to device")
-//                            is ConnectionStatus.Disconnected ->
-//                                receiveMessage("Disconnected from device")
-//                            is ConnectionStatus.Error ->
-//                                receiveMessage("Connection error: ${status.message}")
-//                            else -> {}
-//                        }
-//                        if (status is ConnectionStatus.Connected) {
-//                            processMessageQueue()
-//                        }
-//                    }
-//                }
-//            } catch (e: Exception) {
-//                Log.e("ChatViewModel", "Error collecting connection status", e)
-//                _connectionState.value = ConnectionStatus.Error(
-//                    "Failed to monitor connection: ${e.message}"
-//                )
-//            }
-//        }
-//        startMessageListener()
-//        if (!bluetoothService.isConnected.value) {
-//            deviceAddress?.let {
-//                receiveMessage("Attempting to connect to device...")
-//                connectToDevice(it)
-//            }
-//        } else {
-//            receiveMessage("Already connected to device")
-//        }
-//    }
 
     init {
         viewModelScope.launch {
@@ -182,7 +137,9 @@ class ChatViewModel(
                 isConnecting = true
                 _connectionState.value = BluetoothService.ConnectionStatus.Connecting
                 receiveMessage("Connecting to device...")
-                val success = bluetoothService.connectToDevice(address)
+
+                // Pass isMobileDevice = false since you're likely connecting to a BLE device ("st-bLe99")
+                val success = bluetoothService.connectToDevice(address, isMobileDevice = false)
                 if (success) {
                     _connectionState.value = BluetoothService.ConnectionStatus.Connected
                     receiveMessage("Connected successfully")
@@ -203,7 +160,6 @@ class ChatViewModel(
             }
         }
     }
-
     fun sendMessage(message: String) {
         if (message.isBlank()) return
         viewModelScope.launch {
@@ -234,7 +190,7 @@ class ChatViewModel(
                     val message = messageQueue.first()
                     val success = bluetoothService.sendMessage(message)
                     if (success) {
-                        messageQueue.removeFirst()
+                        messageQueue.removeAt(0)
                         hasShownFailureMessage = false
                         Log.d("ChatViewModel", "Message sent successfully: $message")
                     } else {

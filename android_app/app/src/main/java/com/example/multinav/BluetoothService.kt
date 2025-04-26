@@ -241,11 +241,9 @@ class BluetoothService(private val context: Context) {
     @SuppressLint("MissingPermission")
     private fun startGattServer() {
         try {
-            // Close any existing GATT server
             gattServer?.close()
             gattServer = null
 
-            // Open a new GATT server
             gattServer = bluetoothManager?.openGattServer(context, gattServerCallback)
 
             if (gattServer == null) {
@@ -254,39 +252,45 @@ class BluetoothService(private val context: Context) {
                 return
             }
 
-            // Create the service
-            val service = BLEConfig.createChatService()
-
-            // Store characteristics before adding service
-            writeCharacteristic = service.getCharacteristic(BLEConfig.WRITE_CHARACTERISTIC_UUID)
-            notifyCharacteristic = service.getCharacteristic(BLEConfig.NOTIFY_CHARACTERISTIC_UUID)
+            // Add mobile service
+            val mobileService = BLEConfig.createChatService()
+            writeCharacteristic = mobileService.getCharacteristic(BLEConfig.WRITE_CHARACTERISTIC_UUID)
+            notifyCharacteristic = mobileService.getCharacteristic(BLEConfig.NOTIFY_CHARACTERISTIC_UUID)
             if (writeCharacteristic == null || notifyCharacteristic == null) {
-                Log.e("BLE", "Failed to initialize characteristics")
-                _connectionStatus.value = ConnectionStatus.Error("Failed to initialize characteristics")
+                Log.e("BLE", "Failed to initialize mobile characteristics")
+                _connectionStatus.value = ConnectionStatus.Error("Failed to initialize mobile characteristics")
                 gattServer?.close()
                 gattServer = null
                 return
             }
-            // Add the service
-            val success = gattServer?.addService(service) ?: false
+            val mobileSuccess = gattServer?.addService(mobileService) ?: false
 
-            if (success) {
-                Log.d("BLE", "GATT Server started successfully")
-                Log.d("BLE", "Write characteristic: ${writeCharacteristic?.uuid}")
-                Log.d("BLE", "Notify characteristic: ${notifyCharacteristic?.uuid}")
+            // Add BLE service
+            val bleService = BLEConfig.createBLEChatService()
+            val bleWriteCharacteristic = bleService.getCharacteristic(BLEConfig.BLE_WRITE_CHARACTERISTIC_UUID)
+            val bleNotifyCharacteristic = bleService.getCharacteristic(BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID)
+            if (bleWriteCharacteristic == null || bleNotifyCharacteristic == null) {
+                Log.e("BLE", "Failed to initialize BLE characteristics")
+                _connectionStatus.value = ConnectionStatus.Error("Failed to initialize BLE characteristics")
+                gattServer?.close()
+                gattServer = null
+                return
+            }
+            val bleSuccess = gattServer?.addService(bleService) ?: false
+
+            if (mobileSuccess && bleSuccess) {
+                Log.d("BLE", "GATT Server started successfully with mobile and BLE services")
+                Log.d("BLE", "Mobile Write: ${writeCharacteristic?.uuid}, Notify: ${notifyCharacteristic?.uuid}")
+                Log.d("BLE", "BLE Write: ${bleWriteCharacteristic?.uuid}, Notify: ${bleNotifyCharacteristic?.uuid}")
             } else {
-                Log.e("BLE", "Failed to add service to GATT Server")
-                _connectionStatus.value = ConnectionStatus.Error("Failed to add service to GATT Server")
-
-                // Clean up
+                Log.e("BLE", "Failed to add services to GATT Server")
+                _connectionStatus.value = ConnectionStatus.Error("Failed to add services to GATT Server")
                 gattServer?.close()
                 gattServer = null
             }
         } catch (e: Exception) {
             Log.e("BLE", "Exception in startGattServer", e)
             _connectionStatus.value = ConnectionStatus.Error("Error starting GATT server: ${e.message}")
-
-            // Clean up
             try {
                 gattServer?.close()
                 gattServer = null
@@ -297,7 +301,7 @@ class BluetoothService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    suspend fun connectToDevice(address: String, attempt: Int = 1, maxAttempts: Int = 3): Boolean {
+    suspend fun connectToDevice(address: String, isMobileDevice: Boolean, attempt: Int = 1, maxAttempts: Int = 3): Boolean {
         return withContext(Dispatchers.IO) {
             try {
                 if (attempt > maxAttempts) {
@@ -320,7 +324,7 @@ class BluetoothService(private val context: Context) {
                 } catch (e: Exception) {
                     Log.e("BLE", "Error closing existing GATT client", e)
                 }
-                Log.d("BLE", "Initiating connection to $address (attempt $attempt)")
+                Log.d("BLE", "Initiating connection to $address (attempt $attempt, isMobileDevice: $isMobileDevice)")
                 gattClient = device.connectGatt(context, false, gattClientCallback, BluetoothDevice.TRANSPORT_LE)
                 if (gattClient == null) {
                     _connectionStatus.value = ConnectionStatus.Error("Failed to create GATT client")
@@ -336,32 +340,31 @@ class BluetoothService(private val context: Context) {
                 if (!_isConnected.value) {
                     _connectionStatus.value = ConnectionStatus.Error("Connection timeout")
                     Log.e("BLE", "Connection timeout for $address")
-                    // Retry after a delay
                     delay(2000L * attempt)
-                    return@withContext connectToDevice(address, attempt + 1, maxAttempts)
+                    return@withContext connectToDevice(address, isMobileDevice, attempt + 1, maxAttempts)
                 }
                 Log.d("BLE", "Connection successful to $address")
-                // Save connected device address
-                saveLastConnectedDevice(address)
+                saveLastConnectedDevice(address, isMobileDevice)
                 return@withContext true
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e("BLE", "Connection error on attempt $attempt", e)
                 _connectionStatus.value = ConnectionStatus.Error(e.message ?: "Unknown error")
-                // Retry after a delay
                 delay(2000L * attempt)
-                return@withContext connectToDevice(address, attempt + 1, maxAttempts)
+                return@withContext connectToDevice(address, isMobileDevice, attempt + 1, maxAttempts)
             }
         }
     }
 
-    private fun saveLastConnectedDevice(address: String) {
+    private fun saveLastConnectedDevice(address: String, isMobileDevice: Boolean) {
         val prefs = context.getSharedPreferences("BLEPrefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("lastConnectedDevice", address).apply()
-        Log.d("BLE", "Saved last connected device: $address")
+        prefs.edit()
+            .putString("lastConnectedDevice", address)
+            .putBoolean("isMobileDevice", isMobileDevice)
+            .apply()
+        Log.d("BLE", "Saved last connected device: $address, isMobileDevice: $isMobileDevice")
     }
-
 
     @SuppressLint("MissingPermission")
     suspend fun sendMessage(message: String): Boolean {
@@ -395,31 +398,33 @@ class BluetoothService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun startLeScan(onDeviceFound: (BluetoothDevice, Int) -> Unit) {
+    fun startLeScan(onDeviceFound: (BluetoothDevice, Int, Boolean) -> Unit) {
         if (isScanning) return
 
         val scanner = bluetoothAdapter?.bluetoothLeScanner
-        val scanFilter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID))
-            .build()
+        // Temporarily remove scan filters to debug
+        val scanFilters = emptyList<ScanFilter>() // No filters, scan for all devices
 
         val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_BALANCED) // Balanced for battery efficiency
+            .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
             .build()
 
         val scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val device = result.device
                 val rssi = result.rssi
-                Log.d("BLE", "Found device: ${device.name} (${device.address}), RSSI: $rssi")
-                onDeviceFound(device, rssi)
+                // Log all service UUIDs to debug
+                val serviceUuids = result.scanRecord?.serviceUuids?.joinToString() ?: "None"
+                Log.d("BLE", "Found device: ${device.name} (${device.address}), RSSI: $rssi, Service UUIDs: $serviceUuids")
+                // Still classify based on expected UUIDs for UI purposes
+                val isMobileDevice = result.scanRecord?.serviceUuids?.contains(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID)) == true
+                onDeviceFound(device, rssi, isMobileDevice)
             }
         }
-        scanner?.startScan(listOf(scanFilter), settings, scanCallback)
+        scanner?.startScan(scanFilters, settings, scanCallback)
         isScanning = true
-        Log.d("BLE", "Started scanning with balanced mode")
+        Log.d("BLE", "Started scanning with no filters for debugging")
     }
-
     @SuppressLint("MissingPermission")
     private fun sendAsServer(message: String): Boolean {
         notifyCharacteristic?.let { characteristic ->

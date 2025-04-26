@@ -115,23 +115,7 @@ class BluetoothViewModel(
         }
     }
 
-//    private fun startScanning() {
-//        viewModelScope.launch {
-//            _uiState.update { it.copy(isScanning = true) }
-//            try {
-//                bluetoothService.startScanning()
-//                startPeriodicRefresh()
-//            } catch (e: Exception) {
-//                stopPeriodicRefresh()
-//                _uiState.update {
-//                    it.copy(
-//                        isScanning = false,
-//                        errorMessage = "Scanning failed: ${e.message}"
-//                    )
-//                }
-//            }
-//        }
-//    }
+
     @SuppressLint("MissingPermission")
 fun startScanning() {
     viewModelScope.launch {
@@ -147,14 +131,15 @@ fun startScanning() {
                     errorMessage = null
                 )
             }
-            bluetoothService.startLeScan { device, rssi ->
-                Log.d("BluetoothViewModel", "Device found - Name: ${device.name ?: "Unknown"}, Address: ${device.address}, RSSI: $rssi")
+            bluetoothService.startLeScan { device, rssi, isMobileDevice ->
+                Log.d("BluetoothViewModel", "Device found - Name: ${device.name ?: "Unknown"}, Address: ${device.address}, RSSI: $rssi, IsMobile: $isMobileDevice")
                 _uiState.update { state ->
                     val newDevice = BluetoothDeviceData(
                         name = device.name ?: "Unknown Device",
                         address = device.address,
+                        rssi = rssi,
                         isConnected = false,
-                        rssi = rssi // Use rssi from callback
+                        isMobileDevice = isMobileDevice
                     )
                     if (!state.scannedDevices.any { it.address == newDevice.address }) {
                         Log.d("BluetoothViewModel", "Adding new device to list: ${newDevice.name}")
@@ -165,9 +150,9 @@ fun startScanning() {
                     }
                 }
             }
-            Log.d("BluetoothViewModel", "Scan started, waiting 10 seconds...")
-            delay(15000)
-            Log.d("BluetoothViewModel", "10 seconds elapsed, stopping scan")
+            Log.d("BluetoothViewModel", "Scan started, waiting 15 seconds...")
+            delay(30000)
+            Log.d("BluetoothViewModel", "15 seconds elapsed, stopping scan")
             stopScanning()
         } catch (e: Exception) {
             Log.e("BluetoothViewModel", "Scan failed with error: ${e.message}", e)
@@ -180,7 +165,6 @@ fun startScanning() {
         }
     }
 }
-
     fun stopScanning() {
         viewModelScope.launch {
             stopPeriodicRefresh()
@@ -228,7 +212,7 @@ fun startScanning() {
 
                 // Use a timeout to prevent hanging
                 withTimeout(10000) { // 10 seconds timeout
-                    val success = bluetoothService.connectToDevice(device.address)
+                    val success = bluetoothService.connectToDevice(device.address, device.isMobileDevice)
                     if (success) {
                         _uiState.update {
                             it.copy(
