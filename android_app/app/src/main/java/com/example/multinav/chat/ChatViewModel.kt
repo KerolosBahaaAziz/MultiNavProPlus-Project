@@ -16,12 +16,15 @@ data class Message(val text: String, val isSentByUser: Boolean)
 
 class ChatViewModel(
     private val deviceAddress: String? = null,
-    private val bluetoothService: BluetoothService
+    private val bluetoothService: BluetoothService,
+    private val isMobileDevice: Boolean = false
+
 ) : ViewModel() {
     private val messageQueue = mutableListOf<String>()
     private var isProcessingQueue = false
     private var hasShownFailureMessage = false
     private var isConnecting = false
+
 
     private val _connectionState = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Disconnected)
     val connectionState: StateFlow<ConnectionStatus> = _connectionState
@@ -182,7 +185,7 @@ class ChatViewModel(
                 isConnecting = true
                 _connectionState.value = BluetoothService.ConnectionStatus.Connecting
                 receiveMessage("Connecting to device...")
-                val success = bluetoothService.connectToDevice(address)
+                val success = bluetoothService.connectToDevice(address, isMobileDevice)
                 if (success) {
                     _connectionState.value = BluetoothService.ConnectionStatus.Connected
                     receiveMessage("Connected successfully")
@@ -234,7 +237,7 @@ class ChatViewModel(
                     val message = messageQueue.first()
                     val success = bluetoothService.sendMessage(message)
                     if (success) {
-                        messageQueue.removeFirst()
+                        messageQueue.removeAt(0)
                         hasShownFailureMessage = false
                         Log.d("ChatViewModel", "Message sent successfully: $message")
                     } else {

@@ -30,7 +30,7 @@ class BluetoothService(private val context: Context) {
     private val bluetoothAdapter by lazy {
         bluetoothManager?.adapter
     }
-
+    private val scanner = bluetoothAdapter?.bluetoothLeScanner
     private var gattServer: BluetoothGattServer? = null
     private var gattClient: BluetoothGatt? = null
     private var writeCharacteristic: BluetoothGattCharacteristic? = null
@@ -54,10 +54,8 @@ class BluetoothService(private val context: Context) {
     private var lastConnectionStateChange = 0L
     private val connectionStateDebounceMs = 1000L // 1 second debounce
 
-    // Added: Variables for debouncing notifications
-    private var lastMessageReceivedTime = 0L
-    private var lastMessageReceived: String? = null
-    private val messageDebounceMs = 500L // 500ms debounce for notifications
+    private var leScanCallback: ((BluetoothDevice, Int, ScanResult) -> Unit)? = null
+
 
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -253,6 +251,36 @@ class BluetoothService(private val context: Context) {
                 _connectionStatus.value = ConnectionStatus.Error("Failed to open GATT server")
                 return
             }
+            // Add mobile service
+            val mobileService = BLEConfig.createChatService()
+            val mobileWriteCharacteristic = mobileService.getCharacteristic(BLEConfig.WRITE_CHARACTERISTIC_UUID)
+            val mobileNotifyCharacteristic = mobileService.getCharacteristic(BLEConfig.NOTIFY_CHARACTERISTIC_UUID)
+            if (mobileWriteCharacteristic == null || mobileNotifyCharacteristic == null) {
+                Log.e("BLE", "Failed to initialize mobile characteristics")
+                _connectionStatus.value = ConnectionStatus.Error("Failed to initialize mobile characteristics")
+                gattServer?.close()
+                gattServer = null
+                return
+            }
+            // Add BLE service
+            val bleService = BLEConfig.createBLEChatService()
+            val bleWriteCharacteristic = bleService.getCharacteristic(BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID)
+            val bleNotifyCharacteristic = bleService.getCharacteristic(BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID)
+            if (bleWriteCharacteristic == null || bleNotifyCharacteristic == null) {
+                Log.e("BLE", "Failed to initialize BLE characteristics")
+                _connectionStatus.value = ConnectionStatus.Error("Failed to initialize BLE characteristics")
+                gattServer?.close()
+                gattServer = null
+                return
+            }
+
+            // Set default characteristics (mobile, can be overridden based on connection)
+            writeCharacteristic = mobileWriteCharacteristic
+            notifyCharacteristic = mobileNotifyCharacteristic
+
+
+            // Add both services
+
 
             // Create the service
             val service = BLEConfig.createChatService()
@@ -270,23 +298,23 @@ class BluetoothService(private val context: Context) {
             // Add the service
             val success = gattServer?.addService(service) ?: false
 
-            if (success) {
-                Log.d("BLE", "GATT Server started successfully")
-                Log.d("BLE", "Write characteristic: ${writeCharacteristic?.uuid}")
-                Log.d("BLE", "Notify characteristic: ${notifyCharacteristic?.uuid}")
-            } else {
-                Log.e("BLE", "Failed to add service to GATT Server")
-                _connectionStatus.value = ConnectionStatus.Error("Failed to add service to GATT Server")
+            // Add both services
+            val mobileSuccess = gattServer?.addService(mobileService) ?: false
+            val bleSuccess = gattServer?.addService(bleService) ?: false
 
-                // Clean up
+            if (mobileSuccess && bleSuccess) {
+                Log.d("BLE", "GATT Server started with mobile and BLE services")
+                Log.d("BLE", "Mobile Write: ${mobileWriteCharacteristic.uuid}, Notify: ${mobileNotifyCharacteristic.uuid}")
+                Log.d("BLE", "BLE Write: ${bleWriteCharacteristic.uuid}, Notify: ${bleNotifyCharacteristic.uuid}")
+            } else {
+                Log.e("BLE", "Failed to add services to GATT Server (Mobile: $mobileSuccess, BLE: $bleSuccess)")
+                _connectionStatus.value = ConnectionStatus.Error("Failed to add services to GATT Server")
                 gattServer?.close()
                 gattServer = null
             }
         } catch (e: Exception) {
             Log.e("BLE", "Exception in startGattServer", e)
             _connectionStatus.value = ConnectionStatus.Error("Error starting GATT server: ${e.message}")
-
-            // Clean up
             try {
                 gattServer?.close()
                 gattServer = null
@@ -297,62 +325,91 @@ class BluetoothService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    suspend fun connectToDevice(address: String, attempt: Int = 1, maxAttempts: Int = 3): Boolean {
+    suspend fun connectToDevice(address: String, isMobileDevice: Boolean, maxAttempts: Int = 3): Boolean {
         return withContext(Dispatchers.IO) {
-            try {
-                if (attempt > maxAttempts) {
-                    _connectionStatus.value = ConnectionStatus.Error("Max connection attempts reached")
-                    Log.e("BLE", "Max connection attempts reached for $address")
-                    return@withContext false
-                }
-                stopScanning()
-                stopAdvertising()
-                _connectionStatus.value = ConnectionStatus.Connecting
-                val device = bluetoothAdapter?.getRemoteDevice(address)
-                if (device == null) {
-                    _connectionStatus.value = ConnectionStatus.Error("Device not found")
-                    Log.e("BLE", "Device not found for address: $address")
-                    return@withContext false
-                }
+            var attempt = 1
+            while (attempt <= maxAttempts) {
                 try {
-                    gattClient?.close()
-                    gattClient = null
+                    Log.d("BLE", "Initiating connection to $address (attempt $attempt/$maxAttempts, isMobileDevice: $isMobileDevice)")
+                    stopScanning()
+                    stopAdvertising()
+                    _connectionStatus.value = ConnectionStatus.Connecting
+
+                    val device = bluetoothAdapter?.getRemoteDevice(address)
+                    if (device == null) {
+                        _connectionStatus.value = ConnectionStatus.Error("Device not found")
+                        Log.e("BLE", "Device not found for address: $address")
+                        return@withContext false
+                    }
+
+                    // Close any existing GATT client
+                    try {
+                        gattClient?.close()
+                        gattClient = null
+                    } catch (e: Exception) {
+                        Log.e("BLE", "Error closing existing GATT client", e)
+                    }
+
+                    // Connect based on device type
+                    if (isMobileDevice) {
+                        // Placeholder for mobile-to-mobile connection logic (e.g., using classic Bluetooth or a different GATT profile)
+                        Log.d("BLE", "Connecting to mobile device: $address")
+                        // For now, we'll assume mobile devices use the same GATT connection logic
+                        // In a real implementation, you might use a different approach (e.g., BluetoothSocket for classic Bluetooth)
+                    } else {
+                        Log.d("BLE", "Connecting to BLE device: $address (e.g., st-bLe99)")
+                    }
+
+                    gattClient = device.connectGatt(context, false, gattClientCallback, BluetoothDevice.TRANSPORT_LE)
+                    if (gattClient == null) {
+                        _connectionStatus.value = ConnectionStatus.Error("Failed to create GATT client")
+                        Log.e("BLE", "Failed to create GATT client for $address")
+                        return@withContext false
+                    }
+
+                    // Wait for connection with timeout (10 seconds)
+                    var timeout = 0
+                    while (!_isConnected.value && timeout < 100) {
+                        delay(100)
+                        timeout++
+                        ensureActive()
+                    }
+
+                    if (!_isConnected.value) {
+                        _connectionStatus.value = ConnectionStatus.Error("Connection timeout")
+                        Log.e("BLE", "Connection timeout for $address")
+                        attempt++
+                        if (attempt <= maxAttempts) {
+                            Log.d("BLE", "Retrying connection after timeout (attempt $attempt/$maxAttempts)")
+                            delay(2000L * attempt)
+                            continue
+                        }
+                        Log.e("BLE", "Max connection attempts reached for $address")
+                        return@withContext false
+                    }
+
+                    Log.d("BLE", "Connection successful to $address")
+                    saveLastConnectedDevice(address)
+                    return@withContext true
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
-                    Log.e("BLE", "Error closing existing GATT client", e)
-                }
-                Log.d("BLE", "Initiating connection to $address (attempt $attempt)")
-                gattClient = device.connectGatt(context, false, gattClientCallback, BluetoothDevice.TRANSPORT_LE)
-                if (gattClient == null) {
-                    _connectionStatus.value = ConnectionStatus.Error("Failed to create GATT client")
-                    Log.e("BLE", "Failed to create GATT client for $address")
+                    Log.e("BLE", "Connection error on attempt $attempt: ${e.message}", e)
+                    _connectionStatus.value = ConnectionStatus.Error(e.message ?: "Unknown error")
+                    attempt++
+                    if (attempt <= maxAttempts) {
+                        Log.d("BLE", "Retrying connection after error (attempt $attempt/$maxAttempts)")
+                        delay(2000L * attempt)
+                        continue
+                    }
+                    Log.e("BLE", "Max connection attempts reached for $address after error: ${e.message}")
                     return@withContext false
                 }
-                var timeout = 0
-                while (!_isConnected.value && timeout < 100) {
-                    delay(100)
-                    timeout++
-                    ensureActive()
-                }
-                if (!_isConnected.value) {
-                    _connectionStatus.value = ConnectionStatus.Error("Connection timeout")
-                    Log.e("BLE", "Connection timeout for $address")
-                    // Retry after a delay
-                    delay(2000L * attempt)
-                    return@withContext connectToDevice(address, attempt + 1, maxAttempts)
-                }
-                Log.d("BLE", "Connection successful to $address")
-                // Save connected device address
-                saveLastConnectedDevice(address)
-                return@withContext true
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("BLE", "Connection error on attempt $attempt", e)
-                _connectionStatus.value = ConnectionStatus.Error(e.message ?: "Unknown error")
-                // Retry after a delay
-                delay(2000L * attempt)
-                return@withContext connectToDevice(address, attempt + 1, maxAttempts)
             }
+            // If we exit the loop without returning, all attempts failed
+            _connectionStatus.value = ConnectionStatus.Error("Max connection attempts reached")
+            Log.e("BLE", "Max connection attempts reached for $address")
+            false
         }
     }
 
@@ -394,63 +451,82 @@ class BluetoothService(private val context: Context) {
         }
     }
 
+
     @SuppressLint("MissingPermission")
-    fun startLeScan(onDeviceFound: (BluetoothDevice, Int) -> Unit) {
-        if (isScanning) return
-
-        val scanner = bluetoothAdapter?.bluetoothLeScanner
-        val scanFilter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID))
-            .build()
-
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_BALANCED) // Balanced for battery efficiency
-            .build()
-
-        val scanCallback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val device = result.device
-                val rssi = result.rssi
-                Log.d("BLE", "Found device: ${device.name} (${device.address}), RSSI: $rssi")
-                onDeviceFound(device, rssi)
-            }
+    fun startLeScan(callback: (BluetoothDevice, Int, ScanResult) -> Unit) {
+        if (bluetoothAdapter?.isEnabled != true) {
+            Log.e("BLE", "Bluetooth is not enabled for scanning")
+            return
         }
-        scanner?.startScan(listOf(scanFilter), settings, scanCallback)
+        if (scanner == null) {
+            Log.e("BLE", "Bluetooth LE Scanner not available")
+            return
+        }
+        if (isScanning) {
+            stopScanning()
+        }
+
+        leScanCallback = callback
+        val filters = listOf(
+            ScanFilter.Builder()
+                .setServiceUuid(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID))
+                .build(),
+            ScanFilter.Builder()
+                .setServiceUuid(ParcelUuid(BLEConfig.CHAT_BLE_SERVICE_UUID))
+                .build()
+        )
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+            .build()
+
+        scanner.startScan(filters, settings, scanCallback)
         isScanning = true
-        Log.d("BLE", "Started scanning with balanced mode")
+        Log.d("BLE", "Started scanning for mobile and BLE devices with low latency")
     }
 
+
+
+    
     @SuppressLint("MissingPermission")
     private fun sendAsServer(message: String): Boolean {
-        notifyCharacteristic?.let { characteristic ->
-            characteristic.value = message.toByteArray()
-            var success = false
-            try {
-                val connectedDevices = bluetoothManager?.getConnectedDevices(BluetoothProfile.GATT_SERVER) ?: emptyList()
-                if (connectedDevices.isEmpty()) {
-                    Log.e("BLE", "No connected devices found for server send operation")
-                    return false
-                }
-                Log.d("BLE", "Found ${connectedDevices.size} connected device(s) for server send")
-                // Batch notifications to reduce overhead
-                Handler(Looper.getMainLooper()).postDelayed({
-                    for (device in connectedDevices) {
-                        val result = gattServer?.notifyCharacteristicChanged(device, characteristic, false) ?: false
+        val connectedDevices = bluetoothManager?.getConnectedDevices(BluetoothProfile.GATT_SERVER) ?: emptyList()
+        if (connectedDevices.isEmpty()) {
+            Log.e("BLE", "No connected devices found for server send operation")
+            return false
+        }
+
+        var success = false
+        try {
+            Log.d("BLE", "Found ${connectedDevices.size} connected device(s) for server send")
+            Handler(Looper.getMainLooper()).postDelayed({
+                for (device in connectedDevices) {
+                    // Determine device type (simplified, could use connection context)
+                    val isMobileDevice = true // Adjust based on connection logic if needed
+                    val characteristic = if (isMobileDevice) {
+                        gattServer?.getService(BLEConfig.CHAT_SERVICE_UUID)
+                            ?.getCharacteristic(BLEConfig.NOTIFY_CHARACTERISTIC_UUID)
+                    } else {
+                        gattServer?.getService(BLEConfig.CHAT_BLE_SERVICE_UUID)
+                            ?.getCharacteristic(BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID)
+                    }
+
+                    characteristic?.let {
+                        it.value = message.toByteArray()
+                        val result = gattServer?.notifyCharacteristicChanged(device, it, false) ?: false
                         success = success || result
                         Log.d("BLE", "Server sent message: $message to ${device.address}, success: $result")
-                    }
-                    if (!success) {
-                        Log.e("BLE", "Failed to notify any connected device of message: $message")
-                    }
-                }, 100) // Small delay to batch notifications
-                return success
-            } catch (e: Exception) {
-                Log.e("BLE", "Error in sendAsServer while getting connected devices or notifying", e)
-                return false
-            }
+                    } ?: Log.e("BLE", "Notify characteristic not found for device: ${device.address}")
+                }
+                if (!success) {
+                    Log.e("BLE", "Failed to notify any connected device of message: $message")
+                }
+            }, 100)
+            return success
+        } catch (e: Exception) {
+            Log.e("BLE", "Error in sendAsServer while getting connected devices or notifying", e)
+            return false
         }
-        Log.e("BLE", "Notify characteristic not set for server send")
-        return false
     }
 
     @SuppressLint("MissingPermission")
@@ -517,7 +593,8 @@ class BluetoothService(private val context: Context) {
             value: ByteArray
         ) {
             Log.d("BLE", "Server received write request for ${characteristic.uuid}")
-            if (characteristic.uuid == BLEConfig.WRITE_CHARACTERISTIC_UUID) {
+            if (characteristic.uuid == BLEConfig.WRITE_CHARACTERISTIC_UUID ||
+                characteristic.uuid == BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID) {
                 val message = String(value)
                 Log.d("BLE", "Server received message: $message from ${device.address}")
                 messageListener?.let { listener ->
@@ -528,7 +605,6 @@ class BluetoothService(private val context: Context) {
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
                     Log.d("BLE", "Sent response to write request from ${device.address}")
-
                 }
             }
         }
@@ -759,7 +835,9 @@ class BluetoothService(private val context: Context) {
     private fun enableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic?) {
         characteristic?.let {
             try {
-
+                // First enable notifications at the GATT level
+                val success = gatt.setCharacteristicNotification(it, true)
+                Log.d("BLE", "Set characteristic notification for ${characteristic.uuid}: $success")
 
                 // Write to the Client Characteristic Configuration Descriptor (CCCD) to enable notifications
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -833,7 +911,9 @@ class BluetoothService(private val context: Context) {
             BluetoothDeviceData(
                 name = device.name,
                 address = device.address,
-                isConnected = isDeviceConnected(device)
+                isConnected = isDeviceConnected(device),
+                isMobileDevice= false,
+                rssi = 0
             )
         } ?: emptyList()
     }
@@ -847,7 +927,9 @@ class BluetoothService(private val context: Context) {
             return BluetoothDeviceData(
                 name = device.name,
                 address = device.address,
-                isConnected = true
+                isConnected = true,
+                rssi = 0,
+                isMobileDevice = false
             )
         }
 
@@ -857,7 +939,9 @@ class BluetoothService(private val context: Context) {
             return BluetoothDeviceData(
                 name = device.name,
                 address = device.address,
-                isConnected = true
+                isConnected = true,
+                rssi = 0,
+                isMobileDevice = false
             )
         }
 
@@ -896,11 +980,6 @@ class BluetoothService(private val context: Context) {
 
         _isConnected.value = false
         _connectionStatus.value = ConnectionStatus.Disconnected
-
-        // Added: Reset debouncing variables on disconnect
-        lastMessageReceivedTime = 0L
-        lastMessageReceived = null
-
     }
 
     /**
