@@ -48,7 +48,9 @@ fun BluetoothDeviceScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = "Refresh",
+                            tint = Color.White
+
                         )
                     }
 //                    TextButton(

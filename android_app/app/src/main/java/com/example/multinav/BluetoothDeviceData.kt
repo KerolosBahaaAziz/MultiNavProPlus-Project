@@ -5,5 +5,5 @@ data class BluetoothDeviceData(
     val address: String,
     val isConnected: Boolean = false,
     val rssi: Int? = null, // Add RSSI
-    val isMobileDevice: Boolean
+    val isMobileDevice: Boolean = true // Add flag to differentiate device types
 )
