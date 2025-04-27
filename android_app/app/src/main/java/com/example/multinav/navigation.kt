@@ -56,34 +56,40 @@ fun Navigation(
             )
         }
 
+//        composable(Screen.DeviceList.route) {
+//            BluetoothDeviceScreen(
+//                state = bluetoothViewModel.uiState.collectAsState().value,
+//                onDeviceClick = { device ->
+//                    bluetoothViewModel.connectToDeviceAndNavigate(
+//                        device = device,
+//                        onNavigate = {
+//                            navController.navigate(Screen.Chat.createRoute(device.address))
+//                        }
+//                    )
+//                },
+//                bluetoothViewModel = bluetoothViewModel,
+//                navController = navController
+//            )
+//        }
+
+
         composable(Screen.DeviceList.route) {
             BluetoothDeviceScreen(
                 state = bluetoothViewModel.uiState.collectAsState().value,
-                onDeviceClick = { device ->
-                    bluetoothViewModel.connectToDeviceAndNavigate(
-                        device = device,
-                        onNavigate = {
-                            navController.navigate(Screen.Chat.createRoute(device.address))
-                        }
-                    )
-                },
                 bluetoothViewModel = bluetoothViewModel,
                 navController = navController
             )
         }
-
         composable(
             route = Screen.Chat.route
         ) { backStackEntry ->
             val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
             deviceAddress?.let {
-//                val chatViewModel: ChatViewModel = viewModel(
-//                    factory = ChatViewModelFactory(deviceAddress, bluetoothService)
-//                )
                 ChatScreen(
                     viewModel = chatViewModel,
                     bluetoothService = bluetoothService,
-                    onNavigateBack = { navController.popBackStack() })
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
         }
     }

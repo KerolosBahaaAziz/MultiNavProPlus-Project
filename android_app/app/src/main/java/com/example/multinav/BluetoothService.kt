@@ -409,7 +409,7 @@ class BluetoothService(private val context: Context) {
         val scanFilters = emptyList<ScanFilter>() // No filters, scan for all devices
 
         val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
 
         val scanCallback = object : ScanCallback() {
