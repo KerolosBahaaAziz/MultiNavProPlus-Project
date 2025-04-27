@@ -13,6 +13,8 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import com.example.multinav.login_screen.LoginScreen
+import com.example.multinav.sing_up.SingUpScreen
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
@@ -40,11 +42,8 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermissions()
         setContent {
             MultiNavTheme {
-                Navigation(
-                    bluetoothViewModel = bluetoothViewModel,
-                    startDestination = Screen.Main.route,  // Change this
-                    chatViewModel = chatViewModel
-                )
+                SingUpScreen()
+             //LoginScreen()
             }
         }
     }
