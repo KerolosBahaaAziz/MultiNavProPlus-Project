@@ -17,15 +17,15 @@ class JoyStickViewModel (
     val isToggleButtonC = mutableStateOf(false)
     val isToggleButtonD = mutableStateOf(false)
     val currentAngle = mutableStateOf(0f)
-    private val BUTTON_A_PRESS = "0x41"   // ASCII 'A'
-    private val BUTTON_A_RELEASE = "0x61"  // ASCII 'a
+    private val BUTTON_A_PRESS = "fd"   // ASCII 'A'
+    private val BUTTON_A_RELEASE = "ol"  // ASCII 'a
 
     fun onButtonAClick(isPressed: Boolean) {
         isToggleButtonA.value = isPressed
         viewModelScope.launch {
             val command = if (isPressed) BUTTON_A_PRESS else BUTTON_A_RELEASE
             try {
-                bluetoothService.sendMessage("f", isMobileDevice = false)
+                bluetoothService.sendMessage(command, isMobileDevice = false)
                 Log.d("JoyStick", "Sent command: $command")
             } catch (e: Exception) {
                 Log.e("JoyStick", "Error sending command", e)

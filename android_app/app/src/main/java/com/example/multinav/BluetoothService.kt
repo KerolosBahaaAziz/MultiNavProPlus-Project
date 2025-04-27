@@ -368,19 +368,20 @@ class BluetoothService(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     suspend fun sendMessage(message: String, isMobileDevice: Boolean): Boolean {
+
         return withContext(Dispatchers.IO) {
             try {
                 if (!_isConnected.value) {
                     Log.e("BLE", "Cannot send message: Not connected")
                     return@withContext false
                 }
-                if (gattServer != null) {
-                    val success = sendAsServer(message, isMobileDevice)
-                    if (success) {
-                        Log.d("BLE", "Message sent as server: $message")
-                        return@withContext true
-                    }
-                }
+//                if (gattServer == null) {
+//                    val success = sendAsServer(message, isMobileDevice)
+//                    if (success) {
+//                        Log.d("BLE", "Message sent as server: $message")
+//                        return@withContext true
+//                    }
+//                }
                 if (gattClient != null) {
                     // Pass isMobileDevice to sendAsClient
                     val success = sendAsClient(message, isMobileDevice)
