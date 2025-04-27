@@ -69,7 +69,33 @@ class BluetoothService(private val context: Context) {
     private var lastMessageReceived: String? = null
     private val messageDebounceMs = 500L // 500ms debounce for notifications
 
+    private val deviceNameToAddressMap = mutableMapOf<String, String>()
+
+    private var isReceiverRegistered = false
+
+    // Helper function to get the key for a device (name or address if name is null/blank)
+    @SuppressLint("MissingPermission")
+    private fun getDeviceKey(device: BluetoothDevice): String {
+        val name = device.name
+        val address = device.address
+        return if (name != null && name.isNotBlank()) {
+            if (deviceNameToAddressMap.containsKey(name) && deviceNameToAddressMap[name] != address) {
+                "$name ($address)"
+            } else {
+                deviceNameToAddressMap[name] = address
+                name
+            }
+        } else {
+            address
+        }
+    }
+
+    val connectedDeviceName: String?
+        get() = gattClient?.device?.let { getDeviceKey(it) }
+
     var isMobileDevice =false
+
+
 
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -96,7 +122,7 @@ class BluetoothService(private val context: Context) {
         // Register BroadcastReceiver for Bluetooth state changes
         val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
         context.registerReceiver(bluetoothStateReceiver, filter)
-
+        isReceiverRegistered=true
 //        // Load messages from SharedPreferences
 //        val savedMessagesJson = prefs.getString("messagesPerDevice", null)
 //        if (savedMessagesJson != null) {
@@ -1013,7 +1039,21 @@ class BluetoothService(private val context: Context) {
     }
 
     fun cleanup() {
-        context.unregisterReceiver(bluetoothStateReceiver)
+        // Only unregister if the receiver is actually registered
+        if (isReceiverRegistered) {
+            try {
+                context.applicationContext.unregisterReceiver(bluetoothStateReceiver)
+                isReceiverRegistered = false
+                Log.d("BLE", "Bluetooth state receiver unregistered")
+            } catch (e: IllegalArgumentException) {
+                Log.w("BLE", "Receiver was not registered, skipping unregistration", e)
+            } catch (e: Exception) {
+                Log.e("BLE", "Error unregistering receiver", e)
+            }
+        } else {
+            Log.d("BLE", "Receiver already unregistered, skipping")
+        }
+
         disconnect()
     }
 

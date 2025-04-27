@@ -1,5 +1,7 @@
 package com.example.multinav.chat
 
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -27,8 +29,6 @@ class ChatViewModel(
 
     private val _connectionState = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Disconnected)
     val connectionState: StateFlow<ConnectionStatus> = _connectionState
-
-
 
     private val _messages: StateFlow<List<Message>> = bluetoothService.messagesFlow
         .map { messagesMap ->
