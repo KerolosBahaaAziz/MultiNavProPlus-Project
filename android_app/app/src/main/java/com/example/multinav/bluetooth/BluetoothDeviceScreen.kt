@@ -96,7 +96,7 @@ fun BluetoothDeviceScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Search & Pair Devices")
+                    Text("Open Bluetooth Settings")
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
