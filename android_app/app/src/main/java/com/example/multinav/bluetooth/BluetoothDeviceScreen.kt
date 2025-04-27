@@ -32,7 +32,6 @@ import com.example.multinav.Screen
 @Composable
 fun BluetoothDeviceScreen(
     state: BluetoothUiState,
-    onDeviceClick: (BluetoothDeviceData) -> Unit,
     bluetoothViewModel: BluetoothViewModel = viewModel(),
     navController: NavController
 ) {
@@ -53,21 +52,6 @@ fun BluetoothDeviceScreen(
 
                         )
                     }
-//                    TextButton(
-//                        onClick = {
-//                            isServerMode.value = !isServerMode.value
-//                            if (isServerMode.value) {
-//                                bluetoothViewModel.startServer()
-//                            } else {
-//                                bluetoothViewModel.startClient()
-//                            }
-//                        }
-//                    ) {
-//                        Text(
-//                            if (isServerMode.value) "Switch to Client" else "Switch to Server",
-//                            color = Color.White
-//                        )
-//                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -157,13 +141,16 @@ fun BluetoothDeviceScreen(
                     DeviceItem(
                         device = device,
                         onClick = {
+                            // Paired devices are assumed to be mobile phones, so isMobileDevice = true
+
                             bluetoothViewModel.connectToDeviceAndNavigate(
                                 device = device,
                                 onNavigate = {
                                     navController.navigate(
                                         Screen.Chat.createRoute(device.address)
                                     )
-                                }
+                                },
+                                isFromPairedList = true
                             )
                         }
                     )
@@ -187,7 +174,8 @@ fun BluetoothDeviceScreen(
                                         navController.navigate(
                                             Screen.Chat.createRoute(device.address)
                                         )
-                                    }
+                                    },
+                                    isFromPairedList = false
                                 )
                             }
                         )

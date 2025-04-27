@@ -200,10 +200,28 @@ fun startScanning() {
 
     fun connectToDeviceAndNavigate(
         device: BluetoothDeviceData,
-        onNavigate: () -> Unit
+        onNavigate: () -> Unit,
+        isFromPairedList: Boolean // New parameter to indicate if the device is from paired list
     ) {
         // Cancel any existing connection job
         deviceConnectionJob?.cancel()
+
+        // Determine isMobileDevice based on whether the device is from paired list or scanned list
+        val finalIsMobileDevice = if (isFromPairedList) {
+            // Paired devices are always treated as mobile phones
+            true
+        } else {
+            // For scanned devices, check the name for BLE patterns
+            val deviceName = device.name ?: "Unknown"
+            val isBleDevice = deviceName.contains("bLe", ignoreCase = true) || deviceName == "st-bLe99"
+            if (isBleDevice) {
+                false // BLE devices use BLE UUIDs
+            } else {
+                device.isMobileDevice // Fallback to the value set during scanning
+            }
+        }
+
+        Log.d("BluetoothViewModel", "Connecting to device: ${device.name}, Address: ${device.address}, isMobileDevice: $finalIsMobileDevice")
 
         // Create a new connection job with error handling
         deviceConnectionJob = viewModelScope.launch {
@@ -212,7 +230,7 @@ fun startScanning() {
 
                 // Use a timeout to prevent hanging
                 withTimeout(10000) { // 10 seconds timeout
-                    val success = bluetoothService.connectToDevice(device.address, device.isMobileDevice)
+                    val success = bluetoothService.connectToDevice(device.address, finalIsMobileDevice)
                     if (success) {
                         _uiState.update {
                             it.copy(
@@ -263,6 +281,72 @@ fun startScanning() {
             }
         }
     }
+
+//    fun connectToDeviceAndNavigate(
+//        device: BluetoothDeviceData,
+//        onNavigate: () -> Unit
+//    ) {
+//        // Cancel any existing connection job
+//        deviceConnectionJob?.cancel()
+//
+//        // Create a new connection job with error handling
+//        deviceConnectionJob = viewModelScope.launch {
+//            try {
+//                _uiState.update { it.copy(isConnecting = true) }
+//
+//                // Use a timeout to prevent hanging
+//                withTimeout(10000) { // 10 seconds timeout
+//                    val success = bluetoothService.connectToDevice(device.address, device.isMobileDevice)
+//                    if (success) {
+//                        _uiState.update {
+//                            it.copy(
+//                                isConnecting = false,
+//                                isConnected = true,
+//                                errorMessage = null
+//                            )
+//                        }
+//                        onNavigate()
+//                    } else {
+//                        _uiState.update {
+//                            it.copy(
+//                                isConnecting = false,
+//                                isConnected = false,
+//                                errorMessage = "Failed to connect"
+//                            )
+//                        }
+//                    }
+//                }
+//            } catch (e: TimeoutCancellationException) {
+//                Log.e("BluetoothViewModel", "Connection timeout", e)
+//                _uiState.update {
+//                    it.copy(
+//                        isConnecting = false,
+//                        isConnected = false,
+//                        errorMessage = "Connection timeout"
+//                    )
+//                }
+//            } catch (e: CancellationException) {
+//                // Handle cancellation gracefully
+//                Log.d("BluetoothViewModel", "Connection cancelled", e)
+//                _uiState.update {
+//                    it.copy(
+//                        isConnecting = false,
+//                        isConnected = false,
+//                        errorMessage = null // Don't show error for cancellation
+//                    )
+//                }
+//            } catch (e: Exception) {
+//                Log.e("BluetoothViewModel", "Connection error", e)
+//                _uiState.update {
+//                    it.copy(
+//                        isConnecting = false,
+//                        isConnected = false,
+//                        errorMessage = e.message
+//                    )
+//                }
+//            }
+//        }
+//    }
 
     fun disconnect() {
         viewModelScope.launch {
