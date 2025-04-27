@@ -1,5 +1,6 @@
 package com.example.multinav
 import JoyStickScreen
+import MainScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
@@ -12,7 +13,6 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
-import com.example.multinav.main_screen.MainScreen
 
 sealed class Screen(val route: String) {
     object Main : Screen("main")

@@ -2,6 +2,8 @@
 
 
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.util.Log
 
 import androidx.compose.foundation.horizontalScroll
@@ -34,6 +36,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
 
 
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,6 +65,17 @@ fun JoyStickScreen(
         factory = JoyStickViewModelFactory(bluetoothService)
     )
 ) {
+
+    val context = LocalContext.current
+    val activity = context as? Activity
+
+    DisposableEffect(Unit) {
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     Scaffold()
     { innerPadding ->

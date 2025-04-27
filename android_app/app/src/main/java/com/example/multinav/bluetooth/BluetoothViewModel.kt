@@ -219,6 +219,8 @@ fun startScanning() {
 
                 false // BLE devices use BLE UUIDs
             } else {
+                bluetoothService.isMobileDevice=true
+
                 device.isMobileDevice // Fallback to the value set during scanning
             }
         }

@@ -59,7 +59,10 @@ fun ChatScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Chat", color = Color.Black)
+                        Text(
+                            text = bluetoothService.connectedDeviceName ?: "Chat",
+                            color = Color.Black
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier

@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +28,7 @@ import androidx.navigation.NavController
 import com.example.multinav.BluetoothDeviceData
 import com.example.multinav.BluetoothUiState
 import com.example.multinav.Screen
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +38,9 @@ fun BluetoothDeviceScreen(
     navController: NavController
 ) {
     val isServerMode = remember { mutableStateOf(true) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
 
     Scaffold(
         topBar = {
@@ -91,7 +96,7 @@ fun BluetoothDeviceScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Open Bluetooth Settings")
+                    Text("Search & Pair Devices")
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -104,6 +109,7 @@ fun BluetoothDeviceScreen(
                     } else {
                         bluetoothViewModel.startScanning()
                     }
+
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -112,7 +118,7 @@ fun BluetoothDeviceScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    Text(if (state.isScanning) "Stop Scanning" else "Start Scanning")
+                    Text(if (state.isScanning) "Stop Scanning" else " Scan Ble Devices")
                 }
                 if (state.isScanning) {
                     CircularProgressIndicator(

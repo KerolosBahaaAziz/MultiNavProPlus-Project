@@ -262,8 +262,7 @@ class ChatViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        bluetoothService.disconnect()
-        bluetoothService.cleanup()
+
     }
 
 

@@ -93,7 +93,7 @@ class BluetoothService(private val context: Context) {
     val connectedDeviceName: String?
         get() = gattClient?.device?.let { getDeviceKey(it) }
 
-    var isMobileDevice =false
+    var isMobileDevice =true
 
 
 
@@ -283,7 +283,7 @@ class BluetoothService(private val context: Context) {
         }
     }
 
-    // Start GATT server
+//    // Start GATT server
     @SuppressLint("MissingPermission")
     private fun startGattServer() {
         try {
@@ -354,6 +354,14 @@ class BluetoothService(private val context: Context) {
                     _connectionStatus.value = ConnectionStatus.Error("Max connection attempts reached")
                     return@withContext false
                 }
+
+                // Disconnect from any existing connection before connecting to a new device
+                if (_isConnected.value) {
+                    disconnect()
+                    // Add a small delay to ensure the disconnection completes
+                    delay(500)
+                }
+
                 stopScanning() // Use the existing stopScanning method
                 stopAdvertising()
                 _connectionStatus.value = ConnectionStatus.Connecting
