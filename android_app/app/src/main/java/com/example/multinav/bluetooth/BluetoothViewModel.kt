@@ -208,13 +208,15 @@ fun startScanning() {
 
         // Determine isMobileDevice based on whether the device is from paired list or scanned list
         val finalIsMobileDevice = if (isFromPairedList) {
-            // Paired devices are always treated as mobile phones
+            bluetoothService.isMobileDevice=true
             true
         } else {
             // For scanned devices, check the name for BLE patterns
             val deviceName = device.name ?: "Unknown"
-            val isBleDevice = deviceName.contains("bLe", ignoreCase = true) || deviceName == "st-bLe99"
+            val isBleDevice = deviceName.contains("BLE", ignoreCase = true) || deviceName == "BLE_WB07"
             if (isBleDevice) {
+                bluetoothService.isMobileDevice=false
+
                 false // BLE devices use BLE UUIDs
             } else {
                 device.isMobileDevice // Fallback to the value set during scanning

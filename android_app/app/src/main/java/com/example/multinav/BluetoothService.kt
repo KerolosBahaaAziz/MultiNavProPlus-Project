@@ -8,13 +8,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
 import android.provider.Settings
 import android.util.Log
-import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -59,7 +57,7 @@ class BluetoothService(private val context: Context) {
     private var lastMessageReceived: String? = null
     private val messageDebounceMs = 500L // 500ms debounce for notifications
 
-    private var isMobileDevice=false
+    var isMobileDevice =false
 
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -436,7 +434,7 @@ class BluetoothService(private val context: Context) {
         val notifyChar = if (isMobileDevice) {
             notifyCharacteristic
         } else {
-            gattServer?.getService(BLEConfig.CHAT_BLE_SERVICE_UUID)?.getCharacteristic(BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID)
+            gattServer?.getService(BLEConfig.BLE_SERVICE_UUID)?.getCharacteristic(BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID)
         }
 
         notifyChar?.let { characteristic ->
@@ -470,7 +468,7 @@ class BluetoothService(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     private fun sendAsClient(message: String, isMobileDevice: Boolean): Boolean {
-        val serviceUuid = if (isMobileDevice) BLEConfig.CHAT_SERVICE_UUID else BLEConfig.CHAT_BLE_SERVICE_UUID
+        val serviceUuid = if (isMobileDevice) BLEConfig.CHAT_SERVICE_UUID else BLEConfig.BLE_SERVICE_UUID
         val writeUuid = if (isMobileDevice) BLEConfig.WRITE_CHARACTERISTIC_UUID else BLEConfig.BLE_WRITE_CHARACTERISTIC_UUID
 
         val service = gattClient?.getService(serviceUuid)
@@ -640,7 +638,7 @@ class BluetoothService(private val context: Context) {
                         }
                     }
 
-                    val serviceUuid = if (isMobileDevice) BLEConfig.CHAT_SERVICE_UUID else BLEConfig.CHAT_BLE_SERVICE_UUID
+                    val serviceUuid = if (isMobileDevice) BLEConfig.CHAT_SERVICE_UUID else BLEConfig.BLE_SERVICE_UUID
                     val notifyUuid = if (isMobileDevice) BLEConfig.NOTIFY_CHARACTERISTIC_UUID else BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID
                     val service = gatt.getService(serviceUuid)
 

@@ -1,5 +1,6 @@
 package com.example.multinav.chat
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -107,13 +108,8 @@ fun ChatScreen(
                         contentAlignment = if (message.isSentByUser)
                             Alignment.CenterEnd else Alignment.CenterStart
                     ) {
-                        val displayText = if (message.text.startsWith("BLE:")) {
-                            message.text.removePrefix("BLE:")
-                        } else {
-                            message.text
-                        }
                         Text(
-                            text = displayText,
+                            text = message.text, // Display the message as-is
                             color = Color.White,
                             modifier = Modifier
                                 .background(
@@ -138,6 +134,7 @@ fun ChatScreen(
 @Composable
 fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
     var inputText by rememberSaveable { mutableStateOf("") }
+
 
     Row(
         modifier = Modifier
@@ -172,8 +169,9 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
         IconButton(
             onClick = {
                 if (inputText.isNotEmpty()) {
-                    val bleCommand = formatBLECommand(inputText)
-                    viewModel.sendMessage(bleCommand)
+                    val bytes = inputText.toByteArray(Charsets.UTF_8)
+                    Log.d("ChatScreen", "Sending message: $inputText, Bytes: ${bytes.joinToString()}")
+                    viewModel.sendMessage(inputText)
                     inputText = ""
                 }
             },
