@@ -13,6 +13,7 @@ import android.os.Looper
 import android.os.ParcelUuid
 import android.provider.Settings
 import android.util.Log
+import com.example.multinav.chat.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
+
 
 class BluetoothService(private val context: Context) {
     private val bluetoothManager by lazy {
@@ -29,10 +31,15 @@ class BluetoothService(private val context: Context) {
         bluetoothManager?.adapter
     }
 
+    private val prefs = context.getSharedPreferences("BLEPrefs", Context.MODE_PRIVATE)
+
+
     private var gattServer: BluetoothGattServer? = null
     private var gattClient: BluetoothGatt? = null
+
     private var writeCharacteristic: BluetoothGattCharacteristic? = null
     private var notifyCharacteristic: BluetoothGattCharacteristic? = null
+    
     private var isScanning = false
     private var isAdvertising = false
 
@@ -46,7 +53,12 @@ class BluetoothService(private val context: Context) {
     private val _bluetoothState = MutableStateFlow(isBluetoothEnabled())
     val bluetoothState: StateFlow<Boolean> = _bluetoothState
 
-    private var messageListener: ((String) -> Unit)? = null
+    // Store messages per device address
+    private val _messagesPerDevice = mutableMapOf<String, MutableList<Message>>()
+    private val _messagesFlow = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
+    val messagesFlow: StateFlow<Map<String, List<Message>>> = _messagesFlow
+    private var messageListener: ((String, String) -> Unit)? = null // (message, deviceAddress)
+
     private val scanResults = mutableMapOf<String, BluetoothDevice>()
 
     private var lastConnectionStateChange = 0L
@@ -84,6 +96,14 @@ class BluetoothService(private val context: Context) {
         // Register BroadcastReceiver for Bluetooth state changes
         val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
         context.registerReceiver(bluetoothStateReceiver, filter)
+
+//        // Load messages from SharedPreferences
+//        val savedMessagesJson = prefs.getString("messagesPerDevice", null)
+//        if (savedMessagesJson != null) {
+//            val type = object : TypeToken<Map<String, MutableList<Message>>>() {}.type
+//            _messagesPerDevice.putAll(gson.fromJson(savedMessagesJson, type))
+//            _messagesFlow.value = _messagesPerDevice.toMap()
+//        }
     }
 
     // Start advertising to be discovered
@@ -306,10 +326,9 @@ class BluetoothService(private val context: Context) {
             try {
                 if (attempt > maxAttempts) {
                     _connectionStatus.value = ConnectionStatus.Error("Max connection attempts reached")
-                    Log.e("BLE", "Max connection attempts reached for $address")
                     return@withContext false
                 }
-                stopScanning()
+                stopScanning() // Use the existing stopScanning method
                 stopAdvertising()
                 _connectionStatus.value = ConnectionStatus.Connecting
                 val device = bluetoothAdapter?.getRemoteDevice(address)
@@ -318,13 +337,13 @@ class BluetoothService(private val context: Context) {
                     Log.e("BLE", "Device not found for address: $address")
                     return@withContext false
                 }
+
                 try {
                     gattClient?.close()
                     gattClient = null
                 } catch (e: Exception) {
                     Log.e("BLE", "Error closing existing GATT client", e)
                 }
-                Log.d("BLE", "Initiating connection to $address (attempt $attempt, isMobileDevice: $isMobileDevice)")
                 gattClient = device.connectGatt(context, false, gattClientCallback, BluetoothDevice.TRANSPORT_LE)
                 if (gattClient == null) {
                     _connectionStatus.value = ConnectionStatus.Error("Failed to create GATT client")
@@ -339,12 +358,16 @@ class BluetoothService(private val context: Context) {
                 }
                 if (!_isConnected.value) {
                     _connectionStatus.value = ConnectionStatus.Error("Connection timeout")
-                    Log.e("BLE", "Connection timeout for $address")
                     delay(2000L * attempt)
                     return@withContext connectToDevice(address, isMobileDevice, attempt + 1, maxAttempts)
                 }
-                Log.d("BLE", "Connection successful to $address")
                 saveLastConnectedDevice(address, isMobileDevice)
+
+                if (!_messagesPerDevice.containsKey(address)) {
+                    _messagesPerDevice[address] = mutableListOf(Message("Welcome to Bluetooth Chat", false))
+                    _messagesFlow.value = _messagesPerDevice.toMap()
+                }
+
                 return@withContext true
             } catch (e: CancellationException) {
                 throw e
@@ -356,7 +379,6 @@ class BluetoothService(private val context: Context) {
             }
         }
     }
-
     private fun saveLastConnectedDevice(address: String, isMobileDevice: Boolean) {
         val prefs = context.getSharedPreferences("BLEPrefs", Context.MODE_PRIVATE)
         prefs.edit()
@@ -383,10 +405,21 @@ class BluetoothService(private val context: Context) {
 //                    }
 //                }
                 if (gattClient != null) {
-                    // Pass isMobileDevice to sendAsClient
                     val success = sendAsClient(message, isMobileDevice)
                     if (success) {
                         Log.d("BLE", "Message sent as client: $message")
+                        // Add the sent message to the device's message list
+                        gattClient?.device?.address?.let { deviceAddress ->
+                            Log.d("BLE", "Device address in sendMessage: $deviceAddress")
+                            val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
+                            val updatedMessages = messages.toMutableList().apply {
+                                add(Message(message, true))
+                            }
+                            _messagesPerDevice[deviceAddress] = updatedMessages
+                            _messagesFlow.value = _messagesPerDevice.toMap()
+                            Log.d("BLE", "Stored sent message for device $deviceAddress: $message")
+                            Log.d("BLE", "Updated messagesFlow: ${_messagesFlow.value[deviceAddress]}")
+                        }
                         return@withContext true
                     }
                 }
@@ -517,6 +550,7 @@ class BluetoothService(private val context: Context) {
     }
 
     // GATT server callback
+// GATT server callback
     private val gattServerCallback = object : BluetoothGattServerCallback() {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
@@ -526,6 +560,13 @@ class BluetoothService(private val context: Context) {
                     _isConnected.value = true
                     _connectionStatus.value = ConnectionStatus.Connected
                     Log.d("BLE", "Device connected to server: ${device.address}")
+                    // Initialize message list for this device if it doesn't exist
+                    device.address?.let { deviceAddress ->
+                        if (!_messagesPerDevice.containsKey(deviceAddress)) {
+                            _messagesPerDevice[deviceAddress] = mutableListOf(Message("Welcome to Bluetooth Chat", false))
+                            _messagesFlow.value = _messagesPerDevice.toMap()
+                        }
+                    }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     _isConnected.value = false
@@ -549,15 +590,21 @@ class BluetoothService(private val context: Context) {
             if (characteristic.uuid == BLEConfig.WRITE_CHARACTERISTIC_UUID) {
                 val message = String(value)
                 Log.d("BLE", "Server received message: $message from ${device.address}")
-                messageListener?.let { listener ->
-                    Log.d("BLE", "Invoking listener with message: $message")
-                    listener(message)
-                } ?: Log.w("BLE", "No listener set for received message: $message")
+                device.address?.let { deviceAddress ->
+                    // Add the received message to the device's message list
+                    val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
+                    messages.add(Message(message, false))
+                    _messagesFlow.value = _messagesPerDevice.toMap()
+                    // Invoke the message listener with both message and device address
+                    messageListener?.let { listener ->
+                        Log.d("BLE", "Invoking listener with message: $message for device: $deviceAddress")
+                        listener(message, deviceAddress)
+                    } ?: Log.w("BLE", "No listener set for received message: $message")
+                } ?: Log.e("BLE", "Device address is null, cannot process message: $message")
 
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
                     Log.d("BLE", "Sent response to write request from ${device.address}")
-
                 }
             }
         }
@@ -615,6 +662,13 @@ class BluetoothService(private val context: Context) {
                         }, 500)
 
                         Log.d("BLE", "Connected to server: ${gatt.device.address}")
+                        // Initialize message list for this device if it doesn't exist
+                        gatt.device.address?.let { deviceAddress ->
+                            if (!_messagesPerDevice.containsKey(deviceAddress)) {
+                                _messagesPerDevice[deviceAddress] = mutableListOf(Message("Welcome to Bluetooth Chat", false))
+                                _messagesFlow.value = _messagesPerDevice.toMap()
+                            }
+                        }
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         _isConnected.value = false
@@ -686,7 +740,7 @@ class BluetoothService(private val context: Context) {
             value: ByteArray
         ) {
             try {
-                handleCharacteristicChanged(characteristic, value)
+                handleCharacteristicChanged(gatt, characteristic, value)
             } catch (e: Exception) {
                 Log.e("BLE", "Error in onCharacteristicChanged", e)
             }
@@ -699,13 +753,14 @@ class BluetoothService(private val context: Context) {
             characteristic: BluetoothGattCharacteristic
         ) {
             try {
-                handleCharacteristicChanged(characteristic, characteristic.value)
+                handleCharacteristicChanged(gatt, characteristic, characteristic.value)
             } catch (e: Exception) {
                 Log.e("BLE", "Error in deprecated onCharacteristicChanged", e)
             }
         }
 
         private fun handleCharacteristicChanged(
+            gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
@@ -729,7 +784,16 @@ class BluetoothService(private val context: Context) {
                     BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID
                 }
                 if (characteristic.uuid == expectedUuid) {
-                    messageListener?.invoke(message) ?: Log.w("BLE", "No listener set for received message: $message on client")
+                    gatt.device.address?.let { deviceAddress ->
+                        // Add the received message to the device's message list
+                        val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
+                        messages.add(Message(message, false))
+                        _messagesFlow.value = _messagesPerDevice.toMap()
+                        messageListener?.invoke(message, deviceAddress) ?: Log.w(
+                            "BLE",
+                            "No listener set for received message: $message on client"
+                        )
+                    } ?: Log.e("BLE", "Device address is null, cannot process message: $message")
                 } else {
                     Log.w("BLE", "Received message on unexpected characteristic: ${characteristic.uuid}")
                 }
@@ -777,9 +841,7 @@ class BluetoothService(private val context: Context) {
                 Log.e("BLE", "Error in onDescriptorWrite", e)
             }
         }
-
     }
-
 
     @SuppressLint("MissingPermission")
     private fun enableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic?) {
@@ -837,8 +899,7 @@ class BluetoothService(private val context: Context) {
     }
 
 
-    // Start listening for messages, ensuring the latest listener is used
-    fun startListening(listener: (String) -> Unit) {
+    fun startListening(listener: (String, String) -> Unit) {
         Log.d("BLE", "Setting new message listener")
         messageListener = listener
     }

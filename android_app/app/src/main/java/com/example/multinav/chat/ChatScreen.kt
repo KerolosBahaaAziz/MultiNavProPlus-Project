@@ -38,6 +38,9 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
+    LaunchedEffect(messages) {
+        Log.d("ChatScreen", "Messages in UI: $messages")
+    }
     // Log connection state for debugging
     LaunchedEffect(connectionState) {
         println("ChatScreen: Connection state changed to $connectionState")
@@ -135,7 +138,6 @@ fun ChatScreen(
 fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
     var inputText by rememberSaveable { mutableStateOf("") }
 
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -206,6 +208,3 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
     }
 }
 
-private fun formatBLECommand(input: String): String {
-    return "BLE:${input.uppercase().replace(" ", "_")}"
-}

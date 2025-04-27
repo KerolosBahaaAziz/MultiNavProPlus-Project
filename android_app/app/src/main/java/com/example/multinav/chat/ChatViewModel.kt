@@ -9,6 +9,7 @@ import com.example.multinav.BluetoothService.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 
@@ -29,9 +30,21 @@ class ChatViewModel(
 
 
 
-    private val _messages = MutableStateFlow<List<Message>>(
-        listOf(Message("Welcome to Bluetooth Chat", false))
-    )
+    private val _messages: StateFlow<List<Message>> = bluetoothService.messagesFlow
+        .map { messagesMap ->
+            messagesMap[deviceAddress] ?: listOf(Message("Welcome to Bluetooth Chat", false))
+        }
+        .let { mappedFlow ->
+            MutableStateFlow(listOf(Message("Welcome to Bluetooth Chat", false))).apply {
+                viewModelScope.launch {
+                    mappedFlow.collect { messages ->
+                        Log.d("ChatViewModel", "Messages updated for device $deviceAddress: $messages")
+                        value = messages
+                    }
+                }
+            }
+        } as StateFlow<List<Message>>
+
     val messages: StateFlow<List<Message>> = _messages
 
 
@@ -116,10 +129,13 @@ class ChatViewModel(
     }
 
     private fun startMessageListener() {
-        Log.d("ChatViewModel", "Starting message listener")
-        bluetoothService.startListening { receivedMessage ->
-            Log.d("ChatViewModel", "Message received via listener: $receivedMessage")
-            receiveMessage(receivedMessage)
+        Log.d("ChatViewModel", "Starting message listener for device: $deviceAddress")
+        bluetoothService.startListening { receivedMessage, fromDeviceAddress ->
+            Log.d("ChatViewModel", "Message received via listener: $receivedMessage from $fromDeviceAddress")
+            // Only process the message if it's from the device associated with this ChatViewModel
+            if (fromDeviceAddress == deviceAddress) {
+                receiveMessage(receivedMessage)
+            }
         }
     }
 
@@ -165,7 +181,6 @@ class ChatViewModel(
         if (message.isBlank()) return
         viewModelScope.launch {
             try {
-                _messages.value = _messages.value + Message(message, true)
                 messageQueue.add(message)
                 processMessageQueue()
             } catch (e: Exception) {
@@ -216,8 +231,17 @@ class ChatViewModel(
 
     fun receiveMessage(message: String) {
         viewModelScope.launch {
-            Log.d("ChatViewModel", "Adding received message to UI: $message")
-            _messages.value = _messages.value + Message(message, false)
+            Log.d("ChatViewModel", "Adding system message to UI: $message for device: $deviceAddress")
+            deviceAddress?.let { address ->
+                // Update the messages in BluetoothService
+                val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
+                val messages = currentMessagesMap[address]?.toMutableList()
+                    ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
+                messages.add(Message(message, false))
+                currentMessagesMap[address] = messages
+
+                (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
+            }
         }
     }
 

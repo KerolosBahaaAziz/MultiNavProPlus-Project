@@ -86,6 +86,7 @@ fun Navigation(
             val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
             deviceAddress?.let {
                 ChatScreen(
+                    deviceAddress = it,
                     viewModel = chatViewModel,
                     bluetoothService = bluetoothService,
                     onNavigateBack = { navController.popBackStack() }
