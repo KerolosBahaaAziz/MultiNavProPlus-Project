@@ -25,7 +25,7 @@ class JoyStickViewModel (
         viewModelScope.launch {
             val command = if (isPressed) BUTTON_A_PRESS else BUTTON_A_RELEASE
             try {
-                bluetoothService.sendMessage("BLE:$command", isMobileDevice = false)
+                bluetoothService.sendMessage("f", isMobileDevice = false)
                 Log.d("JoyStick", "Sent command: $command")
             } catch (e: Exception) {
                 Log.e("JoyStick", "Error sending command", e)
