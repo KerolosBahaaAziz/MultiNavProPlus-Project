@@ -156,7 +156,7 @@ class ChatViewModel(
                 receiveMessage("Connecting to device...")
 
                 // Pass isMobileDevice = false since you're likely connecting to a BLE device ("st-bLe99")
-                val success = bluetoothService.connectToDevice(address, isMobileDevice = false)
+                val success = bluetoothService.connectToDevice(address, isMobileDevice = true) //rem
                 if (success) {
                     _connectionState.value = BluetoothService.ConnectionStatus.Connected
                     receiveMessage("Connected successfully")

@@ -207,9 +207,9 @@ fun startScanning() {
         deviceConnectionJob?.cancel()
 
         // Determine isMobileDevice based on whether the device is from paired list or scanned list
-        val finalIsMobileDevice = if (isFromPairedList) {
+        if (isFromPairedList) {
             bluetoothService.isMobileDevice=true
-            true
+
         } else {
             // For scanned devices, check the name for BLE patterns
             val deviceName = device.name ?: "Unknown"
@@ -217,15 +217,12 @@ fun startScanning() {
             if (isBleDevice) {
                 bluetoothService.isMobileDevice=false
 
-                false // BLE devices use BLE UUIDs
             } else {
                 bluetoothService.isMobileDevice=true
-
-                device.isMobileDevice // Fallback to the value set during scanning
             }
         }
 
-        Log.d("BluetoothViewModel", "Connecting to device: ${device.name}, Address: ${device.address}, isMobileDevice: $finalIsMobileDevice")
+        Log.d("BluetoothViewModel", "Connecting to device: ${device.name}, Address: ${device.address}")
 
         // Create a new connection job with error handling
         deviceConnectionJob = viewModelScope.launch {
@@ -234,7 +231,7 @@ fun startScanning() {
 
                 // Use a timeout to prevent hanging
                 withTimeout(10000) { // 10 seconds timeout
-                    val success = bluetoothService.connectToDevice(device.address, finalIsMobileDevice)
+                    val success = bluetoothService.connectToDevice(device.address, bluetoothService.isMobileDevice)
                     if (success) {
                         _uiState.update {
                             it.copy(

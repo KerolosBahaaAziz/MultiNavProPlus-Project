@@ -82,6 +82,7 @@ fun Navigation(
                 navController = navController
             )
         }
+
         composable(
             route = Screen.Chat.route // e.g., "chat/{deviceAddress}"
         ) { backStackEntry ->
