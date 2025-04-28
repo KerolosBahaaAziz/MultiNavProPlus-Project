@@ -13,6 +13,10 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import com.example.multinav.login_screen.LoginScreen
+import com.example.multinav.sing_up.SingUpScreen
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
@@ -38,11 +42,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
+        val auth = FirebaseAuth.getInstance()
+        val database : FirebaseDatabase = FirebaseDatabase.getInstance()
         setContent {
             MultiNavTheme {
+          //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
-                    startDestination = Screen.DeviceList.route,  // Change this
+                    startDestination = Screen.Main.route,  // Change this
                     chatViewModel = chatViewModel
                 )
             }
