@@ -202,11 +202,11 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
             onClick = { viewModel.makePhoneCall() },
             enabled = enabled
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_cal),
-                contentDescription = "Call",
-                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
-            )
+//            Icon(
+//                painter = painterResource(R.drawable.ic_cal),
+//                contentDescription = "Call",
+//                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
+//            )
         }
     }
 }

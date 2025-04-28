@@ -250,7 +250,7 @@ class ChatViewModel(
     }
 
     fun makePhoneCall() {
-        receiveMessage("Call functionality not implemented yet")
+        //receiveMessage("Call functionality not implemented yet")
     }
 
     fun disconnect() {

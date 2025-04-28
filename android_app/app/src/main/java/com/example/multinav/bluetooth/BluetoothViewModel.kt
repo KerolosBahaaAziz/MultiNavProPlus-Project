@@ -363,9 +363,9 @@ fun startScanning() {
 
     override fun onCleared() {
         super.onCleared()
-        deviceConnectionJob?.cancel()
-        refreshJob?.cancel()
-        bluetoothService.disconnect()
+//        deviceConnectionJob?.cancel()
+//        refreshJob?.cancel()
+//        bluetoothService.disconnect()
     }
 }
 
