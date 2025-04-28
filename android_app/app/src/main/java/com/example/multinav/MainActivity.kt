@@ -9,6 +9,8 @@ import com.example.multinav.ui.theme.MultiNavTheme
 import android.Manifest
 import android.os.Build
 import android.util.Log
+import com.example.multinav.bluetooth.BluetoothViewModel
+import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 
@@ -40,7 +42,7 @@ class MainActivity : ComponentActivity() {
             MultiNavTheme {
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
-                    startDestination = Screen.Main.route,  // Change this
+                    startDestination = Screen.DeviceList.route,  // Change this
                     chatViewModel = chatViewModel
                 )
             }

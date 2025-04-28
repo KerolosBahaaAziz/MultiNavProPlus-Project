@@ -1,5 +1,6 @@
 package com.example.multinav.chat
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,6 +38,9 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
+    LaunchedEffect(messages) {
+        Log.d("ChatScreen", "Messages in UI: $messages")
+    }
     // Log connection state for debugging
     LaunchedEffect(connectionState) {
         println("ChatScreen: Connection state changed to $connectionState")
@@ -55,7 +59,10 @@ fun ChatScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Chat", color = Color.Black)
+                        Text(
+                            text = bluetoothService.connectedDeviceName ?: "Chat",
+                            color = Color.Black
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
@@ -107,13 +114,8 @@ fun ChatScreen(
                         contentAlignment = if (message.isSentByUser)
                             Alignment.CenterEnd else Alignment.CenterStart
                     ) {
-                        val displayText = if (message.text.startsWith("BLE:")) {
-                            message.text.removePrefix("BLE:")
-                        } else {
-                            message.text
-                        }
                         Text(
-                            text = displayText,
+                            text = message.text, // Display the message as-is
                             color = Color.White,
                             modifier = Modifier
                                 .background(
@@ -172,8 +174,9 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
         IconButton(
             onClick = {
                 if (inputText.isNotEmpty()) {
-                    val bleCommand = formatBLECommand(inputText)
-                    viewModel.sendMessage(bleCommand)
+                    val bytes = inputText.toByteArray(Charsets.UTF_8)
+                    Log.d("ChatScreen", "Sending message: $inputText, Bytes: ${bytes.joinToString()}")
+                    viewModel.sendMessage(inputText)
                     inputText = ""
                 }
             },
@@ -199,15 +202,12 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
             onClick = { viewModel.makePhoneCall() },
             enabled = enabled
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_cal),
-                contentDescription = "Call",
-                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
-            )
+//            Icon(
+//                painter = painterResource(R.drawable.ic_cal),
+//                contentDescription = "Call",
+//                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
+//            )
         }
     }
 }
 
-private fun formatBLECommand(input: String): String {
-    return "BLE:${input.uppercase().replace(" ", "_")}"
-}

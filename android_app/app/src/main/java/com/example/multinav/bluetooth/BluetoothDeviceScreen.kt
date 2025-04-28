@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.bluetooth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,34 +9,38 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.multinav.BluetoothDeviceData
+import com.example.multinav.BluetoothUiState
+import com.example.multinav.Screen
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BluetoothDeviceScreen(
     state: BluetoothUiState,
-    onDeviceClick: (BluetoothDeviceData) -> Unit,
     bluetoothViewModel: BluetoothViewModel = viewModel(),
     navController: NavController
 ) {
     val isServerMode = remember { mutableStateOf(true) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
 
     Scaffold(
         topBar = {
@@ -44,28 +48,15 @@ fun BluetoothDeviceScreen(
                 title = { Text("Bluetooth Devices") },
                 actions = {
                     IconButton(
-                        onClick = { bluetoothViewModel.startClient() }
+                        onClick = { bluetoothViewModel.refreshDevices() }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = "Refresh",
+                            tint = Color.White
+
                         )
                     }
-//                    TextButton(
-//                        onClick = {
-//                            isServerMode.value = !isServerMode.value
-//                            if (isServerMode.value) {
-//                                bluetoothViewModel.startServer()
-//                            } else {
-//                                bluetoothViewModel.startClient()
-//                            }
-//                        }
-//                    ) {
-//                        Text(
-//                            if (isServerMode.value) "Switch to Client" else "Switch to Server",
-//                            color = Color.White
-//                        )
-//                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -80,6 +71,23 @@ fun BluetoothDeviceScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
+            if (!state.isBluetoothEnabled) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = "Bluetooth is disabled. Please enable it to see paired devices.",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+            //btn settings
             Button(
                 onClick = bluetoothViewModel::openBluetoothSettings,
                 modifier = Modifier.fillMaxWidth()
@@ -88,10 +96,12 @@ fun BluetoothDeviceScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Search & Pair Devices")
+                    Text("Open Bluetooth Settings")
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+
+            //btn scanning
             Button(
                 onClick = {
                     if (state.isScanning) {
@@ -99,18 +109,29 @@ fun BluetoothDeviceScreen(
                     } else {
                         bluetoothViewModel.startScanning()
                     }
+
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (state.isScanning) "Stop Scanning" else "Start Scanning")
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(if (state.isScanning) "Stop Scanning" else " Scan Ble Devices")
+                }
+                if (state.isScanning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .padding( 8.dp),
+
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                }
             }
-            if (state.isScanning) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(16.dp)
-                )
-            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
@@ -126,13 +147,16 @@ fun BluetoothDeviceScreen(
                     DeviceItem(
                         device = device,
                         onClick = {
+                            // Paired devices are assumed to be mobile phones, so isMobileDevice = true
+
                             bluetoothViewModel.connectToDeviceAndNavigate(
                                 device = device,
                                 onNavigate = {
                                     navController.navigate(
                                         Screen.Chat.createRoute(device.address)
                                     )
-                                }
+                                },
+                                isFromPairedList = true
                             )
                         }
                     )
@@ -156,7 +180,8 @@ fun BluetoothDeviceScreen(
                                         navController.navigate(
                                             Screen.Chat.createRoute(device.address)
                                         )
-                                    }
+                                    },
+                                    isFromPairedList = false
                                 )
                             }
                         )
