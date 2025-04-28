@@ -19,7 +19,7 @@ import kotlin.coroutines.resumeWithException
 
 class SingUpViewModel(
     private val auth: FirebaseAuth,
-    private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
+    private val database: FirebaseDatabase
 ) : ViewModel() {
     var firstName by mutableStateOf("")
     var lastName by mutableStateOf("")
@@ -213,11 +213,12 @@ class SingUpViewModel(
 }
 
 class SingUpViewModelFactory(
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val database: FirebaseDatabase
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SingUpViewModel::class.java)) {
-            return SingUpViewModel(auth) as T
+            return SingUpViewModel(auth,database) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
