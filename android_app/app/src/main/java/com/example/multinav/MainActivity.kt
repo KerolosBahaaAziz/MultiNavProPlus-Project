@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
         val auth = FirebaseAuth.getInstance()
-        val database: FirebaseDatabase = FirebaseDatabase.getInstance()
+        val database : FirebaseDatabase = FirebaseDatabase.getInstance()
         setContent {
             MultiNavTheme {
           //     SingUpScreen(auth = auth)

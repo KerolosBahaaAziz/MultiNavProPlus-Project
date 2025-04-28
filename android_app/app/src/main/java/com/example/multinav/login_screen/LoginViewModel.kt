@@ -75,6 +75,13 @@ class LoginViewModel(
 
 
     }
+    fun resetState() {
+        username = ""
+        password = ""
+        passwordVisible = false
+        loginState = LoginState.Initial
+        verificationMessage = null
+    }
 }
 
 

@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,9 @@ fun LoginScreen(
     navigateToMainScreen: () -> Unit) {
     val viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(auth))
     val loginState  = viewModel.loginState
+    LaunchedEffect(Unit) {
+        viewModel.resetState() // Reset state on screen load
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
