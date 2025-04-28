@@ -44,7 +44,7 @@ sealed class Screen(
     val label: String? = null,
     val icon: Int? = null
 ) {
-    object DeviceList : Screen("deviceList", label = "Device", icon = R.drawable.ic_device)
+    object DeviceList : Screen("deviceList", label = "Device", icon = R.drawable.ic_phone)
     object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
     }
