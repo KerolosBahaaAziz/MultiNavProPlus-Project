@@ -232,14 +232,17 @@ class ChatViewModel(
     fun receiveMessage(message: String) {
         viewModelScope.launch {
             Log.d("ChatViewModel", "Adding system message to UI: $message for device: $deviceAddress")
+            val displayMessage = if (message.contains("�") || message.startsWith("Raw message bytes:") || message.startsWith("Raw bytes:")) {
+                "Received invalid data: $message"
+            } else {
+                message
+            }
             deviceAddress?.let { address ->
-                // Update the messages in BluetoothService
                 val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
                 val messages = currentMessagesMap[address]?.toMutableList()
                     ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
-                messages.add(Message(message, false))
+                messages.add(Message(displayMessage, false))
                 currentMessagesMap[address] = messages
-
                 (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
             }
         }

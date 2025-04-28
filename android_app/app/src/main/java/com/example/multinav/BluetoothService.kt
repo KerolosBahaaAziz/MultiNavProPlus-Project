@@ -75,6 +75,8 @@ class BluetoothService(private val context: Context) {
 
     private var isReceiverRegistered = false
 
+    private var leScanCallback: ScanCallback? = null
+
     // Helper function to get the key for a device (name or address if name is null/blank)
     @SuppressLint("MissingPermission")
     private fun getDeviceKey(device: BluetoothDevice): String {
@@ -995,11 +997,27 @@ class BluetoothService(private val context: Context) {
         return null
     }
 
+    @SuppressLint("MissingPermission")
+    fun stopLeScan() {
+        if (!isScanning || leScanCallback == null) return
+        try {
+            bluetoothAdapter?.bluetoothLeScanner?.stopScan(leScanCallback)
+            isScanning = false
+            leScanCallback = null
+            Log.d("BLE", "Stopped LE scan")
+        } catch (e: Exception) {
+            Log.e("BLE", "Error stopping LE scan", e)
+            isScanning = false
+            leScanCallback = null
+        }
+    }
+
     // Disconnect
     @SuppressLint("MissingPermission")
     fun disconnect() {
         try {
             stopScanning()
+            stopLeScan() // Add this to ensure all scans are stopped
         } catch (e: Exception) {
             Log.e("BLE", "Error stopping scanning", e)
         }
