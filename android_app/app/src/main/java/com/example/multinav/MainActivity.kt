@@ -49,8 +49,10 @@ class MainActivity : ComponentActivity() {
           //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
-                    startDestination = Screen.Main.route,  // Change this
-                    chatViewModel = chatViewModel
+                    startDestination = Screen.DeviceList.route,  // Change this
+                    //chatViewModel = chatViewModel,
+                    auth = auth,
+                    database = database
                 )
             }
         }

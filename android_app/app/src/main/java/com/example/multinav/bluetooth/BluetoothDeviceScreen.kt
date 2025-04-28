@@ -1,5 +1,6 @@
 package com.example.multinav.bluetooth
 
+import android.bluetooth.BluetoothDevice
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +34,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BluetoothDeviceScreen(
+    onDeviceSelected: (BluetoothDevice) -> Unit, // Added parameter
     state: BluetoothUiState,
     bluetoothViewModel: BluetoothViewModel = viewModel(),
     navController: NavController
