@@ -15,10 +15,12 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 
@@ -30,10 +32,16 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
-fun LoginScreen(modifier: Modifier = Modifier,viewModel: LoginViewModel = viewModel()) {
-
+fun LoginScreen(
+    modifier: Modifier = Modifier,
+    auth: FirebaseAuth,
+    navigateToSignUp: () -> Unit,
+    navigateToMainScreen: () -> Unit) {
+    val viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(auth))
+    val loginState  = viewModel.loginState
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -93,6 +101,8 @@ fun LoginScreen(modifier: Modifier = Modifier,viewModel: LoginViewModel = viewMo
         Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = {
+                viewModel.login()
+
                 println("Username: ${viewModel.username}, Password: ${viewModel.password}")
             },
             modifier = Modifier.fillMaxWidth(),
@@ -106,7 +116,7 @@ fun LoginScreen(modifier: Modifier = Modifier,viewModel: LoginViewModel = viewMo
                 text = "Don’t have an account?",
                 color = Color.Black,
                 modifier = Modifier.clickable {
-                    println("Navigate to Sign Up")
+                    navigateToSignUp()
                 }
 
                 )
@@ -114,10 +124,43 @@ fun LoginScreen(modifier: Modifier = Modifier,viewModel: LoginViewModel = viewMo
                 text = "Sign Up",
                 color = Color.Blue,
                 modifier = Modifier.clickable {
-                    println("Navigate to Sign Up")
+                    navigateToSignUp()
                 }
                 )
         }
+        Spacer(modifier = Modifier.height(24.dp))
+        when (loginState ) {
+            is LoginViewModel.LoginState.Loading -> {
+                CircularProgressIndicator()
+            }
+            is LoginViewModel.LoginState.Success -> {
+                Text("Login Successful!", color = Color.Green)
+                navigateToMainScreen()
+            }
+            is LoginViewModel.LoginState.Error -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = (loginState as LoginViewModel.LoginState.Error).message,
+                        color = Color.Red
+                    )
+                    if (loginState.message.contains("verify your email", ignoreCase = true)) {
+                        viewModel.verificationMessage?.let { message ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = message,
+                                color = Color.Blue
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(onClick = { viewModel.resendVerificationEmail() }) {
+                                Text("Resend Verification Email")
+                            }
+                        }
+                    }
+                }
+            }
+            else -> {}
+        }
+
 
 
     }

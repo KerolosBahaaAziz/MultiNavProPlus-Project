@@ -15,6 +15,7 @@ import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.sing_up.SingUpScreen
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
@@ -40,10 +41,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
+        val auth = FirebaseAuth.getInstance()
         setContent {
             MultiNavTheme {
-                SingUpScreen()
-             //LoginScreen()
+          //     SingUpScreen(auth = auth)
+                Navigation(
+                    bluetoothViewModel = bluetoothViewModel,
+                    chatViewModel = chatViewModel,
+                    auth = auth,
+                    startDestination = "login")
             }
         }
     }

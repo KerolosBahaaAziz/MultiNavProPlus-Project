@@ -1,11 +1,7 @@
 package com.example.multinav.sing_up
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,19 +12,15 @@ import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,8 +30,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
+
 @Composable
-fun SingUpScreen(modifier: Modifier = Modifier,viewModel: SingUpViewModel = viewModel()) {
+fun SingUpScreen(
+    modifier: Modifier = Modifier,
+    auth: FirebaseAuth,
+    navigateToLogin: () -> Unit) {
+    val viewModel: SingUpViewModel = viewModel(factory = SingUpViewModelFactory(auth))
     val uiState = viewModel.uiState
     Column(
         modifier = Modifier
@@ -125,13 +123,9 @@ fun SingUpScreen(modifier: Modifier = Modifier,viewModel: SingUpViewModel = view
         Button(
             onClick = {
                 viewModel.singUp()
-                println("Sign Up Clicked: " +
-                            "FirstName=${viewModel.firstName}, " +
-                        "LastName=${viewModel.lastName}, " +
-                        "Email=${viewModel.email}, " +
-                        "Password=${viewModel.password}")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = uiState != SingUpViewModel.UiState.VerificationPending
         ) {
             Text("Sign Up")
         }
@@ -139,8 +133,25 @@ fun SingUpScreen(modifier: Modifier = Modifier,viewModel: SingUpViewModel = view
             is SingUpViewModel.UiState.Loading -> {
                 CircularProgressIndicator()
             }
+            is SingUpViewModel.UiState.VerificationPending -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = viewModel.verificationMessage ?: "Please verify your email.",
+                        color = Color.Blue
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = { viewModel.resendVerificationEmail() }) {
+                        Text("Resend Verification Email")
+                    }
+                    TextButton(onClick = { viewModel.checkEmailVerification(navigateToLogin) }) {
+                        Text("I've Verified My Email")
+                    }
+                }
+            }
+
             is SingUpViewModel.UiState.Success -> {
-                Text("Sign up successful!", color = Color.Green)
+                Text(viewModel.verificationMessage ?: "Sign up successful! ", color = Color.Green)
+                navigateToLogin()
             }
             is SingUpViewModel.UiState.Error -> {
                 Text("Error: ${uiState.errorMessage}", color = Color.Red)

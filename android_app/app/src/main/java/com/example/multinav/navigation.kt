@@ -10,7 +10,10 @@ import com.example.multinav.bluetooth.BluetoothDeviceScreen
 import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
+import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.main_screen.MainScreen
+import com.example.multinav.sing_up.SingUpScreen
+import com.google.firebase.auth.FirebaseAuth
 
 sealed class Screen(val route: String) {
     object Main : Screen("main")
@@ -21,14 +24,17 @@ sealed class Screen(val route: String) {
     object JoyStick : Screen("joystick"){
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
     }
+    object Login : Screen("login")
+    object SignUp : Screen("signup")
 
 }
 
 @Composable
 fun Navigation(
     bluetoothViewModel: BluetoothViewModel,
-    startDestination: String = Screen.DeviceList.route,
-    chatViewModel: ChatViewModel
+    startDestination: String,
+    chatViewModel: ChatViewModel,
+    auth: FirebaseAuth
 
 ) {
     val context = LocalContext.current
@@ -40,6 +46,14 @@ fun Navigation(
         navController = navController,
         startDestination = startDestination
     ) {
+        composable(Screen.Login.route) {
+            LoginScreen(auth = auth,
+                navigateToSignUp = { navController.navigate(Screen.SignUp.route) },
+                navigateToMainScreen = { navController.navigate(Screen.Main.route) })
+        }
+        composable(Screen.SignUp.route) {
+            SingUpScreen(auth = auth, navigateToLogin = { navController.popBackStack() })  //Pass navController
+        }
         composable(Screen.Main.route) {
             MainScreen(
                 onNavigateToDevices = {
