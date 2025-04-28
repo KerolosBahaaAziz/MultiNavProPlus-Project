@@ -3,37 +3,32 @@ package com.example.multinav.sing_up
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 class SingUpViewModel(
     private val auth: FirebaseAuth
 ) : ViewModel() {
-    var firstName by  mutableStateOf("")
-    var lastName by  mutableStateOf("")
-    var email by  mutableStateOf("")
-    var password by  mutableStateOf("")
+    var firstName by mutableStateOf("")
+    var lastName by mutableStateOf("")
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
     var passwordVisible by mutableStateOf(false)
     var emailError by mutableStateOf<String?>(null)
     var passwordError by mutableStateOf<String?>(null)
     var uiState by mutableStateOf<UiState>(UiState.Initial)
         private set
     var verificationMessage by mutableStateOf<String?>(null)
-
-
 
     fun validateInputs(updateUiState: Boolean = true): Boolean {
         emailError = null
@@ -73,9 +68,9 @@ class SingUpViewModel(
                 } else {
                     continuation.resumeWithException(task.exception ?: Exception("Failed to send verification email"))
                 }
-
             }
     }
+
     fun singUp() {
         if (!validateInputs(updateUiState = true)) {
             return
@@ -88,12 +83,12 @@ class SingUpViewModel(
                 user?.let {
                     val result = sendVerificationEmail(it)
                     if (result.isSuccess) {
-                        uiState = UiState.VerificationPending // New state to indicate verification is pending
+                        uiState = UiState.VerificationPending
                         verificationMessage = "Verification email sent to $email. Please verify your email to complete sign-up."
-                        auth.signOut() // Sign out to prevent login until verified
+                        // Change: Removed auth.signOut() to keep user signed in for verification check
                     } else {
                         uiState = UiState.Error("Failed to send verification email: ${result.exceptionOrNull()?.message}")
-                        user.delete() // Clean up the user if verification email fails
+                        user.delete()
                     }
                 } ?: run {
                     uiState = UiState.Error("User creation failed.")
@@ -104,6 +99,7 @@ class SingUpViewModel(
             }
         }
     }
+
     fun resendVerificationEmail() {
         val user = auth.currentUser
         if (user != null) {
@@ -131,12 +127,17 @@ class SingUpViewModel(
                 try {
                     user.reload().await() // Refresh user data
                     if (user.isEmailVerified) {
+                        // Change: Set UiState to Success and update verification message
                         uiState = UiState.Success
                         verificationMessage = "Email verified successfully!"
-                        onVerified() // Navigate to login or next screen
+                        // Change: Sign out user after verification to prevent unauthorized access
+                        auth.signOut()
+                        // Change: Call onVerified to navigate to LoginScreen
+                        onVerified()
                     } else {
+                        // Change: Keep UiState as VerificationPending and provide feedback
                         uiState = UiState.VerificationPending
-                        verificationMessage = "Email not yet verified. Please check your inbox."
+                        verificationMessage = "Email not yet verified. Please check your inbox or resend the verification email."
                     }
                 } catch (e: Exception) {
                     uiState = UiState.Error("Failed to check email verification: ${e.message}")
@@ -147,19 +148,14 @@ class SingUpViewModel(
         }
     }
 
-sealed interface UiState {
-    object Initial : UiState
-    object Loading : UiState
-    object Success : UiState
-    object VerificationPending : UiState
-    data class Error(val errorMessage: String) : UiState
-
-
+    sealed interface UiState {
+        object Initial : UiState
+        object Loading : UiState
+        object Success : UiState
+        object VerificationPending : UiState
+        data class Error(val errorMessage: String) : UiState
+    }
 }
-
-}
-
-
 
 class SingUpViewModelFactory(
     private val auth: FirebaseAuth
