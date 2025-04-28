@@ -49,16 +49,10 @@ class MainActivity : ComponentActivity() {
           //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
-<<<<<<< Updated upstream
-                    startDestination = Screen.DeviceList.route,  // Change this
-                    //chatViewModel = chatViewModel,
-=======
-                  //  chatViewModel = chatViewModel,
+                    chatViewModel = chatViewModel,
                     database = database,
->>>>>>> Stashed changes
                     auth = auth,
-                    database = database
-                )
+                    startDestination = "login")
             }
         }
     }
