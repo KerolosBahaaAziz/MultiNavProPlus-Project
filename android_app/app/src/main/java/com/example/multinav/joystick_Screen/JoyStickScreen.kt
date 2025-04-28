@@ -1,10 +1,11 @@
 @file:JvmName("JoyStickViewModelKt")
-
+@file:Suppress("PreviewAnnotationInFunctionWithParameters")
 
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.util.Log
+import androidx.compose.foundation.background
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,13 +32,22 @@ import androidx.compose.ui.Modifier
 
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 
 
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,6 +56,7 @@ import com.example.desgin.constants.Modes
 import com.example.joystick_Screen.JoyStickViewModel
 import com.example.joystick_Screen.JoyStickViewModelFactory
 import com.example.multinav.BluetoothService
+import com.example.multinav.R
 import com.example.multinav.joystick_Screen.MyAnalogJoystick
 
 import com.example.widgets.BluetoothReaders
@@ -57,14 +68,32 @@ import com.example.widgets.RadioButtonMode
 import kotlin.math.roundToInt
 
 @Composable
+fun CircleIconButton(
+    icon: @Composable () -> Unit, // Changed to accept a composable lambda
+    contentDescription: String,
+    onCircleButtonClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onCircleButtonClick,
+        modifier = modifier
+            .size(48.dp)
+            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+    ) {
+        icon()
+    }
+}
+
+@Preview(showSystemUi = true)
+@Composable
 fun JoyStickScreen(
     modifier: Modifier = Modifier,
     bluetoothService: BluetoothService,
     deviceAddress: String,
-    isMobileDevice: Boolean // Add isMobileDevice
+    isMobileDevice: Boolean
 ) {
     val viewModel: JoyStickViewModel = viewModel(
-        factory = JoyStickViewModelFactory(bluetoothService, deviceAddress, isMobileDevice) // Pass isMobileDevice
+        factory = JoyStickViewModelFactory(bluetoothService, deviceAddress, isMobileDevice)
     )
 
     val context = LocalContext.current
@@ -115,6 +144,7 @@ fun JoyStickScreen(
                     modeName = Modes.MODE_THREE
                 )
             }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -128,38 +158,68 @@ fun JoyStickScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Left Column (directional arrows)
                     Column(
                         modifier = Modifier.padding(8.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         CircleIconButton(
-                            icon = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Up",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Up",
                             onCircleButtonClick = {},
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Row {
                             CircleIconButton(
-                                icon = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "",
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowLeft,
+                                        contentDescription = "Left",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Left",
                                 onCircleButtonClick = {},
                             )
                             Spacer(modifier = Modifier.width(32.dp))
                             CircleIconButton(
-                                icon = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "",
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = "Right",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Right",
                                 onCircleButtonClick = {},
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         CircleIconButton(
-                            icon = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Down",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Down",
                             onCircleButtonClick = {},
                         )
                     }
 
+                    // Middle Column (joystick)
                     Column(
                         modifier = Modifier.padding(8.dp),
                         verticalArrangement = Arrangement.Center,
@@ -177,34 +237,68 @@ fun JoyStickScreen(
                         )
                     }
 
+                    // Right Column (PlayStation buttons)
                     Column(
                         modifier = Modifier.padding(8.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Top: Triangle
                         CircleIconButton(
-                            icon = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "",
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_triangle),
+                                    contentDescription = "Triangle",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Triangle",
                             onCircleButtonClick = {},
                         )
                         Spacer(modifier = Modifier.height(8.dp))
+
+                        // Middle: Square (left) and Circle (right)
                         Row {
                             CircleIconButton(
-                                icon = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "",
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_square),
+                                        contentDescription = "Square",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Square",
                                 onCircleButtonClick = {},
                             )
                             Spacer(modifier = Modifier.width(32.dp))
                             CircleIconButton(
-                                icon = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "",
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_circle),
+                                        contentDescription = "Circle",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Circle",
                                 onCircleButtonClick = {},
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
+
+                        // Bottom: Cross
                         CircleIconButton(
-                            icon = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "",
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_x),
+                                    contentDescription = "Cross",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Cross",
                             onCircleButtonClick = {},
                         )
                     }
@@ -249,6 +343,7 @@ fun JoyStickScreen(
                     }
                 )
             }
+
             Box(
                 modifier = Modifier
                     .padding(16.dp)
