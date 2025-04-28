@@ -13,10 +13,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -33,19 +37,19 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import kotlinx.coroutines.launch
 
 sealed class Screen(
     val route: String,
     val label: String? = null,
-    val icon: Int? = null // Change to Int for drawable resource ID
+    val icon: Int? = null
 ) {
-   // object Main : Screen("main")
     object DeviceList : Screen("deviceList", label = "Device", icon = R.drawable.ic_device)
     object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
     }
-    object JoyStick : Screen("joystick", label = "Joystick", icon = R.drawable.ic_joystick) {
-        fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
+    object JoyStick : Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) { // Add deviceAddress to route
+        fun createRoute(deviceAddress: String) = "joystick/$deviceAddress" // Fix createRoute
     }
 }
 
@@ -58,21 +62,24 @@ fun Navigation(
     val context = LocalContext.current
     val navController = rememberNavController()
     val bluetoothService = bluetoothViewModel.bluetoothService
+    val snackbarHostState = remember { SnackbarHostState() } // Add SnackbarHostState
+    val coroutineScope = rememberCoroutineScope() // Add coroutine scope for showing Snackbar
 
     // Get the current route to determine the selected tab
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/{deviceAddress}")
 
     // Extract the base route for Chat to compare correctly
-    val chatBaseRoute = Screen.Chat.route.substringBefore("/{deviceAddress}") // This will be "chat"
+    val chatBaseRoute = Screen.Chat.route.substringBefore("/{deviceAddress}")
     val shouldShowNavBar = currentRoute != chatBaseRoute
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }, // Add SnackbarHost to Scaffold
         bottomBar = {
             AnimatedVisibility(
                 visible = shouldShowNavBar,
-                enter = slideInVertically(initialOffsetY = { it }), // Slide up when appearing
-                exit = slideOutVertically(targetOffsetY = { it })   // Slide down when disappearing
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it })
             ) {
                 NavigationBar(
                     modifier = Modifier.height(56.dp),
@@ -97,14 +104,35 @@ fun Navigation(
                                         fontSize = 12.sp
                                     )
                                 },
-                                selected = currentRoute == screen.route,
+                                selected = currentRoute == screen.route.substringBefore("/{deviceAddress}"),
                                 onClick = {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.startDestinationId) {
-                                            saveState = true
+                                    if (screen.route == Screen.JoyStick.route) {
+                                        // Find the connected device
+                                        val connectedDevice = bluetoothViewModel.uiState.value.let { state ->
+                                            state.pairedDevices.find { it.isConnected } ?: state.scannedDevices.find { it.isConnected }
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                        if (connectedDevice != null) {
+                                            navController.navigate(Screen.JoyStick.createRoute(connectedDevice.address)) {
+                                                popUpTo(navController.graph.startDestinationId) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        } else {
+                                            // Show Snackbar if no device is connected
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar("Connect to device first")
+                                            }
+                                        }
+                                    } else {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 }
                             )
@@ -119,20 +147,17 @@ fun Navigation(
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
-//            composable(Screen.Main.route) {
-//                MainScreen(
-//                    onNavigateToDevices = {
-//                        navController.navigate(Screen.DeviceList.route)
-//                    },
-//                    onNavigateToJoystick = {
-//                        navController.navigate(Screen.JoyStick.route)
-//                    }
-//                )
-//            }
-            composable(Screen.JoyStick.route) {
-                JoyStickScreen(
-                    bluetoothService = bluetoothService
-                )
+            composable(Screen.JoyStick.route) { backStackEntry ->
+                val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
+                deviceAddress?.let {
+                    JoyStickScreen(
+                        bluetoothService = bluetoothService,
+                        deviceAddress = it,
+                        isMobileDevice = bluetoothService.isMobileDevice
+                    )
+                } ?: run {
+                    Text("No device address provided", modifier = Modifier.padding(16.dp))
+                }
             }
             composable(Screen.DeviceList.route) {
                 BluetoothDeviceScreen(
