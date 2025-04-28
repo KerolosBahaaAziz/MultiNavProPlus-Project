@@ -119,6 +119,19 @@ class BluetoothViewModel(
     fun startScanning() {
         viewModelScope.launch {
             try {
+                // Check if location services are enabled
+                if (!bluetoothService.isLocationEnabled()) {
+                    _uiState.update {
+                        it.copy(
+                            isScanning = false,
+                            errorMessage = "Location services are disabled. Please enable location to scan for devices."
+                        )
+                    }
+                    bluetoothService.enableLocation()
+                    return@launch
+                }
+
+                // Proceed with scanning if location is enabled
                 Log.d("BluetoothViewModel", "Starting BLE scan...")
                 bluetoothService.stopScanning()
                 Log.d("BluetoothViewModel", "Stopped previous scan")
@@ -150,9 +163,9 @@ class BluetoothViewModel(
                         }
                     }
                 }
-                Log.d("BluetoothViewModel", "Scan started, waiting 15 seconds...")
+                Log.d("BluetoothViewModel", "Scan started, waiting 30 seconds...")
                 delay(30000)
-                Log.d("BluetoothViewModel", "15 seconds elapsed, stopping scan")
+                Log.d("BluetoothViewModel", "30 seconds elapsed, stopping scan")
                 stopScanning()
             } catch (e: Exception) {
                 Log.e("BluetoothViewModel", "Scan failed with error: ${e.message}", e)

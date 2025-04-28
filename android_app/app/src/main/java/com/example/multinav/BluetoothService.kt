@@ -8,11 +8,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
 import android.provider.Settings
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.example.multinav.chat.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -130,6 +132,18 @@ class BluetoothService(private val context: Context) {
 //            _messagesPerDevice.putAll(gson.fromJson(savedMessagesJson, type))
 //            _messagesFlow.value = _messagesPerDevice.toMap()
 //        }
+    }
+
+     fun isLocationEnabled(): Boolean {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+
+     fun enableLocation() {
+        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        ContextCompat.startActivity(context, intent, null)
     }
 
     // Start advertising to be discovered
