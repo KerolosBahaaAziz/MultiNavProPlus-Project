@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
             MultiNavTheme {
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
-                    startDestination = Screen.Main.route,  // Change this
+                    startDestination = Screen.DeviceList.route,  // Change this
                     chatViewModel = chatViewModel
                 )
             }
