@@ -14,6 +14,7 @@ import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.main_screen.MainScreen
 import com.example.multinav.sing_up.SingUpScreen
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 sealed class Screen(val route: String) {
     object Main : Screen("main")
@@ -34,7 +35,8 @@ fun Navigation(
     bluetoothViewModel: BluetoothViewModel,
     startDestination: String,
     chatViewModel: ChatViewModel,
-    auth: FirebaseAuth
+    auth: FirebaseAuth,
+    database: FirebaseDatabase,
 
 ) {
     val context = LocalContext.current
@@ -52,7 +54,10 @@ fun Navigation(
                 navigateToMainScreen = { navController.navigate(Screen.Main.route) })
         }
         composable(Screen.SignUp.route) {
-            SingUpScreen(auth = auth, navigateToLogin = { navController.popBackStack() })  //Pass navController
+            SingUpScreen(
+                auth = auth,
+                database = database,
+                navigateToLogin = { navController.popBackStack() })  //Pass navController
         }
         composable(Screen.Main.route) {
             MainScreen(

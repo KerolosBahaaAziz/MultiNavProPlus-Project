@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -17,13 +18,16 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 class SingUpViewModel(
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
 ) : ViewModel() {
     var firstName by mutableStateOf("")
     var lastName by mutableStateOf("")
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var passwordVisible by mutableStateOf(false)
+    var firstNameError by mutableStateOf<String?>(null)
+    var lastNameError by mutableStateOf<String?>(null)
     var emailError by mutableStateOf<String?>(null)
     var passwordError by mutableStateOf<String?>(null)
     var uiState by mutableStateOf<UiState>(UiState.Initial)
@@ -31,9 +35,37 @@ class SingUpViewModel(
     var verificationMessage by mutableStateOf<String?>(null)
 
     fun validateInputs(updateUiState: Boolean = true): Boolean {
+        firstNameError = null
+        lastNameError = null
         emailError = null
         passwordError = null
 
+        when {
+            firstName.isBlank() -> {
+                firstNameError = "First name cannot be empty"
+                if (updateUiState) uiState = UiState.Error("First name cannot be empty")
+                return false
+            }
+            !firstName.matches(Regex("^[A-Za-z]+$")) -> {
+                firstNameError = "First name must contain only letters"
+                if (updateUiState) uiState = UiState.Error("First name must contain only letters")
+                return false
+            }
+        }
+
+        // Change: Validate lastName
+        when {
+            lastName.isBlank() -> {
+                lastNameError = "Last name cannot be empty"
+                if (updateUiState) uiState = UiState.Error("Last name cannot be empty")
+                return false
+            }
+            !lastName.matches(Regex("^[A-Za-z]+$")) -> {
+                lastNameError = "Last name must contain only letters"
+                if (updateUiState) uiState = UiState.Error("Last name must contain only letters")
+                return false
+            }
+        }
         when {
             email.isBlank() -> {
                 emailError = "Email cannot be empty"
@@ -59,7 +91,29 @@ class SingUpViewModel(
         return true
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun sanitizeEmail(email: String): String {
+        return email.replace(".", "-")
+    }
+    private suspend fun saveUserData(user: FirebaseUser) {
+        val sanitizedEmail = sanitizeEmail(user.email ?: email)
+        try {
+            val userData = mapOf(
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "paid" to false,
+            )
+            database.reference
+                .child(sanitizedEmail)
+                .setValue(userData)
+                .await()
+        } catch (e: Exception) {
+            uiState = UiState.Error("Failed to save user data: ${e.message}")
+            Log.e("SingUp", "Failed to save user data", e)
+        }
+    }
+
+
+
     private suspend fun sendVerificationEmail(user: FirebaseUser): Result<Void?> = suspendCancellableCoroutine { continuation ->
         user.sendEmailVerification()
             .addOnCompleteListener { task ->
@@ -128,6 +182,7 @@ class SingUpViewModel(
                     user.reload().await() // Refresh user data
                     if (user.isEmailVerified) {
                         // Change: Set UiState to Success and update verification message
+                        saveUserData(user)
                         uiState = UiState.Success
                         verificationMessage = "Email verified successfully!"
                         // Change: Sign out user after verification to prevent unauthorized access

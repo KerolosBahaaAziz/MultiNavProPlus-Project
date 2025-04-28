@@ -33,11 +33,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 @Composable
 fun SingUpScreen(
     modifier: Modifier = Modifier,
     auth: FirebaseAuth,
+    database: FirebaseDatabase,
     navigateToLogin: () -> Unit) {
     val viewModel: SingUpViewModel = viewModel(factory = SingUpViewModelFactory(auth))
     val uiState = viewModel.uiState

@@ -41,6 +41,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-auth")
     implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
     implementation("androidx.compose.material:material-icons-core")
