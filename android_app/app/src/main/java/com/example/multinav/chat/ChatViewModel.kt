@@ -129,14 +129,41 @@ class ChatViewModel(
     }
 
     private fun startMessageListener() {
-        Log.d("ChatViewModel", "Starting message listener for device: $deviceAddress")
-        bluetoothService.startListening { receivedMessage, fromDeviceAddress ->
-            Log.d("ChatViewModel", "Message received via listener: $receivedMessage from $fromDeviceAddress")
+        bluetoothService.startListening { floats, fromDeviceAddress ->
+//            Log.d("ChatViewModel", "Raw message received via listener from $fromDeviceAddress")
             // Only process the message if it's from the device associated with this ChatViewModel
             if (fromDeviceAddress == deviceAddress) {
-                receiveMessage(receivedMessage)
+//                receiveMessage(floats)
             }
         }
+    }
+
+
+
+    // Helper function to convert 2-byte pairs to floats
+    private fun bytesToFloats(bytes: ByteArray): List<Float> {
+        if (bytes.size % 2 != 0) {
+            Log.w("ChatViewModel", "Byte array length is not a multiple of 2, padding with 0")
+            // Pad with a zero byte if the length is odd
+            val paddedBytes = bytes + byteArrayOf(0)
+            return processBytePairs(paddedBytes)
+        }
+        return processBytePairs(bytes)
+    }
+
+    private fun processBytePairs(bytes: ByteArray): List<Float> {
+        val floats = mutableListOf<Float>()
+        for (i in bytes.indices step 2) {
+            // Ensure we have at least 2 bytes to process
+            if (i + 1 < bytes.size) {
+                // Combine 2 bytes into a short (16-bit integer)
+                val shortValue = ((bytes[i].toInt() and 0xFF) shl 8) or (bytes[i + 1].toInt() and 0xFF)
+                // Convert the short to a float (you can adjust the scaling as needed)
+                val floatValue = shortValue.toFloat()
+                floats.add(floatValue)
+            }
+        }
+        return floats
     }
 
     fun connectToDevice(address: String) {
@@ -232,16 +259,11 @@ class ChatViewModel(
     fun receiveMessage(message: String) {
         viewModelScope.launch {
             Log.d("ChatViewModel", "Adding system message to UI: $message for device: $deviceAddress")
-            val displayMessage = if (message.contains("�") || message.startsWith("Raw message bytes:") || message.startsWith("Raw bytes:")) {
-                "Received invalid data: $message"
-            } else {
-                message
-            }
             deviceAddress?.let { address ->
                 val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
                 val messages = currentMessagesMap[address]?.toMutableList()
                     ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
-                messages.add(Message(displayMessage, false))
+                messages.add(Message(message, false))
                 currentMessagesMap[address] = messages
                 (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
             }

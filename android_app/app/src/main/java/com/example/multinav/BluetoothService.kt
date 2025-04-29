@@ -59,7 +59,8 @@ class BluetoothService(private val context: Context) {
     private val _messagesPerDevice = mutableMapOf<String, MutableList<Message>>()
     private val _messagesFlow = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
     val messagesFlow: StateFlow<Map<String, List<Message>>> = _messagesFlow
-    private var messageListener: ((String, String) -> Unit)? = null // (message, deviceAddress)
+
+    private var messageListener: ((List<Float>, String) -> Unit)? = null // (floats, deviceAddress)
 
     private val scanResults = mutableMapOf<String, BluetoothDevice>()
 
@@ -601,7 +602,6 @@ class BluetoothService(private val context: Context) {
     }
 
     // GATT server callback
-// GATT server callback
     private val gattServerCallback = object : BluetoothGattServerCallback() {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
@@ -638,20 +638,23 @@ class BluetoothService(private val context: Context) {
         ) {
             Log.d("BLE", "Server received write request for ${characteristic.uuid}")
             if (characteristic.uuid == BLEConfig.WRITE_CHARACTERISTIC_UUID) {
-                // Convert the byte array to a hex string
+                // Log the raw bytes as hex for debugging
                 val hexMessage = bytesToHex(value)
-                Log.d("BLE", "Server received hex message: $hexMessage from ${device.address}")
+                Log.d("BLE", "Server received raw message (hex): $hexMessage from ${device.address}")
                 device.address?.let { deviceAddress ->
-                    // Add the hex message to the device's message list
+                    // Convert the raw bytes to floats
+                    val floats = bytesToFloats(value)
+                    val displayMessage = "Floats: [${floats.joinToString(", ")}]"
+                    // Add the formatted float message to the device's message list
                     val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
-                    messages.add(Message("Hex: $hexMessage", false))
+                    messages.add(Message(displayMessage, false))
                     _messagesFlow.value = _messagesPerDevice.toMap()
-                    // Invoke the message listener with the hex message and device address
+                    // Invoke the message listener with the float values and device address
                     messageListener?.let { listener ->
-                        Log.d("BLE", "Invoking listener with hex message: $hexMessage for device: $deviceAddress")
-                        listener(hexMessage, deviceAddress)
-                    } ?: Log.w("BLE", "No listener set for received hex message: $hexMessage")
-                } ?: Log.e("BLE", "Device address is null, cannot process hex message: $hexMessage")
+                        Log.d("BLE", "Invoking listener with floats for device: $deviceAddress")
+                        listener(floats, deviceAddress)
+                    } ?: Log.w("BLE", "No listener set for received raw message")
+                } ?: Log.e("BLE", "Device address is null, cannot process raw message")
 
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
@@ -679,8 +682,6 @@ class BluetoothService(private val context: Context) {
             }
         }
     }
-
-
     // GATT client callback
     private val gattClientCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
@@ -817,7 +818,7 @@ class BluetoothService(private val context: Context) {
         ) {
             try {
                 val currentTime = System.currentTimeMillis()
-                // Convert the byte array to a hex string
+                // Convert the byte array to a hex string for logging and debouncing
                 val hexMessage = bytesToHex(value)
 
                 // Debounce messages (compare hex strings)
@@ -837,13 +838,17 @@ class BluetoothService(private val context: Context) {
                 }
                 if (characteristic.uuid == expectedUuid) {
                     gatt.device.address?.let { deviceAddress ->
-                        // Add the hex message to the device's message list
+                        // Convert the raw bytes to floats
+                        val floats = bytesToFloats(value)
+                        val displayMessage = "Floats: [${floats.joinToString(", ")}]"
+                        // Add the formatted float message to the device's message list
                         val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
-                        messages.add(Message(hexMessage, false))
+                        messages.add(Message(displayMessage, false))
                         _messagesFlow.value = _messagesPerDevice.toMap()
-                        messageListener?.invoke(hexMessage, deviceAddress) ?: Log.w(
+                        // Invoke the message listener with the float values and device address
+                        messageListener?.invoke(floats, deviceAddress) ?: Log.w(
                             "BLE",
-                            "No listener set for received hex message: $hexMessage on client"
+                            "No listener set for received floats on client"
                         )
                     } ?: Log.e("BLE", "Device address is null, cannot process hex message: $hexMessage")
                 } else {
@@ -894,6 +899,32 @@ class BluetoothService(private val context: Context) {
             }
         }
     }
+
+    private fun bytesToFloats(bytes: ByteArray): List<Float> {
+        if (bytes.size % 2 != 0) {
+            Log.w("BLE", "Byte array length is not a multiple of 2, padding with 0")
+            // Pad with a zero byte if the length is odd
+            val paddedBytes = bytes + byteArrayOf(0)
+            return processBytePairs(paddedBytes)
+        }
+        return processBytePairs(bytes)
+    }
+
+    private fun processBytePairs(bytes: ByteArray): List<Float> {
+        val floats = mutableListOf<Float>()
+        for (i in bytes.indices step 2) {
+            // Ensure we have at least 2 bytes to process
+            if (i + 1 < bytes.size) {
+                // Combine 2 bytes into a short (16-bit integer)
+                val shortValue = ((bytes[i].toInt() and 0xFF) shl 8) or (bytes[i + 1].toInt() and 0xFF)
+                // Convert the short to a float (you can adjust the scaling as needed)
+                val floatValue = shortValue.toFloat()
+                floats.add(floatValue)
+            }
+        }
+        return floats
+    }
+
     private fun bytesToHex(bytes: ByteArray): String {
         return bytes.joinToString(" ") { byte ->
             String.format("%02X", byte)
@@ -956,7 +987,7 @@ class BluetoothService(private val context: Context) {
     }
 
 
-    fun startListening(listener: (String, String) -> Unit) {
+    fun startListening(listener: (List<Float>, String) -> Unit) {
         Log.d("BLE", "Setting new message listener")
         messageListener = listener
     }
