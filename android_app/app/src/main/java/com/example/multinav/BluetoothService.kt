@@ -1122,6 +1122,68 @@ class BluetoothService(private val context: Context) {
         disconnect()
     }
 
+    @SuppressLint("MissingPermission")
+    suspend fun sendVoiceMessage(audioBytes: ByteArray): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (!_isConnected.value) {
+                    Log.e("BLE", "Cannot send voice message: Not connected")
+                    return@withContext false
+                }
+
+                // Chunk the audio data if necessary (Bluetooth MTU is typically 20-512 bytes)
+                val mtu = 512 // Adjust based on your device's MTU
+                val chunkSize = mtu - 3 // Leave room for GATT overhead
+                var offset = 0
+
+                while (offset < audioBytes.size) {
+                    val chunkLength = minOf(chunkSize, audioBytes.size - offset)
+                    val chunk = audioBytes.copyOfRange(offset, offset + chunkLength)
+                    val success = sendAsClient(chunk)
+                    if (!success) {
+                        Log.e("BLE", "Failed to send voice message chunk at offset $offset")
+                        return@withContext false
+                    }
+                    offset += chunkLength
+                    delay(50) // Small delay to avoid overwhelming the Bluetooth stack
+                }
+
+                Log.d("BLE", "Voice message sent successfully, total bytes: ${audioBytes.size}")
+                return@withContext true
+            } catch (e: Exception) {
+                Log.e("BLE", "Send voice message error", e)
+                return@withContext false
+            }
+        }
+    }
+
+    private suspend fun sendAsClient(data: ByteArray): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val characteristic = writeCharacteristic
+                if (characteristic == null) {
+                    Log.e("BLE", "Write characteristic not found")
+                    return@withContext false
+                }
+
+                characteristic.value = data
+                characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                val success = gattClient?.writeCharacteristic(characteristic) ?: false
+                if (!success) {
+                    Log.e("BLE", "Failed to write characteristic")
+                    return@withContext false
+                }
+
+                // Wait for the write to complete (BluetoothGattCallback.onCharacteristicWrite)
+                delay(100) // Adjust delay as needed
+                true
+            } catch (e: Exception) {
+                Log.e("BLE", "Error sending data as client", e)
+                false
+            }
+        }
+    }
+
 
     sealed class ConnectionStatus {
         object Disconnected : ConnectionStatus()

@@ -2,17 +2,26 @@ package com.example.multinav.chat
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
+import android.media.MediaRecorder
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.multinav.BluetoothService
 import com.example.multinav.BluetoothService.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileInputStream
+import java.nio.file.Files.delete
 
 
 data class Message(val text: String, val isSentByUser: Boolean)
@@ -47,7 +56,11 @@ class ChatViewModel(
 
     val messages: StateFlow<List<Message>> = _messages
 
+    private val _isRecording = mutableStateOf(false)
+    val isRecording: State<Boolean> = _isRecording
 
+    private var mediaRecorder: MediaRecorder? = null
+    private var audioFile: File? = null
 
 
     init {
@@ -285,9 +298,31 @@ class ChatViewModel(
         }
     }
 
-    fun sendVoice() {
-        receiveMessage("Voice messages not implemented yet")
+    fun sendVoice(audioBytes: ByteArray) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (audioBytes.isNotEmpty()) {
+                val success = bluetoothService.sendVoiceMessage(audioBytes)
+                if (success) {
+                    deviceAddress?.let { address ->
+                        val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
+                        val messages = currentMessagesMap[address]?.toMutableList()
+                            ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
+                        messages.add(Message("Voice message sent", true))
+                        currentMessagesMap[address] = messages.toList()
+                        (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
+                    }
+                    Log.d("ChatViewModel", "Voice message sent successfully")
+                } else {
+                    Log.e("ChatViewModel", "Failed to send voice message")
+                }
+            }
+        }
     }
+
+    fun setRecordingState(isRecording: Boolean) {
+        _isRecording.value = isRecording
+    }
+
 
     fun makePhoneCall() {
         //receiveMessage("Call functionality not implemented yet")
@@ -302,7 +337,14 @@ class ChatViewModel(
 
     override fun onCleared() {
         super.onCleared()
-
+        // Stop recording if the ViewModel is cleared
+        if (_isRecording.value) {
+            mediaRecorder?.apply {
+                stop()
+                release()
+            }
+            audioFile?.delete()
+        }
     }
 
 

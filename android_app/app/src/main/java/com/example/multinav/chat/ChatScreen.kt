@@ -1,6 +1,9 @@
 package com.example.multinav.chat
 
+import android.content.pm.PackageManager
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +14,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -20,8 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.example.multinav.AudioRecorder
 import com.example.multinav.BluetoothService
 import com.example.multinav.R
 import com.example.multinav.chat.ChatViewModel
@@ -37,6 +44,38 @@ fun ChatScreen(
 ) {
     val messages by viewModel.messages.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
+    val context = LocalContext.current
+
+    val audioRecorder = remember { AudioRecorder(context) }
+
+    // Permission launcher for RECORD_AUDIO
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d("ChatScreen", "RECORD_AUDIO permission granted")
+            // Permission granted, can proceed with recording
+        } else {
+            Log.w("ChatScreen", "RECORD_AUDIO permission denied")
+            // Optionally, show a message to the user
+        }
+    }
+
+    // Cleanup AudioRecorder when the composable is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            audioRecorder.release()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        // Check and request RECORD_AUDIO permission on start
+        val permission = android.Manifest.permission.RECORD_AUDIO
+        val context = context
+        if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+            permissionLauncher.launch(permission)
+        }
+    }
 
     LaunchedEffect(messages) {
         Log.d("ChatScreen", "Messages in UI: $messages")
@@ -131,15 +170,23 @@ fun ChatScreen(
             Spacer(modifier = Modifier.height(8.dp))
             MessageInput(
                 viewModel = viewModel,
-                enabled = connectionState is BluetoothService.ConnectionStatus.Connected
+                enabled = connectionState is BluetoothService.ConnectionStatus.Connected,
+                audioRecorder = audioRecorder
             )
         }
     }
 }
 
 @Composable
-fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
+fun MessageInput(
+    viewModel: ChatViewModel,
+    enabled: Boolean = true,
+    audioRecorder: AudioRecorder
+) {
     var inputText by rememberSaveable { mutableStateOf("") }
+    val isRecording by viewModel.isRecording
+    val context = LocalContext.current
+
 
     Row(
         modifier = Modifier
@@ -175,7 +222,10 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
             onClick = {
                 if (inputText.isNotEmpty()) {
                     val bytes = inputText.toByteArray(Charsets.UTF_8)
-                    Log.d("ChatScreen", "Sending message: $inputText, Bytes: ${bytes.joinToString()}")
+                    Log.d(
+                        "ChatScreen",
+                        "Sending message: $inputText, Bytes: ${bytes.joinToString()}"
+                    )
                     viewModel.sendMessage(inputText)
                     inputText = ""
                 }
@@ -189,12 +239,35 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
             )
         }
         IconButton(
-            onClick = { viewModel.sendVoice() },
+            onClick = {
+                if (isRecording) {
+                    // Stop recording and send the audio
+                    val audioBytes = audioRecorder.stopRecording()
+                    viewModel.setRecordingState(false)
+                    viewModel.sendVoice(audioBytes)
+                } else {
+                    // Start recording
+                    val permission = android.Manifest.permission.RECORD_AUDIO
+                    val context = context
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            permission
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        val success = audioRecorder.startRecording()
+                        if (success) {
+                            viewModel.setRecordingState(true)
+                        }
+                    } else {
+                        Log.w("ChatScreen", "RECORD_AUDIO permission not granted")
+                    }
+                }
+            },
             enabled = enabled
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_mic),
-                contentDescription = "Mic",
+                imageVector = if (isRecording) Icons.Default.Close else Icons.Default.Mic,
+                contentDescription = if (isRecording) "Stop Recording" else "Mic",
                 tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
             )
         }
@@ -202,12 +275,7 @@ fun MessageInput(viewModel: ChatViewModel, enabled: Boolean = true) {
             onClick = { viewModel.makePhoneCall() },
             enabled = enabled
         ) {
-//            Icon(
-//                painter = painterResource(R.drawable.ic_cal),
-//                contentDescription = "Call",
-//                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
-//            )
+            // Icon for phone call
         }
     }
 }
-
