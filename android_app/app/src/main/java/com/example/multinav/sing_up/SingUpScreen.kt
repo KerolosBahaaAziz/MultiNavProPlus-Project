@@ -40,7 +40,9 @@ fun SingUpScreen(
     modifier: Modifier = Modifier,
     auth: FirebaseAuth,
     database: FirebaseDatabase,
-    navigateToLogin: () -> Unit) {
+    navigateToLogin: () -> Unit,
+)
+{
     val viewModel: SingUpViewModel = viewModel(factory = SingUpViewModelFactory(auth,database))
     val uiState = viewModel.uiState
     Column(

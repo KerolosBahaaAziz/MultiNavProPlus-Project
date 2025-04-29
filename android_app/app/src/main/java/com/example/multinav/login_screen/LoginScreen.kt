@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,7 +41,8 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
     auth: FirebaseAuth,
     navigateToSignUp: () -> Unit,
-    navigateToMainScreen: () -> Unit) {
+    navigateToMainScreen: () -> Unit)
+{
     val viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(auth))
     val loginState  = viewModel.loginState
     LaunchedEffect(Unit) {
@@ -63,9 +65,9 @@ fun LoginScreen(
             value = viewModel.username,
             onValueChange = { viewModel.username = it },
             label = {
-                Text("username")
+                Text("Email")
                     },
-            leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = "Username") },
+            leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = "Email") },
             modifier = Modifier.fillMaxWidth(),
             colors = TextFieldDefaults.colors( // Use TextFieldDefaults.colors()
                 focusedTextColor = Color.Black,
