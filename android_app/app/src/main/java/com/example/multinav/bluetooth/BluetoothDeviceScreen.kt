@@ -34,7 +34,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BluetoothDeviceScreen(
-    onDeviceSelected: (BluetoothDevice) -> Unit, // Added parameter
     state: BluetoothUiState,
     bluetoothViewModel: BluetoothViewModel = viewModel(),
     navController: NavController
