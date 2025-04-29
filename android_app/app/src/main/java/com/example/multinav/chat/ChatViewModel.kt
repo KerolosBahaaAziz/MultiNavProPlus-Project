@@ -133,8 +133,7 @@ class ChatViewModel(
 //            Log.d("ChatViewModel", "Raw message received via listener from $fromDeviceAddress")
             // Only process the message if it's from the device associated with this ChatViewModel
             if (fromDeviceAddress == deviceAddress) {
-//                receiveMessage(floats)
-            }
+                receiveMessage( floats.toString())            }
         }
     }
 
@@ -264,8 +263,24 @@ class ChatViewModel(
                 val messages = currentMessagesMap[address]?.toMutableList()
                     ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
                 messages.add(Message(message, false))
-                currentMessagesMap[address] = messages
+                currentMessagesMap[address] = messages.toList()
                 (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
+            }
+        }
+    }
+
+    fun receiveMessage(floats: List<Float>) {
+        viewModelScope.launch {
+            Log.d("ChatViewModel", "Processing received floats for device: $deviceAddress")
+            deviceAddress?.let { address ->
+                val displayMessage = "Floats: [${floats.joinToString(", ")}]"
+                val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
+                val messages = currentMessagesMap[address]?.toMutableList()
+                    ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
+                messages.add(Message(displayMessage, false))
+                currentMessagesMap[address] = messages.toList()
+                (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
+                Log.d("ChatViewModel", "Added float message to UI: $displayMessage for device: $address")
             }
         }
     }

@@ -106,7 +106,7 @@ fun ChatScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                items(messages) { message ->
+                items(messages.reversed() ) { message ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()

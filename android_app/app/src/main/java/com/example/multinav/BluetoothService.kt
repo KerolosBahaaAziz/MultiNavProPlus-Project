@@ -817,19 +817,7 @@ class BluetoothService(private val context: Context) {
             value: ByteArray
         ) {
             try {
-                val currentTime = System.currentTimeMillis()
-                // Convert the byte array to a hex string for logging and debouncing
                 val hexMessage = bytesToHex(value)
-
-                // Debounce messages (compare hex strings)
-                if (hexMessage == lastMessageReceived && (currentTime - lastMessageReceivedTime) < messageDebounceMs) {
-                    Log.d("BLE", "Ignoring duplicate hex message within debounce period: $hexMessage")
-                    return
-                }
-
-                lastMessageReceived = hexMessage
-                lastMessageReceivedTime = currentTime
-
                 Log.d("BLE", "Client received hex message: $hexMessage from characteristic: ${characteristic.uuid}")
                 val expectedUuid = if (characteristic.service.uuid == BLEConfig.CHAT_SERVICE_UUID) {
                     BLEConfig.NOTIFY_CHARACTERISTIC_UUID
@@ -858,7 +846,6 @@ class BluetoothService(private val context: Context) {
                 Log.e("BLE", "Error handling characteristic change", e)
             }
         }
-
         override fun onCharacteristicWrite(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
