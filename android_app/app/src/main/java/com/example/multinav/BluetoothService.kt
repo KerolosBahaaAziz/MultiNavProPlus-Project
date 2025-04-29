@@ -429,6 +429,7 @@ class BluetoothService(private val context: Context) {
             }
         }
     }
+
     private fun saveLastConnectedDevice(address: String, isMobileDevice: Boolean) {
         val prefs = context.getSharedPreferences("BLEPrefs", Context.MODE_PRIVATE)
         prefs.edit()
@@ -610,7 +611,6 @@ class BluetoothService(private val context: Context) {
                     _isConnected.value = true
                     _connectionStatus.value = ConnectionStatus.Connected
                     Log.d("BLE", "Device connected to server: ${device.address}")
-                    // Initialize message list for this device if it doesn't exist
                     device.address?.let { deviceAddress ->
                         if (!_messagesPerDevice.containsKey(deviceAddress)) {
                             _messagesPerDevice[deviceAddress] = mutableListOf(Message("Welcome to Bluetooth Chat", false))
@@ -638,19 +638,20 @@ class BluetoothService(private val context: Context) {
         ) {
             Log.d("BLE", "Server received write request for ${characteristic.uuid}")
             if (characteristic.uuid == BLEConfig.WRITE_CHARACTERISTIC_UUID) {
-                val message = String(value)
-                Log.d("BLE", "Server received message: $message from ${device.address}")
+                // Convert the byte array to a hex string
+                val hexMessage = bytesToHex(value)
+                Log.d("BLE", "Server received hex message: $hexMessage from ${device.address}")
                 device.address?.let { deviceAddress ->
-                    // Add the received message to the device's message list
+                    // Add the hex message to the device's message list
                     val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
-                    messages.add(Message(message, false))
+                    messages.add(Message("Hex: $hexMessage", false))
                     _messagesFlow.value = _messagesPerDevice.toMap()
-                    // Invoke the message listener with both message and device address
+                    // Invoke the message listener with the hex message and device address
                     messageListener?.let { listener ->
-                        Log.d("BLE", "Invoking listener with message: $message for device: $deviceAddress")
-                        listener(message, deviceAddress)
-                    } ?: Log.w("BLE", "No listener set for received message: $message")
-                } ?: Log.e("BLE", "Device address is null, cannot process message: $message")
+                        Log.d("BLE", "Invoking listener with hex message: $hexMessage for device: $deviceAddress")
+                        listener(hexMessage, deviceAddress)
+                    } ?: Log.w("BLE", "No listener set for received hex message: $hexMessage")
+                } ?: Log.e("BLE", "Device address is null, cannot process hex message: $hexMessage")
 
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
@@ -672,13 +673,13 @@ class BluetoothService(private val context: Context) {
             Log.d("BLE", "Server received descriptor write: ${descriptor.uuid}")
             if (descriptor.uuid == BLEConfig.CLIENT_CONFIG_UUID) {
                 Log.d("BLE", "Client enabled notifications: ${device.address}")
-
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
                 }
             }
         }
     }
+
 
     // GATT client callback
     private val gattClientCallback = object : BluetoothGattCallback() {
@@ -815,19 +816,20 @@ class BluetoothService(private val context: Context) {
             value: ByteArray
         ) {
             try {
-                val message = String(value)
                 val currentTime = System.currentTimeMillis()
+                // Convert the byte array to a hex string
+                val hexMessage = bytesToHex(value)
 
-                // Debounce messages
-                if (message == lastMessageReceived && (currentTime - lastMessageReceivedTime) < messageDebounceMs) {
-                    Log.d("BLE", "Ignoring duplicate message within debounce period: $message")
+                // Debounce messages (compare hex strings)
+                if (hexMessage == lastMessageReceived && (currentTime - lastMessageReceivedTime) < messageDebounceMs) {
+                    Log.d("BLE", "Ignoring duplicate hex message within debounce period: $hexMessage")
                     return
                 }
 
-                lastMessageReceived = message
+                lastMessageReceived = hexMessage
                 lastMessageReceivedTime = currentTime
 
-                Log.d("BLE", "Client received message: $message from characteristic: ${characteristic.uuid}")
+                Log.d("BLE", "Client received hex message: $hexMessage from characteristic: ${characteristic.uuid}")
                 val expectedUuid = if (characteristic.service.uuid == BLEConfig.CHAT_SERVICE_UUID) {
                     BLEConfig.NOTIFY_CHARACTERISTIC_UUID
                 } else {
@@ -835,17 +837,17 @@ class BluetoothService(private val context: Context) {
                 }
                 if (characteristic.uuid == expectedUuid) {
                     gatt.device.address?.let { deviceAddress ->
-                        // Add the received message to the device's message list
+                        // Add the hex message to the device's message list
                         val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
-                        messages.add(Message(message, false))
+                        messages.add(Message(hexMessage, false))
                         _messagesFlow.value = _messagesPerDevice.toMap()
-                        messageListener?.invoke(message, deviceAddress) ?: Log.w(
+                        messageListener?.invoke(hexMessage, deviceAddress) ?: Log.w(
                             "BLE",
-                            "No listener set for received message: $message on client"
+                            "No listener set for received hex message: $hexMessage on client"
                         )
-                    } ?: Log.e("BLE", "Device address is null, cannot process message: $message")
+                    } ?: Log.e("BLE", "Device address is null, cannot process hex message: $hexMessage")
                 } else {
-                    Log.w("BLE", "Received message on unexpected characteristic: ${characteristic.uuid}")
+                    Log.w("BLE", "Received hex message on unexpected characteristic: ${characteristic.uuid}")
                 }
             } catch (e: Exception) {
                 Log.e("BLE", "Error handling characteristic change", e)
@@ -890,6 +892,11 @@ class BluetoothService(private val context: Context) {
             } catch (e: Exception) {
                 Log.e("BLE", "Error in onDescriptorWrite", e)
             }
+        }
+    }
+    private fun bytesToHex(bytes: ByteArray): String {
+        return bytes.joinToString(" ") { byte ->
+            String.format("%02X", byte)
         }
     }
 
