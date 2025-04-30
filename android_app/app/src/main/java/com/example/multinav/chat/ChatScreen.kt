@@ -295,48 +295,70 @@ fun MessageInput(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 8.dp)
-        ) {
-            BasicTextField(
-                value = inputText,
-                onValueChange = { inputText = it },
+        if (isRecording) {
+            // Show recording UI (mimicking Messenger/WhatsApp)
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .padding(8.dp),
-                enabled = enabled
-            )
-            if (inputText.isEmpty()) {
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(Color.Red, shape = CircleShape)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (enabled) "Type a message..." else "Not connected",
-                    color = Color.Gray,
-                    modifier = Modifier.padding(8.dp)
+                    text = "Recording...",
+                    color = Color.Black
                 )
             }
-        }
-
-        // Text message send button
-        IconButton(
-            onClick = {
-                if (inputText.isNotEmpty()) {
-                    val bytes = inputText.toByteArray(Charsets.UTF_8)
-                    Log.d(
-                        "ChatScreen",
-                        "Sending message: $inputText, Bytes: ${bytes.joinToString()}"
+        } else {
+            // Show text input UI when not recording
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp)
+            ) {
+                BasicTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    enabled = enabled
+                )
+                if (inputText.isEmpty()) {
+                    Text(
+                        text = if (enabled) "Type a message..." else "Not connected",
+                        color = Color.Gray,
+                        modifier = Modifier.padding(8.dp)
                     )
-                    viewModel.sendMessage(inputText)
-                    inputText = ""
                 }
-            },
-            enabled = enabled && inputText.isNotEmpty()
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_send),
-                contentDescription = "Send",
-                tint =  Color(0xFF0A74DA)
-            )
+            }
+
+            // Text message send button
+            IconButton(
+                onClick = {
+                    if (inputText.isNotEmpty()) {
+                        val bytes = inputText.toByteArray(Charsets.UTF_8)
+                        Log.d(
+                            "ChatScreen",
+                            "Sending message: $inputText, Bytes: ${bytes.joinToString()}"
+                        )
+                        viewModel.sendMessage(inputText)
+                        inputText = ""
+                    }
+                },
+                enabled = enabled && inputText.isNotEmpty()
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_send),
+                    contentDescription = "Send",
+                    tint = if (enabled && inputText.isNotEmpty()) Color(0xFF0A74DA) else Color.Gray
+                )
+            }
         }
 
         // Voice recording buttons
