@@ -24,7 +24,12 @@ import java.io.FileInputStream
 import java.nio.file.Files.delete
 
 sealed class Message {
-    data class Text(val text: String, val isSentByUser: Boolean, val isSentSuccessfully: Boolean = true) : Message()
+    data class Text(
+        val text: String,
+        val isSentByUser: Boolean,
+        val isSentSuccessfully: Boolean = true
+    ) : Message()
+
     data class Voice(val audioBytes: ByteArray, val isSentByUser: Boolean) : Message()
 }
 
@@ -33,7 +38,11 @@ class ChatViewModel(
     private val bluetoothService: BluetoothService,
     private val isMobileDevice: Boolean = false
 ) : ViewModel() {
-    private val messageQueue = mutableListOf<String>()
+    private val messageQueue =
+        mutableListOf<Triple<String, Int, Int>>() // (message, messageId, retryCount)
+    private var messageIdCounter = 0 // Counter to generate unique IDs for each message
+    private val maxRetries = 3 // Maximum number of retries per message
+
     private var isProcessingQueue = false
     private var hasShownFailureMessage = false
     private var isConnecting = false
@@ -43,13 +52,28 @@ class ChatViewModel(
 
     private val _messages: StateFlow<List<Message>> = bluetoothService.messagesFlow
         .map { messagesMap ->
-            messagesMap[deviceAddress] ?: listOf<Message>(Message.Text("Welcome to Bluetooth Chat", false))
+            messagesMap[deviceAddress] ?: listOf<Message>(
+                Message.Text(
+                    "Welcome to Bluetooth Chat",
+                    false
+                )
+            )
         }
         .let { mappedFlow ->
-            MutableStateFlow<List<Message>>(listOf(Message.Text("Welcome to Bluetooth Chat", false))).apply {
+            MutableStateFlow<List<Message>>(
+                listOf(
+                    Message.Text(
+                        "Welcome to Bluetooth Chat",
+                        false
+                    )
+                )
+            ).apply {
                 viewModelScope.launch {
                     mappedFlow.collect { messages ->
-                        Log.d("ChatViewModel", "Messages updated for device $deviceAddress: $messages")
+                        Log.d(
+                            "ChatViewModel",
+                            "Messages updated for device $deviceAddress: $messages"
+                        )
                         value = messages
                     }
                 }
@@ -94,10 +118,13 @@ class ChatViewModel(
                         when (status) {
                             is BluetoothService.ConnectionStatus.Connected ->
                                 receiveMessage("Connected to device")
+
                             is BluetoothService.ConnectionStatus.Disconnected ->
                                 receiveMessage("Disconnected from device")
+
                             is BluetoothService.ConnectionStatus.Error ->
                                 receiveMessage("Connection error: ${status.message}")
+
                             else -> {}
                         }
                         if (status is BluetoothService.ConnectionStatus.Connected) {
@@ -128,6 +155,7 @@ class ChatViewModel(
                 isConnecting = false
                 startMessageListener()
             }
+
             is BluetoothService.ConnectionStatus.Disconnected -> {
                 isConnecting = false
                 // Only clear queue if we're not going to reconnect
@@ -135,9 +163,11 @@ class ChatViewModel(
                     messageQueue.clear()
                 }
             }
+
             is BluetoothService.ConnectionStatus.Connecting -> {
                 isConnecting = true
             }
+
             else -> {}
         }
     }
@@ -168,7 +198,8 @@ class ChatViewModel(
             // Ensure we have at least 2 bytes to process
             if (i + 1 < bytes.size) {
                 // Combine 2 bytes into a short (16-bit integer)
-                val shortValue = ((bytes[i].toInt() and 0xFF) shl 8) or (bytes[i + 1].toInt() and 0xFF)
+                val shortValue =
+                    ((bytes[i].toInt() and 0xFF) shl 8) or (bytes[i + 1].toInt() and 0xFF)
                 // Convert the short to a float (you can adjust the scaling as needed)
                 val floatValue = shortValue.toFloat()
                 floats.add(floatValue)
@@ -193,12 +224,14 @@ class ChatViewModel(
                 _connectionState.value = BluetoothService.ConnectionStatus.Connecting
                 receiveMessage("Connecting to device...")
 
-                val success = bluetoothService.connectToDevice(address, isMobileDevice = isMobileDevice)
+                val success =
+                    bluetoothService.connectToDevice(address, isMobileDevice = isMobileDevice)
                 if (success) {
                     _connectionState.value = BluetoothService.ConnectionStatus.Connected
                     receiveMessage("Connected successfully")
                 } else {
-                    _connectionState.value = BluetoothService.ConnectionStatus.Error("Connection failed")
+                    _connectionState.value =
+                        BluetoothService.ConnectionStatus.Error("Connection failed")
                     receiveMessage("Failed to connect to device")
                     delay(2000)
                     connectToDevice(address)
@@ -219,13 +252,23 @@ class ChatViewModel(
         if (message.isBlank()) return
         viewModelScope.launch {
             try {
-                // Add the message to the UI immediately (before sending over Bluetooth)
                 deviceAddress?.let { address ->
-                    bluetoothService.addMessage(address, Message.Text(message, true, isSentSuccessfully = false))
+                    // Generate a unique ID for this message send attempt
+                    val messageId = messageIdCounter++
+                    // Add the message to the UI with a pending status
+                    bluetoothService.addMessage(
+                        address,
+                        Message.Text(message, true, isSentSuccessfully = false),
+                        messageId
+                    )
+                    // Add to queue with the message ID
+                    messageQueue.add(Triple(message, messageId, 0)) // Initialize retry count to 0
+                    Log.d(
+                        "ChatViewModel",
+                        "Added message to queue: $message, ID: $messageId, queue size: ${messageQueue.size}"
+                    )
+                    processMessageQueue()
                 }
-                // Add to queue for actual Bluetooth sending
-                messageQueue.add(message)
-                processMessageQueue()
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error sending message", e)
                 receiveMessage("Error: ${e.message}")
@@ -246,35 +289,49 @@ class ChatViewModel(
                         }
                         break
                     }
-                    val message = messageQueue.first()
-                    val success = bluetoothService.sendMessage(message, isMobileDevice)
-                    if (success) {
-                        // Update the message in the UI to mark it as sent successfully
+                    val (message, messageId, retryCount) = messageQueue.first()
+                    Log.d(
+                        "ChatViewModel",
+                        "Processing message from queue: $message, ID: $messageId, Retry: $retryCount"
+                    )
+
+                    if (retryCount >= maxRetries) {
+                        // Max retries reached, remove the message and notify user
                         deviceAddress?.let { address ->
-                            bluetoothService.addMessage(
-                                address,
-                                Message.Text(message, true, isSentSuccessfully = true)
-                            )
+                            bluetoothService.updateMessageStatus(address, message, messageId, false)
+                        }
+                        messageQueue.removeAt(0)
+                        receiveMessage("Permanently failed to send message: $message after $maxRetries attempts")
+                        hasShownFailureMessage = false
+                        continue
+                    }
+
+                    val success = bluetoothService.sendMessage(message, isMobileDevice = false)
+                    if (success) {
+                        deviceAddress?.let { address ->
+                            bluetoothService.updateMessageStatus(address, message, messageId, true)
                         }
                         messageQueue.removeAt(0)
                         hasShownFailureMessage = false
                         Log.d("ChatViewModel", "Message sent successfully: $message")
                     } else {
-                        Log.e("ChatViewModel", "Failed to send message: $message, will retry")
+                        Log.e(
+                            "ChatViewModel",
+                            "Failed to send message: $message, retry $retryCount/$maxRetries"
+                        )
                         receiveMessage("Failed to send message: $message")
+                        // Increment retry count
+                        messageQueue[0] = Triple(message, messageId, retryCount + 1)
                         break
                     }
                     delay(100)
                 }
             } finally {
                 isProcessingQueue = false
-                if (messageQueue.isNotEmpty() && connectionState.value is BluetoothService.ConnectionStatus.Connected) {
+                // Only retry if the queue is not empty and we're not already trying to reconnect
+                if (messageQueue.isNotEmpty() && !isConnecting && connectionState.value is BluetoothService.ConnectionStatus.Connected) {
                     delay(500)
                     processMessageQueue()
-                } else if (messageQueue.isNotEmpty() && !isConnecting) {
-                    deviceAddress?.let {
-                        connectToDevice(it)
-                    }
                 }
             }
         }
@@ -282,7 +339,10 @@ class ChatViewModel(
 
     fun receiveMessage(message: String) {
         viewModelScope.launch {
-            Log.d("ChatViewModel", "Adding system message to UI: $message for device: $deviceAddress")
+            Log.d(
+                "ChatViewModel",
+                "Adding system message to UI: $message for device: $deviceAddress"
+            )
             deviceAddress?.let { address ->
                 bluetoothService.addMessage(address, Message.Text(message, false))
             }
@@ -291,12 +351,9 @@ class ChatViewModel(
 
     fun receiveMessage(floats: List<Float>) {
         viewModelScope.launch {
-            Log.d("ChatViewModel", "Processing received floats for device: $deviceAddress")
-            deviceAddress?.let { address ->
-                val displayMessage = "Floats: [${floats.joinToString(", ")}]"
-                bluetoothService.addMessage(address, Message.Text(displayMessage, false))
-                Log.d("ChatViewModel", "Added float message to UI: $displayMessage for device: $address")
-            }
+            Log.d("ChatViewModel", "Received floats for device: $deviceAddress: $floats")
+            // Removed the addMessage call since BluetoothService already adds the message to the UI
+            // The listener can still be used for additional processing if needed
         }
     }
 
