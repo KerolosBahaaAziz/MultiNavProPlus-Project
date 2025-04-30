@@ -23,13 +23,15 @@ import java.io.File
 import java.io.FileInputStream
 import java.nio.file.Files.delete
 
-
-data class Message(val text: String, val isSentByUser: Boolean)
+sealed class Message {
+    data class Text(val text: String, val isSentByUser: Boolean, val isSentSuccessfully: Boolean = true) : Message()
+    data class Voice(val audioBytes: ByteArray, val isSentByUser: Boolean) : Message()
+}
 
 class ChatViewModel(
     private val deviceAddress: String? = null,
     private val bluetoothService: BluetoothService,
-    private val isMobileDevice: Boolean = false // Add this property
+    private val isMobileDevice: Boolean = false
 ) : ViewModel() {
     private val messageQueue = mutableListOf<String>()
     private var isProcessingQueue = false
@@ -41,10 +43,10 @@ class ChatViewModel(
 
     private val _messages: StateFlow<List<Message>> = bluetoothService.messagesFlow
         .map { messagesMap ->
-            messagesMap[deviceAddress] ?: listOf(Message("Welcome to Bluetooth Chat", false))
+            messagesMap[deviceAddress] ?: listOf<Message>(Message.Text("Welcome to Bluetooth Chat", false))
         }
         .let { mappedFlow ->
-            MutableStateFlow(listOf(Message("Welcome to Bluetooth Chat", false))).apply {
+            MutableStateFlow<List<Message>>(listOf(Message.Text("Welcome to Bluetooth Chat", false))).apply {
                 viewModelScope.launch {
                     mappedFlow.collect { messages ->
                         Log.d("ChatViewModel", "Messages updated for device $deviceAddress: $messages")
@@ -61,7 +63,6 @@ class ChatViewModel(
 
     private var mediaRecorder: MediaRecorder? = null
     private var audioFile: File? = null
-
 
     init {
         viewModelScope.launch {
@@ -143,14 +144,12 @@ class ChatViewModel(
 
     private fun startMessageListener() {
         bluetoothService.startListening { floats, fromDeviceAddress ->
-//            Log.d("ChatViewModel", "Raw message received via listener from $fromDeviceAddress")
             // Only process the message if it's from the device associated with this ChatViewModel
             if (fromDeviceAddress == deviceAddress) {
-                receiveMessage( floats.toString())            }
+                receiveMessage(floats)
+            }
         }
     }
-
-
 
     // Helper function to convert 2-byte pairs to floats
     private fun bytesToFloats(bytes: ByteArray): List<Float> {
@@ -194,8 +193,7 @@ class ChatViewModel(
                 _connectionState.value = BluetoothService.ConnectionStatus.Connecting
                 receiveMessage("Connecting to device...")
 
-                // Pass isMobileDevice = false since you're likely connecting to a BLE device ("st-bLe99")
-                val success = bluetoothService.connectToDevice(address, isMobileDevice = true) //rem
+                val success = bluetoothService.connectToDevice(address, isMobileDevice = isMobileDevice)
                 if (success) {
                     _connectionState.value = BluetoothService.ConnectionStatus.Connected
                     receiveMessage("Connected successfully")
@@ -216,10 +214,16 @@ class ChatViewModel(
             }
         }
     }
+
     fun sendMessage(message: String) {
         if (message.isBlank()) return
         viewModelScope.launch {
             try {
+                // Add the message to the UI immediately (before sending over Bluetooth)
+                deviceAddress?.let { address ->
+                    bluetoothService.addMessage(address, Message.Text(message, true, isSentSuccessfully = false))
+                }
+                // Add to queue for actual Bluetooth sending
                 messageQueue.add(message)
                 processMessageQueue()
             } catch (e: Exception) {
@@ -243,13 +247,21 @@ class ChatViewModel(
                         break
                     }
                     val message = messageQueue.first()
-                    val success = bluetoothService.sendMessage(message, isMobileDevice )
+                    val success = bluetoothService.sendMessage(message, isMobileDevice)
                     if (success) {
+                        // Update the message in the UI to mark it as sent successfully
+                        deviceAddress?.let { address ->
+                            bluetoothService.addMessage(
+                                address,
+                                Message.Text(message, true, isSentSuccessfully = true)
+                            )
+                        }
                         messageQueue.removeAt(0)
                         hasShownFailureMessage = false
                         Log.d("ChatViewModel", "Message sent successfully: $message")
                     } else {
                         Log.e("ChatViewModel", "Failed to send message: $message, will retry")
+                        receiveMessage("Failed to send message: $message")
                         break
                     }
                     delay(100)
@@ -272,12 +284,7 @@ class ChatViewModel(
         viewModelScope.launch {
             Log.d("ChatViewModel", "Adding system message to UI: $message for device: $deviceAddress")
             deviceAddress?.let { address ->
-                val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
-                val messages = currentMessagesMap[address]?.toMutableList()
-                    ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
-                messages.add(Message(message, false))
-                currentMessagesMap[address] = messages.toList()
-                (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
+                bluetoothService.addMessage(address, Message.Text(message, false))
             }
         }
     }
@@ -287,12 +294,7 @@ class ChatViewModel(
             Log.d("ChatViewModel", "Processing received floats for device: $deviceAddress")
             deviceAddress?.let { address ->
                 val displayMessage = "Floats: [${floats.joinToString(", ")}]"
-                val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
-                val messages = currentMessagesMap[address]?.toMutableList()
-                    ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
-                messages.add(Message(displayMessage, false))
-                currentMessagesMap[address] = messages.toList()
-                (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
+                bluetoothService.addMessage(address, Message.Text(displayMessage, false))
                 Log.d("ChatViewModel", "Added float message to UI: $displayMessage for device: $address")
             }
         }
@@ -301,19 +303,18 @@ class ChatViewModel(
     fun sendVoice(audioBytes: ByteArray) {
         viewModelScope.launch(Dispatchers.IO) {
             if (audioBytes.isNotEmpty()) {
+                // Add the voice message to the UI immediately
+                deviceAddress?.let { address ->
+                    bluetoothService.addMessage(address, Message.Voice(audioBytes, true))
+                }
+
+                // Send the voice message
                 val success = bluetoothService.sendVoiceMessage(audioBytes)
                 if (success) {
-                    deviceAddress?.let { address ->
-                        val currentMessagesMap = bluetoothService.messagesFlow.value.toMutableMap()
-                        val messages = currentMessagesMap[address]?.toMutableList()
-                            ?: mutableListOf(Message("Welcome to Bluetooth Chat", false))
-                        messages.add(Message("Voice message sent", true))
-                        currentMessagesMap[address] = messages.toList()
-                        (bluetoothService.messagesFlow as MutableStateFlow).value = currentMessagesMap
-                    }
                     Log.d("ChatViewModel", "Voice message sent successfully")
                 } else {
                     Log.e("ChatViewModel", "Failed to send voice message")
+                    receiveMessage("Failed to send voice message")
                 }
             }
         }
@@ -322,7 +323,6 @@ class ChatViewModel(
     fun setRecordingState(isRecording: Boolean) {
         _isRecording.value = isRecording
     }
-
 
     fun makePhoneCall() {
         //receiveMessage("Call functionality not implemented yet")
@@ -346,19 +346,16 @@ class ChatViewModel(
             audioFile?.delete()
         }
     }
-
-
 }
 
 class ChatViewModelFactory(
     private val deviceAddress: String? = null,
     private val bluetoothService: BluetoothService,
-    private val isMobileDevice: Boolean = false // Add this to pass to ChatViewModel
-
+    private val isMobileDevice: Boolean = false
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
-            return ChatViewModel(deviceAddress, bluetoothService) as T
+            return ChatViewModel(deviceAddress, bluetoothService, isMobileDevice) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

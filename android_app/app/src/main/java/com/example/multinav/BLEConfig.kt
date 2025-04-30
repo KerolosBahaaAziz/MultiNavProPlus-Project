@@ -7,6 +7,9 @@ import android.util.Log
 import java.util.UUID
 
 object BLEConfig {
+    val VOICE_WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb") // New UUID for voice messages
+    val VOICE_NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb")
+
     // Service UUID for mobile-to-mobile communication
     val CHAT_SERVICE_UUID: UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 

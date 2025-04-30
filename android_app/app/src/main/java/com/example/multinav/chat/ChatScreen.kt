@@ -1,20 +1,24 @@
 package com.example.multinav.chat
 
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -32,6 +36,8 @@ import com.example.multinav.AudioRecorder
 import com.example.multinav.BluetoothService
 import com.example.multinav.R
 import com.example.multinav.chat.ChatViewModel
+import java.io.File
+import java.io.FileOutputStream
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +53,8 @@ fun ChatScreen(
     val context = LocalContext.current
 
     val audioRecorder = remember { AudioRecorder(context) }
+
+    var currentMediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
 
     // Permission launcher for RECORD_AUDIO
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -117,13 +125,10 @@ fun ChatScreen(
                                 )
                         )
                     }
-
-
                 }
             )
-            }
-        )
-                    { padding ->
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -145,25 +150,48 @@ fun ChatScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                items(messages.reversed() ) { message ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        contentAlignment = if (message.isSentByUser)
-                            Alignment.CenterEnd else Alignment.CenterStart
-                    ) {
-                        Text(
-                            text = message.text, // Display the message as-is
-                            color = Color.White,
-                            modifier = Modifier
-                                .background(
-                                    color = if (message.isSentByUser) Color(0xFF0A74DA)
-                                    else Color(0xFF6C757D),
-                                    shape = MaterialTheme.shapes.medium
+                items(messages) { message ->
+                    when (message) {
+                        is Message.Text -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                contentAlignment = if (message.isSentByUser)
+                                    Alignment.CenterEnd else Alignment.CenterStart
+                            ) {
+                                Text(
+                                    text = message.text,
+                                    color = Color.White,
+                                    modifier = Modifier
+                                        .background(
+                                            color = if (message.isSentByUser) Color(0xFF0A74DA)
+                                            else Color(0xFF6C757D),
+                                            shape = MaterialTheme.shapes.medium
+                                        )
+                                        .padding(8.dp)
                                 )
-                                .padding(8.dp)
-                        )
+                            }
+                        }
+                        is Message.Voice -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                contentAlignment = if (message.isSentByUser)
+                                    Alignment.CenterEnd else Alignment.CenterStart
+                            ) {
+                                VoiceMessageItem(
+                                    audioBytes = message.audioBytes,
+                                    isSentByUser = message.isSentByUser,
+                                    currentMediaPlayer = currentMediaPlayer,
+                                    onMediaPlayerChange = { newMediaPlayer ->
+                                        currentMediaPlayer?.release()
+                                        currentMediaPlayer = newMediaPlayer
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -177,6 +205,64 @@ fun ChatScreen(
     }
 }
 
+
+@Composable
+fun VoiceMessageItem(
+    audioBytes: ByteArray,
+    isSentByUser: Boolean,
+    currentMediaPlayer: MediaPlayer?,
+    onMediaPlayerChange: (MediaPlayer?) -> Unit
+) {
+    val context = LocalContext.current
+    var isPlaying by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .background(
+                color = if (isSentByUser) Color(0xFF0A74DA) else Color(0xFF6C757D),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = "Play Voice Message",
+            tint = Color.White,
+            modifier = Modifier
+                .size(24.dp)
+                .clickable {
+                    if (isPlaying) {
+                        currentMediaPlayer?.pause()
+                        isPlaying = false
+                    } else {
+                        val tempFile = File(context.cacheDir, "temp_voice_message.3gp")
+                        FileOutputStream(tempFile).use { it.write(audioBytes) }
+
+                        val newMediaPlayer = MediaPlayer().apply {
+                            setDataSource(tempFile.absolutePath)
+                            setOnCompletionListener {
+                                isPlaying = false
+                                onMediaPlayerChange(null)
+                            }
+                            setOnPreparedListener {
+                                start()
+                                isPlaying = true
+                            }
+                            prepareAsync()
+                        }
+                        onMediaPlayerChange(newMediaPlayer)
+                        tempFile.deleteOnExit()
+                    }
+                }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Voice Message",
+            color = Color.White
+        )
+    }
+}
 @Composable
 fun MessageInput(
     viewModel: ChatViewModel,
@@ -271,11 +357,11 @@ fun MessageInput(
                 tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
             )
         }
-        IconButton(
-            onClick = { viewModel.makePhoneCall() },
-            enabled = enabled
-        ) {
-            // Icon for phone call
-        }
+//        IconButton(
+//            onClick = { viewModel.makePhoneCall() },
+//            enabled = enabled
+//        ) {
+//            // Icon for phone call
+//        }
     }
 }
