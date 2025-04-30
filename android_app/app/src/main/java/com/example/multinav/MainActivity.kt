@@ -25,10 +25,17 @@ class MainActivity : ComponentActivity() {
         BluetoothViewModelFactory(bluetoothService)
     }
 
-    private val chatViewModel by viewModels<ChatViewModel> {
-        ChatViewModelFactory(null, bluetoothService)
-    }
+    private val audioRecorder by lazy { AudioRecorder(this) }
 
+    // Initialize ChatViewModel with AudioRecorder
+    private val chatViewModel by viewModels<ChatViewModel> {
+        ChatViewModelFactory(
+            deviceAddress = null, // Will be set when navigating to ChatScreen
+            bluetoothService = bluetoothService,
+            isMobileDevice = false,
+            audioRecorder = audioRecorder
+        )
+    }
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->

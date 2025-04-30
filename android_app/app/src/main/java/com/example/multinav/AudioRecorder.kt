@@ -36,6 +36,8 @@ class AudioRecorder(private val context: Context) {
         } catch (e: Exception) {
             Log.e("AudioRecorder", "Failed to start recording", e)
             isRecording = false
+            audioFile?.delete()
+            audioFile = null
             false
         }
     }
@@ -52,17 +54,44 @@ class AudioRecorder(private val context: Context) {
 
             // Read the recorded audio as a byte array
             val audioBytes = audioFile?.let { file ->
-                FileInputStream(file).use { it.readBytes() }
+                if (file.exists()) {
+                    FileInputStream(file).use { it.readBytes() }
+                } else {
+                    Log.e("AudioRecorder", "Audio file does not exist: ${file.absolutePath}")
+                    byteArrayOf()
+                }
             } ?: byteArrayOf()
 
             // Delete the temporary file
             audioFile?.delete()
+            audioFile = null
 
             audioBytes
         } catch (e: Exception) {
             Log.e("AudioRecorder", "Failed to stop recording", e)
             isRecording = false
+            audioFile?.delete()
+            audioFile = null
             byteArrayOf()
+        }
+    }
+
+    fun cancelRecording() {
+        try {
+            mediaRecorder?.apply {
+                stop()
+                release()
+            }
+            mediaRecorder = null
+            isRecording = false
+            audioFile?.delete()
+            audioFile = null
+            Log.d("AudioRecorder", "Canceled recording voice message")
+        } catch (e: Exception) {
+            Log.e("AudioRecorder", "Failed to cancel recording", e)
+            isRecording = false
+            audioFile?.delete()
+            audioFile = null
         }
     }
 
@@ -70,13 +99,19 @@ class AudioRecorder(private val context: Context) {
 
     fun release() {
         if (isRecording) {
-            mediaRecorder?.apply {
-                stop()
-                release()
+            try {
+                mediaRecorder?.apply {
+                    stop()
+                    release()
+                }
+            } catch (e: Exception) {
+                Log.w("AudioRecorder", "Error during release", e)
             }
             audioFile?.delete()
         }
         mediaRecorder = null
         isRecording = false
+        audioFile = null
+        Log.d("AudioRecorder", "Released AudioRecorder resources")
     }
 }

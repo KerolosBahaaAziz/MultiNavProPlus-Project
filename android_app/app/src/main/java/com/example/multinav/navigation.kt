@@ -191,10 +191,14 @@ fun Navigation(
             ) { backStackEntry ->
                 val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
                 deviceAddress?.let {
+
+                    val audioRecorder = remember { AudioRecorder(context) }
+
                     val factory = ChatViewModelFactory(
                         deviceAddress = it,
                         bluetoothService = bluetoothService,
-                        isMobileDevice = true // Adjust based on your logic
+                        isMobileDevice = true,
+                        audioRecorder = audioRecorder // Adjust based on your logic
                     )
                     val viewModel: ChatViewModel = viewModel(factory = factory)
                     ChatScreen(

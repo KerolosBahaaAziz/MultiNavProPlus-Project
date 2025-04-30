@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.multinav.AudioRecorder
 import com.example.multinav.BluetoothService
 import com.example.multinav.R
@@ -53,6 +54,16 @@ fun ChatScreen(
     val context = LocalContext.current
 
     val audioRecorder = remember { AudioRecorder(context) }
+
+    // Initialize the ViewModel with AudioRecorder
+    val viewModel: ChatViewModel = viewModel(
+        factory = ChatViewModelFactory(
+            deviceAddress = deviceAddress,
+            bluetoothService = bluetoothService,
+            isMobileDevice = false,
+            audioRecorder = audioRecorder
+        )
+    )
 
     var currentMediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
 
@@ -199,7 +210,7 @@ fun ChatScreen(
             MessageInput(
                 viewModel = viewModel,
                 enabled = connectionState is BluetoothService.ConnectionStatus.Connected,
-                audioRecorder = audioRecorder
+                //audioRecorder = audioRecorder
             )
         }
     }
@@ -263,16 +274,15 @@ fun VoiceMessageItem(
         )
     }
 }
+
 @Composable
 fun MessageInput(
     viewModel: ChatViewModel,
-    enabled: Boolean = true,
-    audioRecorder: AudioRecorder
+    enabled: Boolean = true
 ) {
     var inputText by rememberSaveable { mutableStateOf("") }
     val isRecording by viewModel.isRecording
     val context = LocalContext.current
-
 
     Row(
         modifier = Modifier
@@ -280,7 +290,8 @@ fun MessageInput(
             .background(
                 color = if (enabled) Color.White else Color.LightGray,
                 shape = MaterialTheme.shapes.small
-            ),
+            )
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -304,6 +315,8 @@ fun MessageInput(
                 )
             }
         }
+
+        // Text message send button
         IconButton(
             onClick = {
                 if (inputText.isNotEmpty()) {
@@ -321,47 +334,61 @@ fun MessageInput(
             Icon(
                 painter = painterResource(R.drawable.ic_send),
                 contentDescription = "Send",
-                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
+                tint = if (enabled && inputText.isNotEmpty()) Color(0xFF0A74DA) else Color.Gray
             )
         }
-        IconButton(
-            onClick = {
-                if (isRecording) {
-                    // Stop recording and send the audio
-                    val audioBytes = audioRecorder.stopRecording()
-                    viewModel.setRecordingState(false)
-                    viewModel.sendVoice(audioBytes)
-                } else {
-                    // Start recording
+
+        // Voice recording buttons
+        if (isRecording) {
+            // Show Send and Cancel icons during recording
+            IconButton(
+                onClick = {
+                    viewModel.sendVoiceMessage()
+                },
+                enabled = enabled
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Send Voice Message",
+                    tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
+                )
+            }
+            IconButton(
+                onClick = {
+                    viewModel.cancelRecording()
+                },
+                enabled = enabled
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cancel Recording",
+                    tint = if (enabled) Color.Red else Color.Gray
+                )
+            }
+        } else {
+            // Show Mic icon when not recording
+            IconButton(
+                onClick = {
                     val permission = android.Manifest.permission.RECORD_AUDIO
-                    val context = context
                     if (ContextCompat.checkSelfPermission(
                             context,
                             permission
                         ) == PackageManager.PERMISSION_GRANTED
                     ) {
-                        val success = audioRecorder.startRecording()
-                        if (success) {
-                            viewModel.setRecordingState(true)
-                        }
+                        viewModel.startRecording()
                     } else {
                         Log.w("ChatScreen", "RECORD_AUDIO permission not granted")
+                        viewModel.receiveMessage("Please grant RECORD_AUDIO permission to record voice messages")
                     }
-                }
-            },
-            enabled = enabled
-        ) {
-            Icon(
-                imageVector = if (isRecording) Icons.Default.Close else Icons.Default.Mic,
-                contentDescription = if (isRecording) "Stop Recording" else "Mic",
-                tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
-            )
+                },
+                enabled = enabled
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = "Record Voice",
+                    tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
+                )
+            }
         }
-//        IconButton(
-//            onClick = { viewModel.makePhoneCall() },
-//            enabled = enabled
-//        ) {
-//            // Icon for phone call
-//        }
     }
 }

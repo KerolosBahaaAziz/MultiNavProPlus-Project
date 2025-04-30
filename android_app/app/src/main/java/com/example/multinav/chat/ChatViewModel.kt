@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.multinav.AudioRecorder
 import com.example.multinav.BluetoothService
 import com.example.multinav.BluetoothService.*
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +28,7 @@ sealed class Message {
     data class Text(
         val text: String,
         val isSentByUser: Boolean,
-        val isSentSuccessfully: Boolean = true
+        val isSentSuccessfully: Boolean = true,
     ) : Message()
 
     data class Voice(val audioBytes: ByteArray, val isSentByUser: Boolean) : Message()
@@ -36,10 +37,10 @@ sealed class Message {
 class ChatViewModel(
     private val deviceAddress: String? = null,
     private val bluetoothService: BluetoothService,
-    private val isMobileDevice: Boolean = false
+    private val isMobileDevice: Boolean = false,
+    private val audioRecorder: AudioRecorder // Add AudioRecorder dependency
 ) : ViewModel() {
-    private val messageQueue =
-        mutableListOf<Triple<String, Int, Int>>() // (message, messageId, retryCount)
+    private val messageQueue = mutableListOf<Triple<String, Int, Int>>() // (message, messageId, retryCount)
     private var messageIdCounter = 0 // Counter to generate unique IDs for each message
     private val maxRetries = 3 // Maximum number of retries per message
 
@@ -357,15 +358,15 @@ class ChatViewModel(
         }
     }
 
-    fun sendVoice(audioBytes: ByteArray) {
+    fun sendVoiceMessage() {
+        if (!audioRecorder.isRecording()) return
         viewModelScope.launch(Dispatchers.IO) {
+            val audioBytes = audioRecorder.stopRecording()
+            _isRecording.value = false
             if (audioBytes.isNotEmpty()) {
-                // Add the voice message to the UI immediately
                 deviceAddress?.let { address ->
                     bluetoothService.addMessage(address, Message.Voice(audioBytes, true))
                 }
-
-                // Send the voice message
                 val success = bluetoothService.sendVoiceMessage(audioBytes)
                 if (success) {
                     Log.d("ChatViewModel", "Voice message sent successfully")
@@ -373,8 +374,17 @@ class ChatViewModel(
                     Log.e("ChatViewModel", "Failed to send voice message")
                     receiveMessage("Failed to send voice message")
                 }
+            } else {
+                receiveMessage("Failed to send voice message: No audio recorded")
             }
         }
+    }
+
+    fun cancelRecording() {
+        if (!audioRecorder.isRecording()) return
+        audioRecorder.cancelRecording()
+        _isRecording.value = false
+        //receiveMessage("Recording canceled")
     }
 
     fun setRecordingState(isRecording: Boolean) {
@@ -389,6 +399,16 @@ class ChatViewModel(
         viewModelScope.launch {
             bluetoothService.disconnect()
             receiveMessage("Disconnected from device")
+        }
+    }
+
+    fun startRecording() {
+        if (audioRecorder.isRecording()) return
+        val success = audioRecorder.startRecording()
+        if (success) {
+            _isRecording.value = true
+        } else {
+            receiveMessage("Failed to start recording")
         }
     }
 
@@ -408,11 +428,12 @@ class ChatViewModel(
 class ChatViewModelFactory(
     private val deviceAddress: String? = null,
     private val bluetoothService: BluetoothService,
-    private val isMobileDevice: Boolean = false
+    private val isMobileDevice: Boolean = false,
+    private val audioRecorder: AudioRecorder
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
-            return ChatViewModel(deviceAddress, bluetoothService, isMobileDevice) as T
+            return ChatViewModel(deviceAddress, bluetoothService, isMobileDevice, audioRecorder) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
