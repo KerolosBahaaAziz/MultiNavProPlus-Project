@@ -466,8 +466,8 @@ class BluetoothService(private val context: Context) {
                 saveLastConnectedDevice(address, isMobileDevice)
 
                 if (!_messagesPerDevice.containsKey(address)) {
-                    _messagesPerDevice[address] =
-                        mutableListOf(Message.Text("Welcome to Bluetooth Chat", false))
+//                    _messagesPerDevice[address] =
+//                        mutableListOf  (   Message.Text("Welcome to Bluetooth Chat", false))
                     _messagesFlow.value = _messagesPerDevice.toMap()
                 }
 
@@ -703,8 +703,8 @@ class BluetoothService(private val context: Context) {
                     Log.d("BLE", "Device connected to server: ${device.address}")
                     device.address?.let { deviceAddress ->
                         if (!_messagesPerDevice.containsKey(deviceAddress)) {
-                            _messagesPerDevice[deviceAddress] =
-                                mutableListOf(Message.Text("Welcome to Bluetooth Chat", false))
+//                            _messagesPerDevice[deviceAddress] =
+//                                mutableListOf(Message.Text("Welcome to Bluetooth Chat", false))
                             _messagesFlow.value = _messagesPerDevice.mapValues { it.value.toList() }
                         }
                     }
@@ -838,8 +838,8 @@ class BluetoothService(private val context: Context) {
                         // Initialize message list for this device if it doesn't exist
                         gatt.device.address?.let { deviceAddress ->
                             if (!_messagesPerDevice.containsKey(deviceAddress)) {
-                                _messagesPerDevice[deviceAddress] =
-                                    mutableListOf(Message.Text("Welcome to Bluetooth Chat", false))
+//                                _messagesPerDevice[deviceAddress] =
+//                                    mutableListOf(Message.Text("Welcome to Bluetooth Chat", false))
                                 _messagesFlow.value =
                                     _messagesPerDevice.mapValues { it.value.toList() }
                             }
