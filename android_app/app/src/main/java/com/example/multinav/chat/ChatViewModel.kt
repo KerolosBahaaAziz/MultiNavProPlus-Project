@@ -54,19 +54,16 @@ class ChatViewModel(
     private val _messages: StateFlow<List<Message>> = bluetoothService.messagesFlow
         .map { messagesMap ->
             messagesMap[deviceAddress] ?: listOf<Message>(
-                Message.Text(
-                    "Welcome to Bluetooth Chat",
-                    false
-                )
+
             )
         }
         .let { mappedFlow ->
             MutableStateFlow<List<Message>>(
                 listOf(
-                    Message.Text(
-                        "Welcome to Bluetooth Chat",
-                        false
-                    )
+//                    Message.Text(
+//                        "Welcome to Bluetooth Chat",
+//                        false
+//                    )
                 )
             ).apply {
                 viewModelScope.launch {
@@ -96,7 +93,7 @@ class ChatViewModel(
                 if (isEnabled) {
                     if (!bluetoothService.isConnected.value && !isConnecting) {
                         deviceAddress?.let {
-                            receiveMessage("Attempting to connect to device...")
+                           // receiveMessage("Attempting to connect to device...")
                             connectToDevice(it)
                         }
                     } else if (bluetoothService.isConnected.value) {
@@ -223,13 +220,13 @@ class ChatViewModel(
                 }
                 isConnecting = true
                 _connectionState.value = BluetoothService.ConnectionStatus.Connecting
-                receiveMessage("Connecting to device...")
+             //   receiveMessage("Connecting to device...")
 
                 val success =
                     bluetoothService.connectToDevice(address, isMobileDevice = isMobileDevice)
                 if (success) {
                     _connectionState.value = BluetoothService.ConnectionStatus.Connected
-                    receiveMessage("Connected successfully")
+                  //  receiveMessage("Connected successfully")
                 } else {
                     _connectionState.value =
                         BluetoothService.ConnectionStatus.Error("Connection failed")
@@ -372,10 +369,10 @@ class ChatViewModel(
                     Log.d("ChatViewModel", "Voice message sent successfully")
                 } else {
                     Log.e("ChatViewModel", "Failed to send voice message")
-                    receiveMessage("Failed to send voice message")
+                //    receiveMessage("Failed to send voice message")
                 }
             } else {
-                receiveMessage("Failed to send voice message: No audio recorded")
+              //  receiveMessage("Failed to send voice message: No audio recorded")
             }
         }
     }
