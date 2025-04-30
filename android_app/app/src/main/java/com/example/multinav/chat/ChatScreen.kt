@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
@@ -334,7 +335,7 @@ fun MessageInput(
             Icon(
                 painter = painterResource(R.drawable.ic_send),
                 contentDescription = "Send",
-                tint = if (enabled && inputText.isNotEmpty()) Color(0xFF0A74DA) else Color.Gray
+                tint =  Color(0xFF0A74DA)
             )
         }
 
@@ -348,7 +349,7 @@ fun MessageInput(
                 enabled = enabled
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send Voice Message",
                     tint = if (enabled) Color(0xFF0A74DA) else Color.Gray
                 )
