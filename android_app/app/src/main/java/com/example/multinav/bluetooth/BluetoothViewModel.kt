@@ -130,6 +130,7 @@ class BluetoothViewModel(
                     bluetoothService.enableLocation()
                     return@launch
                 }
+                disconnect()
 
                 // Proceed with scanning if location is enabled
                 Log.d("BluetoothViewModel", "Starting BLE scan...")

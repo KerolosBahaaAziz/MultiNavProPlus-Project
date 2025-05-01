@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.multinav" />
+                  <option name="mobileSdkAppId" value="1:511871082784:android:bda295c3b88b5147a2f745" />
+                  <option name="projectId" value="rfoxia-20970" />
+                  <option name="projectNumber" value="511871082784" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

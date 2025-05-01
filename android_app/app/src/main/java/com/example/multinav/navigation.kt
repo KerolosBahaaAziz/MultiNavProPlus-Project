@@ -1,7 +1,6 @@
 package com.example.multinav
 
 import JoyStickScreen
-import MainScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -37,6 +36,10 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import com.example.multinav.login_screen.LoginScreen
+import com.example.multinav.sing_up.SingUpScreen
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 
 sealed class Screen(
@@ -44,26 +47,29 @@ sealed class Screen(
     val label: String? = null,
     val icon: Int? = null
 ) {
-    object DeviceList : Screen("deviceList", label = "Device", icon = R.drawable.ic_phone)
+    object DeviceList : Screen("deviceList", label = "Devices", icon = R.drawable.ic_phone)
     object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
     }
-    object JoyStick : Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) { // Add deviceAddress to route
-        fun createRoute(deviceAddress: String) = "joystick/$deviceAddress" // Fix createRoute
+    object JoyStick : Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) {
+        fun createRoute(deviceAddress: String) = "joystick/$deviceAddress"
     }
+    object Login : Screen("login")
+    object SignUp : Screen("signup")
 }
 
 @Composable
 fun Navigation(
     bluetoothViewModel: BluetoothViewModel,
     startDestination: String = Screen.DeviceList.route,
-    chatViewModel: ChatViewModel
+    auth: FirebaseAuth, // Added
+    database: FirebaseDatabase // Added
 ) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val bluetoothService = bluetoothViewModel.bluetoothService
-    val snackbarHostState = remember { SnackbarHostState() } // Add SnackbarHostState
-    val coroutineScope = rememberCoroutineScope() // Add coroutine scope for showing Snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     // Get the current route to determine the selected tab
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -71,10 +77,10 @@ fun Navigation(
 
     // Extract the base route for Chat to compare correctly
     val chatBaseRoute = Screen.Chat.route.substringBefore("/{deviceAddress}")
-    val shouldShowNavBar = currentRoute != chatBaseRoute
+    val shouldShowNavBar = currentRoute != chatBaseRoute && currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }, // Add SnackbarHost to Scaffold
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             AnimatedVisibility(
                 visible = shouldShowNavBar,
@@ -120,7 +126,6 @@ fun Navigation(
                                                 restoreState = true
                                             }
                                         } else {
-                                            // Show Snackbar if no device is connected
                                             coroutineScope.launch {
                                                 snackbarHostState.showSnackbar("Connect to device first")
                                             }
@@ -147,6 +152,20 @@ fun Navigation(
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Login.route) {
+                LoginScreen(
+                    auth = auth,
+                    navigateToSignUp = { navController.navigate(Screen.SignUp.route) },
+                    navigateToMainScreen = { navController.navigate(Screen.DeviceList.route) }
+                )
+            }
+            composable(Screen.SignUp.route) {
+                SingUpScreen(
+                    auth = auth,
+                    database = database,
+                    navigateToLogin = { navController.popBackStack() }
+                )
+            }
             composable(Screen.JoyStick.route) { backStackEntry ->
                 val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
                 deviceAddress?.let {
@@ -164,6 +183,7 @@ fun Navigation(
                     state = bluetoothViewModel.uiState.collectAsState().value,
                     bluetoothViewModel = bluetoothViewModel,
                     navController = navController
+
                 )
             }
             composable(
@@ -171,17 +191,21 @@ fun Navigation(
             ) { backStackEntry ->
                 val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
                 deviceAddress?.let {
+
+                    val audioRecorder = remember { AudioRecorder(context) }
+
                     val factory = ChatViewModelFactory(
                         deviceAddress = it,
                         bluetoothService = bluetoothService,
-                        isMobileDevice = false
+                        isMobileDevice = true,
+                        audioRecorder = audioRecorder // Adjust based on your logic
                     )
                     val viewModel: ChatViewModel = viewModel(factory = factory)
                     ChatScreen(
                         deviceAddress = it,
                         bluetoothService = bluetoothService,
                         onNavigateBack = { navController.popBackStack() },
-                        viewModel = viewModel
+                        viewModel = viewModel,
                     )
                 }
             }
