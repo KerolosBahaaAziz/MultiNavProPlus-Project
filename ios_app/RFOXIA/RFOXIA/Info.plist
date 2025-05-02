@@ -18,7 +18,5 @@
 		<string>bluetooth-central</string>
 		<string>bluetooth-peripheral</string>
 	</array>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>This app needs microphone access to record audio messages</string>
 </dict>
 </plist>
