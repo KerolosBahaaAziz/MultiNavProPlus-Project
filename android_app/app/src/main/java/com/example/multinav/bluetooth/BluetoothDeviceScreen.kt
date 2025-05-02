@@ -29,6 +29,7 @@ import androidx.navigation.NavController
 import com.example.multinav.BluetoothDeviceData
 import com.example.multinav.BluetoothUiState
 import com.example.multinav.Screen
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,7 +37,8 @@ import kotlinx.coroutines.launch
 fun BluetoothDeviceScreen(
     state: BluetoothUiState,
     bluetoothViewModel: BluetoothViewModel = viewModel(),
-    navController: NavController
+    navController: NavController,
+    auth: FirebaseAuth
 ) {
     val isServerMode = remember { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -134,7 +136,20 @@ fun BluetoothDeviceScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
+            Button(
+                onClick = {
+                    auth.signOut() // Sign out the user
+                    navController.navigate(Screen.Login.route) {
+                        // Clear all protected screens from the back stack
+                        popUpTo(Screen.DeviceList.route) { inclusive = true }
+                        popUpTo(Screen.JoyStick.route) { inclusive = true }
+                        popUpTo(Screen.Chat.route) { inclusive = true }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Log Out")
+            }
             Text(
                 text = "Paired Devices (${state.pairedDevices.size})",
                 style = MaterialTheme.typography.titleMedium,

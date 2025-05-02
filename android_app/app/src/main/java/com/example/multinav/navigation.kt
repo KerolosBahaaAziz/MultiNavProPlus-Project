@@ -182,7 +182,9 @@ fun Navigation(
                 BluetoothDeviceScreen(
                     state = bluetoothViewModel.uiState.collectAsState().value,
                     bluetoothViewModel = bluetoothViewModel,
-                    navController = navController
+                    navController = navController,
+                    auth = auth
+
 
                 )
             }
