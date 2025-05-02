@@ -1,5 +1,6 @@
 package com.example.multinav
 
+
 import JoyStickScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
@@ -12,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -77,7 +79,8 @@ fun Navigation(
 
     // Extract the base route for Chat to compare correctly
     val chatBaseRoute = Screen.Chat.route.substringBefore("/{deviceAddress}")
-    val shouldShowNavBar = currentRoute != chatBaseRoute && currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route
+    val shouldShowNavBar =
+        currentRoute != chatBaseRoute && currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -114,11 +117,17 @@ fun Navigation(
                                 onClick = {
                                     if (screen.route == Screen.JoyStick.route) {
                                         // Find the connected device
-                                        val connectedDevice = bluetoothViewModel.uiState.value.let { state ->
-                                            state.pairedDevices.find { it.isConnected } ?: state.scannedDevices.find { it.isConnected }
-                                        }
+                                        val connectedDevice =
+                                            bluetoothViewModel.uiState.value.let { state ->
+                                                state.pairedDevices.find { it.isConnected }
+                                                    ?: state.scannedDevices.find { it.isConnected }
+                                            }
                                         if (connectedDevice != null) {
-                                            navController.navigate(Screen.JoyStick.createRoute(connectedDevice.address)) {
+                                            navController.navigate(
+                                                Screen.JoyStick.createRoute(
+                                                    connectedDevice.address
+                                                )
+                                            ) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
                                                 }
@@ -127,7 +136,18 @@ fun Navigation(
                                             }
                                         } else {
                                             coroutineScope.launch {
-                                                snackbarHostState.showSnackbar("Connect to device first")
+                                        snackbarHostState.showSnackbar("Connect to device first" ,
+                                            duration = SnackbarDuration.Short 
+                                                )
+                                                navController.navigate(Screen.JoyStick.createRoute("PlaceHolder Address"))
+                                                {
+                                                    popUpTo(navController.graph.startDestinationId) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+
                                             }
                                         }
                                     } else {
@@ -139,8 +159,7 @@ fun Navigation(
                                             restoreState = true
                                         }
                                     }
-                                }
-                            )
+                                }                            )
                         }
                     }
                 }
