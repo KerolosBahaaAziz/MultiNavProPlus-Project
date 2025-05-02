@@ -9,8 +9,14 @@ import com.example.multinav.ui.theme.MultiNavTheme
 import android.Manifest
 import android.os.Build
 import android.util.Log
+import com.example.multinav.bluetooth.BluetoothViewModel
+import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import com.example.multinav.login_screen.LoginScreen
+import com.example.multinav.sing_up.SingUpScreen
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
@@ -19,10 +25,17 @@ class MainActivity : ComponentActivity() {
         BluetoothViewModelFactory(bluetoothService)
     }
 
-    private val chatViewModel by viewModels<ChatViewModel> {
-        ChatViewModelFactory(null, bluetoothService)
-    }
+    private val audioRecorder by lazy { AudioRecorder(this) }
 
+    // Initialize ChatViewModel with AudioRecorder
+    private val chatViewModel by viewModels<ChatViewModel> {
+        ChatViewModelFactory(
+            deviceAddress = null, // Will be set when navigating to ChatScreen
+            bluetoothService = bluetoothService,
+            isMobileDevice = false,
+            audioRecorder = audioRecorder
+        )
+    }
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -36,13 +49,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
+        val auth = FirebaseAuth.getInstance()
+        val database : FirebaseDatabase = FirebaseDatabase.getInstance()
         setContent {
             MultiNavTheme {
+          //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
-                    startDestination = Screen.Main.route,  // Change this
-                    chatViewModel = chatViewModel
-                )
+                    database = database,
+                    auth = auth,
+                    startDestination = "login")
             }
         }
     }

@@ -23,7 +23,7 @@ import com.example.multinav.ui.theme.violetPurple
 
 @Composable
 fun CircleIconButton(
-    icon: ImageVector,
+    icon: @Composable ImageVector,
 
     contentDescription: String?,
     onCircleButtonClick: () -> Unit,
