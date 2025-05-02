@@ -42,7 +42,7 @@ struct DeviceListView: View {
             } message: {
                 Text(bluetoothManager.connectionErrorMessage)
             }
-        }
+        }.navigationBarBackButtonHidden(true)
     }
 }
 

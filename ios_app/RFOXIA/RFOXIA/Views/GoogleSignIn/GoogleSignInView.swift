@@ -84,6 +84,7 @@ struct GoogleSignInView: View {
                                     UserDefaults.standard.set(false, forKey: "isLogin")
                                     self.alertMessage = "Google sign-in failed."
                                     self.showAlert = true
+                                    self.navigateToHome = false
                                 }
                             }
                         }

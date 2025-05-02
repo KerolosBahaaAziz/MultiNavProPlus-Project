@@ -13,12 +13,12 @@ struct CheckBluetoothView: View {
     @StateObject private var bluetoothManager = BluetoothManager()
     
     @State private var messages: [ChatMessage] = [
-        ChatMessage(text: "Hey! Ready to test Bluetooth chat?", isCurrentUser: false, senderName: "John"),
-        ChatMessage(text: "Yep! Looks like we're connected.", isCurrentUser: true, senderName: "Me"),
-        ChatMessage(text: "Awesome. No internet needed", isCurrentUser: false, senderName: "John"),
-        ChatMessage(text: "Exactly — just Swift and airwaves", isCurrentUser: true, senderName: "Me")
+        ChatMessage(type: .text("Hey! Ready to test Bluetooth chat?"), isCurrentUser: false, senderName: "John"),
+        ChatMessage(type: .text("Yep! Looks like we're connected."), isCurrentUser: true, senderName: "Me"),
+        ChatMessage(type: .text("Awesome. No internet needed"), isCurrentUser: false, senderName: "John"),
+        ChatMessage(type: .text("Exactly — just Swift and airwaves"), isCurrentUser: true, senderName: "Me")
     ]
-    
+
     let customColor = Color(red: 26/255, green: 61/255, blue: 120/255)
     
     var body: some View {
@@ -51,7 +51,7 @@ struct CheckBluetoothView: View {
         }
         .onChange(of: bluetoothManager.receivedMessages) { newMessages in
             for message in newMessages {
-                let newMessage = ChatMessage(text: message, isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
+                let newMessage = ChatMessage(type: .text(message), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
                 messages.append(newMessage)
             }
         }
