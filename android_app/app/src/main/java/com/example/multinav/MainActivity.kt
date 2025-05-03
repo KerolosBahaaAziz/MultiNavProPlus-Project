@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
-                    startDestination = "deviceList"
+                    startDestination = "login"
                 )
             }
         }
