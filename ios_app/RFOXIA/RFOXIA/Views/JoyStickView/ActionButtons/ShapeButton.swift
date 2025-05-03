@@ -15,7 +15,7 @@ struct ShapeButton: View {
         Image(systemName :iconName)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(width: 30, height: 30)
+            .frame(width: 20, height: 20)
             .foregroundColor(.white)
             .padding()
             .background(BackgroundGradient.backgroundGradient)
