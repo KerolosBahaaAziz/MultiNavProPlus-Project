@@ -20,6 +20,7 @@ struct ButtonHistoryItem: Identifiable, Codable{
         case activator(String)
         case delay
         case mode
+        case rotating(Int)
     }
     
     var iconName: String {
@@ -40,6 +41,8 @@ struct ButtonHistoryItem: Identifiable, Codable{
             return "clock"
         case .mode:
             return ""
+        case .rotating:
+            return ""
         }
     }
     
@@ -50,6 +53,7 @@ struct ButtonHistoryItem: Identifiable, Codable{
         case .activator: return .orange
         case .delay: return .purple
         case .mode: return .gray
+        case .rotating: return .mint
         }
     }
 }
@@ -95,6 +99,8 @@ extension ButtonHistoryItem {
                return "M\(modeNumber)"
             }
             return ""
+        case .rotating:
+            return value
         }
     }
 }

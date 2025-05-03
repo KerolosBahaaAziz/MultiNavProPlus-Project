@@ -24,6 +24,7 @@ struct MainTabView: View {
                 .ignoresSafeArea()
 
             TabView {
+                
                 BluetoothChatView()
                     .tabItem {
                         Label("Chat", systemImage: "bubble.left.and.bubble.right.fill")
@@ -33,6 +34,7 @@ struct MainTabView: View {
                     .tabItem {
                         Label("Control", systemImage: "gear")
                     }
+                
             }
             .accentColor(Color(red: 26/255, green: 61/255, blue: 120/255)) 
         }

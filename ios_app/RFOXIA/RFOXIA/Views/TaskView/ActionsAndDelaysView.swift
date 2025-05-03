@@ -14,6 +14,7 @@ struct ActionsAndDelaysView: View {
     @State private var taskName: String = ""
     @State private var showSecondPicker: Bool = false
     @State private var selectedMode: Int = 0
+    @State var value: Int = 0
     @State private var selectedButtons: [ButtonHistoryItem] = []
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
@@ -54,6 +55,17 @@ struct ActionsAndDelaysView: View {
                 }
                 
                 ModeButtonsView(selectedIndex: $selectedMode)
+                
+                rotatingKnobView(selection: $value, range: -600...600) { isMoving in
+                    let item = ButtonHistoryItem(
+                        type: .rotating(isMoving),
+                        value: "\(isMoving)",
+                        timestamp: Date()
+                    )
+                    selectedButtons.append(item)
+                }.aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 100)
+                    .padding(.horizontal)
                 
                 HStack {
                     /*Button("Add Action") {

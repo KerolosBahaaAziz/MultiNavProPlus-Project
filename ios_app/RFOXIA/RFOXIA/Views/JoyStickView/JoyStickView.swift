@@ -78,13 +78,15 @@ struct JoyStickView: View {
                                         bluetoothManager.sendCommandToMicrocontroller("ol")
                                     }
                                     Spacer()
-                                    rotatingKnobView(selection: $value, range: -500...500) { isMoving in
+                                    
+                                    rotatingKnobView(selection: $value, range: -600...600) { isMoving in
                                         print("isMoving: \(isMoving)")
                                     }
                                     .aspectRatio(1, contentMode: .fit)
                                     .frame(maxWidth: geometry.size.width * 0.3)
                                     .padding(.horizontal)
                                     Spacer()
+                                    
                                     ActionButtonsView { action in
                                         bluetoothManager.sendCommandToMicrocontroller("fd")
                                         print("Action is \(action)")

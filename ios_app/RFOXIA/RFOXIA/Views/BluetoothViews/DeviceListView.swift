@@ -46,7 +46,6 @@ struct DeviceListView: View {
     }
 }
 
-
 #Preview {
     DeviceListView()
 }
