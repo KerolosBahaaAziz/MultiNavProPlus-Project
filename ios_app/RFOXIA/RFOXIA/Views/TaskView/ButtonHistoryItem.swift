@@ -26,20 +26,20 @@ struct ButtonHistoryItem: Identifiable, Codable{
         switch type {
         case .direction(let direction):
             switch direction {
-            case "up": return "arrow.up"
-            case "down": return "arrow.down"
-            case "left": return "arrow.left"
-            case "right": return "arrow.right"
-            default: return "questionmark"
+            case "up": return "U"
+            case "down": return "D"
+            case "left": return "L"
+            case "right": return "R"
+            default: return ""
             }
         case .action(let action):
             return action.replacingOccurrences(of: "action", with: "") + ".circle"
         case .activator:
-            return "power"
+            return "P"
         case .delay:
             return "clock"
         case .mode:
-            return "gear"
+            return ""
         }
     }
     

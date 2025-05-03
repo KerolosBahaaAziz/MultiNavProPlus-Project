@@ -3,6 +3,7 @@
     <entity name="History" representedClassName="History" syncable="YES" codeGenerationType="class">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="items" optional="YES" attributeType="Binary"/>
+        <attribute name="letters" optional="YES" attributeType="String"/>
         <attribute name="taskName" optional="YES" attributeType="String"/>
     </entity>
     <entity name="Item" representedClassName="Item" syncable="YES" codeGenerationType="class">

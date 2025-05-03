@@ -146,6 +146,7 @@ struct ActionsAndDelaysView: View {
             print("Failed to save task: \(error.localizedDescription)")
         }
     }
+    
 }
 
 
