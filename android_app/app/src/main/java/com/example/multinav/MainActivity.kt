@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         bluetoothService.disconnect()
         // Clean up HERE SDK
-      //  SDKNativeEngine.getSharedInstance()?.dispose()
+        SDKNativeEngine.getSharedInstance()?.dispose()
     }
 
 }
