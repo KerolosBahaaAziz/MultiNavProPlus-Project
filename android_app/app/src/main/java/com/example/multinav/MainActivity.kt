@@ -17,6 +17,9 @@ import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.sing_up.SingUpScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.here.sdk.core.engine.SDKNativeEngine
+import com.here.sdk.core.engine.SDKOptions
+import com.here.sdk.core.errors.InstantiationErrorException
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
@@ -51,6 +54,19 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermissions()
         val auth = FirebaseAuth.getInstance()
         val database : FirebaseDatabase = FirebaseDatabase.getInstance()
+
+        // Initialize HERE SDK with SDKOptions using resources
+        val apiKey = getString(R.string.here_api_key)
+        val sdkOptions = SDKOptions(apiKey, "").apply {  // Using API key as accessKeyId, empty secret
+            cachePath = "${filesDir}/here_sdk_cache"
+        }
+        try {
+            SDKNativeEngine.makeSharedInstance(this, sdkOptions)
+        } catch (e: InstantiationErrorException) {
+            Log.e("MainActivity", "Failed to initialize HERE SDK: ${e.message}")
+            throw RuntimeException("HERE SDK initialization failed", e)
+        }
+
         setContent {
             MultiNavTheme {
           //     SingUpScreen(auth = auth)
@@ -94,5 +110,8 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         bluetoothService.disconnect()
+        // Clean up HERE SDK
+        SDKNativeEngine.getSharedInstance()?.dispose()
     }
+
 }

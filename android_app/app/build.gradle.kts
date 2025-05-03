@@ -39,6 +39,14 @@ android {
         compose = true
     }
 }
+//
+//repositories {
+//    flatDir {
+//        dirs("libs") // Look for AAR files in app/libs
+//    }
+//    google()
+//    mavenCentral()
+//}
 
 dependencies {
     implementation("com.google.firebase:firebase-database")
@@ -68,4 +76,5 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
+    implementation(files("libs/heresdk-explore-android-4.22.2.0.186672.aar")) // Direct AAR reference
 }
