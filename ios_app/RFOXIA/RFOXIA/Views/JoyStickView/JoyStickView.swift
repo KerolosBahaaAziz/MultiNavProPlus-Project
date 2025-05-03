@@ -25,7 +25,7 @@ struct JoyStickView: View {
     @State private var latitude: Double = 40.7128
     @State private var longitude: Double = -74.006
     @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.006), // Example: New York
+        center: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.006), 
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     )
     

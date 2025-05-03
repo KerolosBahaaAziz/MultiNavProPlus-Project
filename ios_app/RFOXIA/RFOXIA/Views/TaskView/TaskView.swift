@@ -13,7 +13,7 @@ struct TaskView: View {
     @FetchRequest(entity: History.entity(), sortDescriptors: []) var savedTasks: FetchedResults<History>
     
     init() {
-        self._isOn = State(initialValue: Array(repeating: false, count: 10))
+        self._isOn = State(initialValue: Array(repeating: false, count: 100))
     }
     
     var body: some View {
@@ -90,7 +90,7 @@ struct TaskView: View {
             return
         }
         
-        let lettersArray = decodedItems.map { $0.value }
+        let lettersArray = decodedItems.map { $0.commandLetter }
         let lettersString = lettersArray.joined(separator: " ")
         
         print("Task Letters: \(lettersString)")

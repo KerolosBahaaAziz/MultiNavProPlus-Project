@@ -28,12 +28,12 @@ struct CoreDataManager {
         history.taskName = taskName
         
         // Create string like "U D A W2 L P"
-        //let commandString = items.map { $0.commandLetter }.joined(separator: " ")
-        //history.letters = commandString  // Make sure "letters" exists in CoreData model as String
+        let commandString = items.map { $0.commandLetter }.joined(separator: " ")
+        history.letters = commandString  // Make sure "letters" exists in CoreData model as String
         
         do {
             try context.save()
-           // print("Saved letters: \(commandString)")
+        print("Saved letters: \(commandString)")
         } catch {
             print("Failed to save history: \(error.localizedDescription)")
         }

@@ -52,7 +52,7 @@ struct ActivatorButtonView: View {
             }
         }
     }
-    private func toggleButtonState(for button : String){
+     func toggleButtonState(for button : String){
         isActivated[button]?.toggle()
         onActionPressed?(button , isActivated[button] ?? false)
     }
