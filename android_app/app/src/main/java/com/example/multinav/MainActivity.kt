@@ -19,6 +19,7 @@ import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.sing_up.SingUpScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.here.sdk.core.engine.AuthenticationMode
 import com.here.sdk.core.engine.SDKNativeEngine
 import com.here.sdk.core.engine.SDKOptions
 import com.here.sdk.core.errors.InstantiationErrorException
@@ -55,12 +56,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
         val auth = FirebaseAuth.getInstance()
-        val database : FirebaseDatabase = FirebaseDatabase.getInstance()
-
-        // Initialize HERE SDK with SDKOptions using new credentials
+        val database = FirebaseDatabase.getInstance()
+// Initialize HERE SDK with accessKeyId and accessKeySecret
         val accessKeyId = getString(R.string.here_access_key_id)
         val accessKeySecret = getString(R.string.here_access_key_secret)
-        val sdkOptions = SDKOptions(accessKeyId).apply {
+        val authenticationMode = AuthenticationMode.withKeySecret(accessKeyId, accessKeySecret)
+        val sdkOptions = SDKOptions(authenticationMode).apply {
             cachePath = "${filesDir}/here_sdk_cache"
         }
         try {
@@ -70,13 +71,15 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Failed to initialize HERE SDK: ${e.message}")
             throw RuntimeException("HERE SDK initialization failed", e)
         }
+
         setContent {
             MultiNavTheme {
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
-                    startDestination = "login")
+                    startDestination = "deviceList"
+                )
             }
         }
     }
@@ -113,7 +116,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         bluetoothService.disconnect()
         // Clean up HERE SDK
-        SDKNativeEngine.getSharedInstance()?.dispose()
+      //  SDKNativeEngine.getSharedInstance()?.dispose()
     }
 
 }

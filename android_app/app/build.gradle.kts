@@ -27,6 +27,7 @@ android {
                 "proguard-rules.pro"
             )
         }
+
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -77,4 +78,5 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
     implementation(files("libs/heresdk-explore-android-4.22.2.0.186672.aar")) // Direct AAR reference
+   // implementation ("com.here.sdk:explore:4.22.2.0")
 }

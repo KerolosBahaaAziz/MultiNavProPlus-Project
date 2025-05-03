@@ -101,6 +101,7 @@ fun CircleIconButton(
 
 
 
+@Preview(showSystemUi = true)
 @Composable
 fun JoyStickScreen(
     modifier: Modifier = Modifier,
@@ -113,32 +114,10 @@ fun JoyStickScreen(
     )
 
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val activity = context as? Activity
+    val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { MapView(context) }
 
-    // Map lifecycle management
-    DisposableEffect(lifecycleOwner) {
-        val lifecycleObserver = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_CREATE -> mapView.onCreate(null)
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
-                else -> {}
-            }
-        }
-
-        lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
-        mapView.onCreate(null) // Initial creation
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
-            mapView.onDestroy()
-        }
-    }
-
-    // Handle screen orientation
     DisposableEffect(Unit) {
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         onDispose {
@@ -146,371 +125,310 @@ fun JoyStickScreen(
         }
     }
 
+    // Manage MapView lifecycle with Compose lifecycle
+    DisposableEffect(Unit) {
 
 
-    AndroidView(
-        factory = { mapView },
-        update = { view ->
-            try {
-                // Try the state check if available in your SDK version
-                val sceneState = view.mapScene::class.java.getDeclaredField("state").get(view.mapScene)
-                if (sceneState.toString() != "LOADED") {
-                    loadMapScene(view)
-                }
-            } catch (e: Exception) {
-                // Fallback to boolean check
-                if (true) {
-                    loadMapScene(view)
-                }
+        // Initialize MapView
+        mapView.onCreate(null)
+        Log.d("JoyStickScreen", "MapView onCreate called")
+
+        // Load map scene
+        mapView.onResume()
+        mapView.mapScene.loadScene(MapScheme.NORMAL_DAY) { error ->
+            if (error == null) {
+                    val geoCoordinates = GeoCoordinates(30.0444, 31.2357) // Cairo, Egypt
+                val distance = MapMeasure(MapMeasure.Kind.DISTANCE_IN_METERS, 1000.0)
+                mapView.camera.lookAt(geoCoordinates, distance)
+                Log.i("HERE Map", "Map scene loaded successfully")
+            } else {
+                Log.e("HERE Map", "Failed to load map: ${error.toString()}")
             }
         }
-    )
 
+        onDispose {
+            // Cleanup MapView
+            mapView.onPause()
+            mapView.onDestroy()
+            Log.d("JoyStickScreen", "MapView onDestroy called")
 
+            // Reset screen orientation
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+    Scaffold { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .width(IntrinsicSize.Max),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BluetoothReaders(bluetoothReader = "26", bluetoothReaderType = "°C", modifier = Modifier.weight(1f))
+                BluetoothReaders(bluetoothReader = "48", bluetoothReaderType = "%", modifier = Modifier.weight(1f))
+                BluetoothReaders(bluetoothReader = "1013", bluetoothReaderType = "hPa", modifier = Modifier.weight(1f))
+                BluetoothReaders(bluetoothReader = "Good", bluetoothReaderType = "", modifier = Modifier.weight(1f))
+            }
 
-    // ... rest of your UI code ...
-}
+            Row(
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                RadioButtonMode(
+                    selectedModeState = viewModel.selectedMode,
+                    modeName = Modes.MODE_ONE
+                )
+                RadioButtonMode(
+                    selectedModeState = viewModel.selectedMode,
+                    modeName = Modes.MODE_TWO
+                )
+                RadioButtonMode(
+                    selectedModeState = viewModel.selectedMode,
+                    modeName = Modes.MODE_THREE
+                )
+            }
 
-fun loadMapScene(view: MapView) {
-    view.mapScene.loadScene(MapScheme.NORMAL_DAY) { error ->
-        if (error == null) {
-            view.camera.lookAt(
-                GeoCoordinates(52.5200, 13.4050),
-                MapMeasure(MapMeasure.Kind.DISTANCE, 1000.0)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+// Map at the top
+                AndroidView(
+                    factory = { context ->
+                        MapView(context).apply {
+                            onCreate(null) // Initialize the MapView
+                            onResume()     // Ensure it’s active
+                            mapScene.loadScene(MapScheme.NORMAL_DAY) { error ->
+                                if (error == null) {
+                                    val geoCoordinates = GeoCoordinates(52.5200, 13.4050) // Berlin coordinates
+                                    val distance = MapMeasure(MapMeasure.Kind.DISTANCE, 1000.0)
+                                    camera.lookAt(geoCoordinates, distance)
+                                    Log.i("HERE Map", "Map scene loaded successfully")
+                                } else {
+                                    Log.e("HERE Map", "Failed to load map: ${error.toString()}")
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .background(Color.Red) // Debug: Red background if map tiles fail
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Left Column (directional arrows)
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircleIconButton(
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Up",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Up",
+                            onCircleButtonClick = {},
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row {
+                            CircleIconButton(
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowLeft,
+                                        contentDescription = "Left",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Left",
+                                onCircleButtonClick = {},
+                            )
+                            Spacer(modifier = Modifier.width(32.dp))
+                            CircleIconButton(
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowRight,
+                                        contentDescription = "Right",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Right",
+                                onCircleButtonClick = {},
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        CircleIconButton(
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Down",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Down",
+                            onCircleButtonClick = {},
+                        )
+                    }
+
+                    // Middle Column (joystick)
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Current Angle: ${viewModel.currentAngle.value.roundToInt()} degrees",
+                            modifier = Modifier.padding(8.dp)
+                        )
+                        MyAnalogJoystick(
+                            modifier = Modifier.size(200.dp),
+                            onAngleChange = { angle ->
+                                viewModel.currentAngle.value = angle
+                            }
+                        )
+                    }
+
+                    // Right Column (PlayStation buttons)
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Top: Triangle
+                        CircleIconButton(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_triangle),
+                                    contentDescription = "Triangle",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Triangle",
+                            onCircleButtonClick = {},
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Middle: Square (left) and Circle (right)
+                        Row {
+                            CircleIconButton(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_square),
+                                        contentDescription = "Square",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Square",
+                                onCircleButtonClick = {},
+                            )
+                            Spacer(modifier = Modifier.width(32.dp))
+                            CircleIconButton(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_circle),
+                                        contentDescription = "Circle",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color.White
+                                    )
+                                },
+                                contentDescription = "Circle",
+                                onCircleButtonClick = {},
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Bottom: Cross
+                        CircleIconButton(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_x),
+                                    contentDescription = "Cross",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
+                            },
+                            contentDescription = "Cross",
+                            onCircleButtonClick = {},
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+            ) {
+                CircleToggleButton(
+                    buttonName = "A",
+                    isToggled = viewModel.isToggleButtonA,
+                    onButtonClick = { isPressed ->
+                        viewModel.onButtonAClick(isPressed)
+                        Log.e("buttonA", isPressed.toString())
+                    }
+                )
+
+                CircleToggleButton(
+                    buttonName = "B",
+                    isToggled = viewModel.isToggleButtonB,
+                    onButtonClick = { toggled ->
+                        Log.e("ToggleButton B", "${toggled}B")
+                    }
+                )
+
+                CircleToggleButton(
+                    buttonName = "C",
+                    isToggled = viewModel.isToggleButtonC,
+                    onButtonClick = { toggled ->
+                        Log.e("ToggleButton C", "${toggled}C")
+                    }
+                )
+
+                CircleToggleButton(
+                    buttonName = "D",
+                    isToggled = viewModel.isToggleButtonD,
+                    onButtonClick = { toggled ->
+                        Log.e("ToggleButton D", "${toggled}D")
+                    }
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
+            ) {
+                FloatingButton(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp),
+                    onClick = { }
+                )
+            }
         }
     }
 }
-
-//@Preview(showSystemUi = true)
-//@Composable
-//fun JoyStickScreen(
-//    modifier: Modifier = Modifier,
-//    bluetoothService: BluetoothService,
-//    deviceAddress: String,
-//    isMobileDevice: Boolean
-//) {
-//    val viewModel: JoyStickViewModel = viewModel(
-//        factory = JoyStickViewModelFactory(bluetoothService, deviceAddress, isMobileDevice)
-//    )
-//
-//    val context = LocalContext.current
-//    val activity = context as? Activity
-//    val lifecycleOwner = LocalLifecycleOwner.current
-//    val mapView = remember { MapView(context) }
-//
-////    DisposableEffect(Unit) {
-////        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-////        onDispose {
-////            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-////        }
-////    }
-//
-//    // Manage MapView lifecycle with Compose lifecycle
-//    DisposableEffect(Unit) {
-//        // Set screen orientation
-//     //   activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-//
-//        // Initialize MapView
-//        mapView.onCreate(null)
-//        Log.d("JoyStickScreen", "MapView onCreate called")
-//
-//        // Load map scene
-//        mapView.onResume()
-//        mapView.mapScene.loadScene(MapScheme.NORMAL_DAY) { error ->
-//            if (error == null) {
-//                val geoCoordinates = GeoCoordinates(52.5200, 13.4050)
-//                val distance = MapMeasure(MapMeasure.Kind.DISTANCE, 1000.0)
-//                mapView.camera.lookAt(geoCoordinates, distance)
-//                Log.i("HERE Map", "Map scene loaded successfully")
-//            } else {
-//                Log.e("HERE Map", "Failed to load map: ${error.toString()}")
-//            }
-//        }
-//
-//        onDispose {
-//            // Cleanup MapView
-//            mapView.onPause()
-//            mapView.onDestroy()
-//            Log.d("JoyStickScreen", "MapView onDestroy called")
-//
-//            // Reset screen orientation
-//            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-//        }
-//    }
-//    Scaffold { innerPadding ->
-//        Column(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(innerPadding)
-//                .verticalScroll(rememberScrollState()),
-//            horizontalAlignment = Alignment.CenterHorizontally
-//        ) {
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .horizontalScroll(rememberScrollState())
-//                    .wrapContentWidth(Alignment.CenterHorizontally)
-//                    .width(IntrinsicSize.Max),
-//                verticalAlignment = Alignment.CenterVertically,
-//            ) {
-//                BluetoothReaders(bluetoothReader = "26", bluetoothReaderType = "°C", modifier = Modifier.weight(1f))
-//                BluetoothReaders(bluetoothReader = "48", bluetoothReaderType = "%", modifier = Modifier.weight(1f))
-//                BluetoothReaders(bluetoothReader = "1013", bluetoothReaderType = "hPa", modifier = Modifier.weight(1f))
-//                BluetoothReaders(bluetoothReader = "Good", bluetoothReaderType = "", modifier = Modifier.weight(1f))
-//            }
-//
-//            Row(
-//                horizontalArrangement = Arrangement.Center,
-//            ) {
-//                RadioButtonMode(
-//                    selectedModeState = viewModel.selectedMode,
-//                    modeName = Modes.MODE_ONE
-//                )
-//                RadioButtonMode(
-//                    selectedModeState = viewModel.selectedMode,
-//                    modeName = Modes.MODE_TWO
-//                )
-//                RadioButtonMode(
-//                    selectedModeState = viewModel.selectedMode,
-//                    modeName = Modes.MODE_THREE
-//                )
-//            }
-//
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(vertical = 16.dp),
-//                contentAlignment = Alignment.Center,
-//            ) {
-//// Map at the top
-//                AndroidView(
-//                    factory = { context ->
-//                        MapView(context).apply {
-//                            onCreate(null) // Initialize the MapView
-//                            onResume()     // Ensure it’s active
-//                            mapScene.loadScene(MapScheme.NORMAL_DAY) { error ->
-//                                if (error == null) {
-//                                    val geoCoordinates = GeoCoordinates(52.5200, 13.4050) // Berlin coordinates
-//                                    val distance = MapMeasure(MapMeasure.Kind.DISTANCE, 1000.0)
-//                                    camera.lookAt(geoCoordinates, distance)
-//                                    Log.i("HERE Map", "Map scene loaded successfully")
-//                                } else {
-//                                    Log.e("HERE Map", "Failed to load map: ${error.toString()}")
-//                                }
-//                            }
-//                        }
-//                    },
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .height(300.dp)
-//                        .background(Color.Red) // Debug: Red background if map tiles fail
-//                )
-//                Row(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .horizontalScroll(rememberScrollState()),
-//                    horizontalArrangement = Arrangement.SpaceEvenly,
-//                    verticalAlignment = Alignment.CenterVertically,
-//                ) {
-//                    // Left Column (directional arrows)
-//                    Column(
-//                        modifier = Modifier.padding(8.dp),
-//                        verticalArrangement = Arrangement.Center,
-//                        horizontalAlignment = Alignment.CenterHorizontally
-//                    ) {
-//                        CircleIconButton(
-//                            icon = {
-//                                Icon(
-//                                    imageVector = Icons.Default.KeyboardArrowUp,
-//                                    contentDescription = "Up",
-//                                    modifier = Modifier.size(20.dp),
-//                                    tint = Color.White
-//                                )
-//                            },
-//                            contentDescription = "Up",
-//                            onCircleButtonClick = {},
-//                        )
-//                        Spacer(modifier = Modifier.height(8.dp))
-//                        Row {
-//                            CircleIconButton(
-//                                icon = {
-//                                    Icon(
-//                                        imageVector = Icons.Default.KeyboardArrowLeft,
-//                                        contentDescription = "Left",
-//                                        modifier = Modifier.size(20.dp),
-//                                        tint = Color.White
-//                                    )
-//                                },
-//                                contentDescription = "Left",
-//                                onCircleButtonClick = {},
-//                            )
-//                            Spacer(modifier = Modifier.width(32.dp))
-//                            CircleIconButton(
-//                                icon = {
-//                                    Icon(
-//                                        imageVector = Icons.Default.KeyboardArrowRight,
-//                                        contentDescription = "Right",
-//                                        modifier = Modifier.size(20.dp),
-//                                        tint = Color.White
-//                                    )
-//                                },
-//                                contentDescription = "Right",
-//                                onCircleButtonClick = {},
-//                            )
-//                        }
-//                        Spacer(modifier = Modifier.height(8.dp))
-//                        CircleIconButton(
-//                            icon = {
-//                                Icon(
-//                                    imageVector = Icons.Default.KeyboardArrowDown,
-//                                    contentDescription = "Down",
-//                                    modifier = Modifier.size(20.dp),
-//                                    tint = Color.White
-//                                )
-//                            },
-//                            contentDescription = "Down",
-//                            onCircleButtonClick = {},
-//                        )
-//                    }
-//
-//                    // Middle Column (joystick)
-//                    Column(
-//                        modifier = Modifier.padding(8.dp),
-//                        verticalArrangement = Arrangement.Center,
-//                        horizontalAlignment = Alignment.CenterHorizontally
-//                    ) {
-//                        Text(
-//                            text = "Current Angle: ${viewModel.currentAngle.value.roundToInt()} degrees",
-//                            modifier = Modifier.padding(8.dp)
-//                        )
-//                        MyAnalogJoystick(
-//                            modifier = Modifier.size(200.dp),
-//                            onAngleChange = { angle ->
-//                                viewModel.currentAngle.value = angle
-//                            }
-//                        )
-//                    }
-//
-//                    // Right Column (PlayStation buttons)
-//                    Column(
-//                        modifier = Modifier.padding(8.dp),
-//                        verticalArrangement = Arrangement.Center,
-//                        horizontalAlignment = Alignment.CenterHorizontally
-//                    ) {
-//                        // Top: Triangle
-//                        CircleIconButton(
-//                            icon = {
-//                                Icon(
-//                                    painter = painterResource(R.drawable.ic_triangle),
-//                                    contentDescription = "Triangle",
-//                                    modifier = Modifier.size(20.dp),
-//                                    tint = Color.White
-//                                )
-//                            },
-//                            contentDescription = "Triangle",
-//                            onCircleButtonClick = {},
-//                        )
-//                        Spacer(modifier = Modifier.height(8.dp))
-//
-//                        // Middle: Square (left) and Circle (right)
-//                        Row {
-//                            CircleIconButton(
-//                                icon = {
-//                                    Icon(
-//                                        painter = painterResource(R.drawable.ic_square),
-//                                        contentDescription = "Square",
-//                                        modifier = Modifier.size(20.dp),
-//                                        tint = Color.White
-//                                    )
-//                                },
-//                                contentDescription = "Square",
-//                                onCircleButtonClick = {},
-//                            )
-//                            Spacer(modifier = Modifier.width(32.dp))
-//                            CircleIconButton(
-//                                icon = {
-//                                    Icon(
-//                                        painter = painterResource(R.drawable.ic_circle),
-//                                        contentDescription = "Circle",
-//                                        modifier = Modifier.size(20.dp),
-//                                        tint = Color.White
-//                                    )
-//                                },
-//                                contentDescription = "Circle",
-//                                onCircleButtonClick = {},
-//                            )
-//                        }
-//                        Spacer(modifier = Modifier.height(8.dp))
-//
-//                        // Bottom: Cross
-//                        CircleIconButton(
-//                            icon = {
-//                                Icon(
-//                                    painter = painterResource(R.drawable.ic_x),
-//                                    contentDescription = "Cross",
-//                                    modifier = Modifier.size(20.dp),
-//                                    tint = Color.White
-//                                )
-//                            },
-//                            contentDescription = "Cross",
-//                            onCircleButtonClick = {},
-//                        )
-//                    }
-//                }
-//            }
-//
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                verticalAlignment = Alignment.CenterVertically,
-//                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
-//            ) {
-//                CircleToggleButton(
-//                    buttonName = "A",
-//                    isToggled = viewModel.isToggleButtonA,
-//                    onButtonClick = { isPressed ->
-//                        viewModel.onButtonAClick(isPressed)
-//                        Log.e("buttonA", isPressed.toString())
-//                    }
-//                )
-//
-//                CircleToggleButton(
-//                    buttonName = "B",
-//                    isToggled = viewModel.isToggleButtonB,
-//                    onButtonClick = { toggled ->
-//                        Log.e("ToggleButton B", "${toggled}B")
-//                    }
-//                )
-//
-//                CircleToggleButton(
-//                    buttonName = "C",
-//                    isToggled = viewModel.isToggleButtonC,
-//                    onButtonClick = { toggled ->
-//                        Log.e("ToggleButton C", "${toggled}C")
-//                    }
-//                )
-//
-//                CircleToggleButton(
-//                    buttonName = "D",
-//                    isToggled = viewModel.isToggleButtonD,
-//                    onButtonClick = { toggled ->
-//                        Log.e("ToggleButton D", "${toggled}D")
-//                    }
-//                )
-//            }
-//
-//            Box(
-//                modifier = Modifier
-//                    .padding(16.dp)
-//                    .fillMaxWidth()
-//            ) {
-//                FloatingButton(
-//                    modifier = Modifier
-//                        .align(Alignment.BottomEnd)
-//                        .padding(16.dp),
-//                    onClick = { }
-//                )
-//            }
-//        }
-//    }
-//}
