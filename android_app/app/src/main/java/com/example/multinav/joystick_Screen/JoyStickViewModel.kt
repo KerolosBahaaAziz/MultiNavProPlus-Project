@@ -65,6 +65,16 @@ class JoyStickViewModel(
             }
         }
     }
+
+
+
+    fun sendActionCommand(s: String) {
+
+    }
+
+    fun sendDirectionCommand(s: String) {
+
+    }
 }
 
 class JoyStickViewModelFactory(

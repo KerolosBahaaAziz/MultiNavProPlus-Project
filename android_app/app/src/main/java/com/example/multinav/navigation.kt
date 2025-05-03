@@ -1,7 +1,6 @@
 package com.example.multinav
 
 
-import JoyStickScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -33,6 +32,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.joystick_Screen.JoyStickScreen
 import com.example.multinav.bluetooth.BluetoothDeviceScreen
 import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.chat.ChatScreen
