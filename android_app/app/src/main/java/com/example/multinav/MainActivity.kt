@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.multinav
 
 import android.os.Bundle
@@ -55,21 +57,21 @@ class MainActivity : ComponentActivity() {
         val auth = FirebaseAuth.getInstance()
         val database : FirebaseDatabase = FirebaseDatabase.getInstance()
 
-        // Initialize HERE SDK with SDKOptions using resources
-        val apiKey = getString(R.string.here_api_key)
-        val sdkOptions = SDKOptions(apiKey, "").apply {  // Using API key as accessKeyId, empty secret
+        // Initialize HERE SDK with SDKOptions using new credentials
+        val accessKeyId = getString(R.string.here_access_key_id)
+        val accessKeySecret = getString(R.string.here_access_key_secret)
+        val sdkOptions = SDKOptions(accessKeyId).apply {
             cachePath = "${filesDir}/here_sdk_cache"
         }
         try {
             SDKNativeEngine.makeSharedInstance(this, sdkOptions)
+            Log.i("MainActivity", "HERE SDK initialized successfully")
         } catch (e: InstantiationErrorException) {
             Log.e("MainActivity", "Failed to initialize HERE SDK: ${e.message}")
             throw RuntimeException("HERE SDK initialization failed", e)
         }
-
         setContent {
             MultiNavTheme {
-          //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,

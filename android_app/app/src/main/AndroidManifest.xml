@@ -34,17 +34,14 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.MultiNav">
+            android:theme="@style/Theme.MultiNav"
+            android:configChanges="orientation|screenSize"> <!-- Added to handle rotation -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <meta-data
-            android:name="com.here.sdk.api_key"
-            android:value="@string/here_api_key" />
 
     </application>
 

@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">MultiNav</string>
+    <string name="here_app_id">xCaH9eh5kgR8Z4qXt09Z</string>
+    <string name="here_app_code">YOUR_APP_CODE</string> <!-- Not needed for API Key auth -->
+    <string name="here_api_key">qHJ5KxcFF4n-H3JLQXkTzJ6DIwK58WQUY28y8VXAsSo</string>
+    <string name="here_access_key_id">knvzBfr0LWzynGDqd5JmDw</string> <!-- Replace with the new Access Key ID -->
+    <string name="here_access_key_secret">YOUR_ACCESS_KEY_SECRET</string> <!-- Replace with the new Access Key Secret -->
 </resources>
