@@ -10,11 +10,11 @@ import com.example.multinav.database.entities.Task
 interface TaskDao {
 
     @Query("SELECT * From Task WHERE userUid = :userId")
-    fun getALLTasksByUserId(userId :String): List<Task>
+    suspend fun getALLTasksByUserId(userId :String): List<Task>
 
     @Delete
-    fun deleteTask(task : Task)
+    suspend fun deleteTask(task : Task)
 
     @Insert
-    fun addTask(task: Task)
+    suspend fun addTask(task: Task)
 }

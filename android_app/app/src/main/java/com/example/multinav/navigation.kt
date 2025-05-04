@@ -31,6 +31,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.desgin.actions_delays_screen.ActionsAndDelaysScreen
+import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
+import com.example.multinav.actions_delays_screen.SetDelayScreen
 import com.example.multinav.bluetooth.BluetoothDeviceScreen
 import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.chat.ChatScreen
@@ -56,6 +59,9 @@ sealed class Screen(
     }
     object Login : Screen("login")
     object SignUp : Screen("signup")
+    object ActionsAndDelays : Screen("actions_delays")
+    object SetDelay : Screen("set_delay_screen")
+
 }
 
 @Composable
@@ -210,6 +216,21 @@ fun Navigation(
                         viewModel = viewModel,
                     )
                 }
+            }
+            composable(Screen.ActionsAndDelays.route) {
+                val viewModel: ActionsAndDelaysViewModel = viewModel()
+                ActionsAndDelaysScreen(
+                    navController = navController,
+                    viewModel = viewModel
+                )
+            }
+            // Added: SetDelayScreen route
+            composable(Screen.SetDelay.route) {
+                val viewModel: ActionsAndDelaysViewModel = viewModel()
+                SetDelayScreen(
+                    navController = navController,
+                    viewModel = viewModel
+                )
             }
         }
     }

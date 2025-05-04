@@ -60,7 +60,6 @@ import com.example.multinav.R
 import com.example.multinav.joystick_Screen.MyAnalogJoystick
 
 import com.example.widgets.BluetoothReaders
-import com.example.widgets.CircleIconButton
 import com.example.widgets.CircleToggleButton
 
 import com.example.widgets.FloatingButton
