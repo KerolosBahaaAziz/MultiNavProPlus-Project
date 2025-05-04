@@ -139,15 +139,14 @@ fun Navigation(
                                         snackbarHostState.showSnackbar("Connect to device first" ,
                                             duration = SnackbarDuration.Short 
                                                 )
-                                                navController.navigate(Screen.JoyStick.createRoute("PlaceHolder Address"))
-                                                {
-                                                    popUpTo(navController.graph.startDestinationId) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
+                                           }
+                                            navController.navigate(Screen.JoyStick.createRoute("PlaceHolder Address"))
+                                            {
+                                                popUpTo(navController.graph.startDestinationId) {
+                                                    saveState = true
                                                 }
-
+                                                launchSingleTop = true
+                                                restoreState = true
                                             }
                                         }
                                     } else {
