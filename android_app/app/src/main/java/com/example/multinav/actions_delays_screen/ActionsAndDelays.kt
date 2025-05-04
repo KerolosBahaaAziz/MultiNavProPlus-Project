@@ -395,33 +395,29 @@ fun ActionsAndDelaysScreen(
                     .height(200.dp) // Adjust height as needed
 
             ) {
+                Log.d("ActionsAndDelaysScreen", "Rendering LazyColumn with history: ${viewModel.actionHistory}")
                 items(viewModel.actionHistory) { action ->
-
-                    Row (
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
                             .height(70.dp)
                             .padding(4.dp)
                             .background(Color.LightGray, shape = MaterialTheme.shapes.large),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
-
-                    ){
+                    ) {
                         Text(
-                            text = "$action",
+                            text = action,
                             fontSize = 18.sp,
                             color = Color.Blue,
-
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding( 16.dp)
+                                .padding(16.dp)
                         )
-
-
                     }
 
                 }
             }
-
 
 
         }

@@ -93,16 +93,15 @@ class ActionsAndDelaysViewModel : ViewModel() {
         val formattedDelay = formatDelay(delay)
 
         // Add to actionHistory as "Delay: HH:MM:SS.MMM"
-        actionHistory.add("Delay: $formattedDelay")
-        selectedAction.value = "Delay: $formattedDelay"
-
-        // Reset delay picker values
+        val delayEntry = "Delay: $formattedDelay"
+        actionHistory.add(delayEntry)
+        selectedAction.value = delayEntry
         selectedHours.value = 0
         selectedMinutes.value = 0
         selectedSeconds.value = 0
         selectedMilliseconds.value = 0
 
-        Log.d("ActionsAndDelaysViewModel", "Delay added: $formattedDelay, History: $actionHistory")
+        Log.d("ActionsAndDelaysViewModel", "Delay added: $delayEntry, History: $actionHistory")
     }
 
     // Function to update the mode in history
@@ -123,7 +122,13 @@ class ActionsAndDelaysViewModel : ViewModel() {
             return
         }
         val modes = listOf("1", "2", "3") // Adjust based on Modes.MODE_ONE, MODE_TWO, MODE_THREE
-        val actions = actionHistory.filter { it !in modes } // Exclude modes
+        val actions = actionHistory.filter { it !in modes }.map { action ->
+            if (action.startsWith("Delay: ")) {
+                action.removePrefix("Delay: ")
+            } else {
+                action
+            }
+        }
         if (actions.isEmpty()) {
             Log.e("TaskDatabase", "No actions to save")
             return
@@ -152,9 +157,8 @@ class ActionsAndDelaysViewModel : ViewModel() {
     // Function to create a Task object from actions
     private fun createTaskFromAction(actions: List<String>, userUid: String, taskTitle: String): Task {
         // Parse delay from actionHistory if present
-        val delay = actions.find { it.startsWith("Delay: ") }?.let {
-            val timeString = it.removePrefix("Delay: ") // e.g., "00:01:30.500"
-            val parts = timeString.split(":", ".").map { it.toLong() }
+        val delay = actions.find { it.matches(Regex("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}")) }?.let {
+            val parts = it.split(":", ".").map { part -> part.toLong() }
             (parts[0] * 3600000) + (parts[1] * 60000) + (parts[2] * 1000) + parts[3]
         }
 

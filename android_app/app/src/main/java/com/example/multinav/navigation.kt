@@ -76,7 +76,7 @@ fun Navigation(
     val bluetoothService = bluetoothViewModel.bluetoothService
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-
+    val actionsAndDelaysViewModel: ActionsAndDelaysViewModel = viewModel()
     // Get the current route to determine the selected tab
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/{deviceAddress}")
@@ -158,6 +158,7 @@ fun Navigation(
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
+
             composable(Screen.Login.route) {
                 LoginScreen(
                     auth = auth,
@@ -218,18 +219,18 @@ fun Navigation(
                 }
             }
             composable(Screen.ActionsAndDelays.route) {
-                val viewModel: ActionsAndDelaysViewModel = viewModel()
+
                 ActionsAndDelaysScreen(
                     navController = navController,
-                    viewModel = viewModel
+                    viewModel = actionsAndDelaysViewModel
                 )
             }
             // Added: SetDelayScreen route
             composable(Screen.SetDelay.route) {
-                val viewModel: ActionsAndDelaysViewModel = viewModel()
+
                 SetDelayScreen(
                     navController = navController,
-                    viewModel = viewModel
+                    viewModel = actionsAndDelaysViewModel
                 )
             }
         }
