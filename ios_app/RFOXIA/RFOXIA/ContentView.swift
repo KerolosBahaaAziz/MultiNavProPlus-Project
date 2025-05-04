@@ -15,9 +15,9 @@ struct ContentView: View {
 //    let applePayHandler = ApplePayHandler()
     
     var body: some View {
-        JoyStickView()
-         .environment(\.managedObjectContext, viewContext)
-        //                BluetoothChatView()
+//        JoyStickView()
+//         .environment(\.managedObjectContext, viewContext)
+//                        BluetoothChatView()
         // Pass the managed object context to BluetoothChatView
         //        ActionsAndDelaysView()
         //        TaskView()
@@ -26,8 +26,8 @@ struct ContentView: View {
 //        ApplePayView()
 //        CheckBluetoothView()
     
-//        MainTabView()
-//            .environment(\.managedObjectContext, viewContext)
+        MainTabView()
+            .environment(\.managedObjectContext, viewContext)
 //        MainTabView()
 //            .environment(\.managedObjectContext, viewContext)
     }

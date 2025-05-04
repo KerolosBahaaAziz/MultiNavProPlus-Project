@@ -12,6 +12,11 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     var connectedPeripheral: CBPeripheral?
     private var messageCharacteristic: CBCharacteristic?
     private var accelerometerCharacteristic: CBCharacteristic?
+    
+    private var airPressureCharacteristic: CBCharacteristic?
+    private var tempratureCharacteristic: CBCharacteristic?
+    private var humidityCharacteristic: CBCharacteristic?
+    
     private var sendDirectionCharacteristic: CBCharacteristic?
     
     private let storage: StorageService
@@ -29,6 +34,28 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             storage.saveInt(accelerometerMessages, forKey: "accelerometerMessages")
         }
     }
+    
+    @Published var airPressureMessages: Float {
+        didSet {
+            let realValue: Float = airPressureMessages/4098.0
+            storage.saveFloat(realValue, forKey: "airPressureMessages")
+        }
+    }
+    
+    @Published var tempratureMessages: Float {
+        didSet {
+            let realValue: Float = (tempratureMessages / 16383.0) * 165.0 - 40.0
+            storage.saveFloat(realValue, forKey: "tempratureMessages")
+        }
+    }
+    
+    @Published var humidityMessages: Float {
+        didSet {
+            let realValue: Float = (humidityMessages / 16383.0) * 100.0
+            storage.saveFloat(realValue, forKey: "humidityMessages")
+        }
+    }
+    
     @Published var connectedDeviceName: String {
         didSet {
             storage.saveString(connectedDeviceName, forKey: "connectedDeviceName")
@@ -40,6 +67,11 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     let chatCharacteristicUUID = CBUUID(string: "1234")
     
     let accelerometerCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21EDAE82ED19")
+    
+    let airPressureCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2003")
+    let tempratureCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2201")
+    let humidityCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2202")
+    
     let sendDirectionCharacteristicUUID = CBUUID(string: "0000FE41-8E22-4541-9D4C-21EDAE82ED19")
     
     
@@ -50,6 +82,11 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         self.connectedDeviceName = storage.loadString(forKey: "connectedDeviceName") ?? "Unknown Device"
         self.receivedMessages = storage.load([String].self, forKey: "receivedMessages") ?? []
         self.accelerometerMessages = storage.loadInt(forKey: "accelerometerMessages")
+        
+        self.airPressureMessages = storage.loadFloat(forKey: "airPressureMessages")
+        self.tempratureMessages = storage.loadFloat(forKey: "tempratureMessages")
+        self.humidityMessages = storage.loadFloat(forKey: "humidityMessages")
+        
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
@@ -184,6 +221,15 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 peripheral.setNotifyValue(true, for: characteristic)
             }else if characteristic.uuid == sendDirectionCharacteristicUUID{
                 sendDirectionCharacteristic = characteristic
+            }else if characteristic.uuid == airPressureCharacteristicUUID{
+                airPressureCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
+            }else if characteristic.uuid == tempratureCharacteristicUUID{
+                tempratureCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
+            }else if characteristic.uuid == humidityCharacteristicUUID{
+                humidityCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
             }
             
             if characteristic.properties.contains(.notify) {
@@ -215,6 +261,39 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 print("✅ Received accelerometer value: \(value)")
                 DispatchQueue.main.async {
                     self.accelerometerMessages = Int(value)
+                }
+            }
+        } else if characteristic == airPressureCharacteristic {
+            if let data = characteristic.value{
+                print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
+                let value = data.withUnsafeBytes {
+                            $0.load(as: Float.self)
+                        }
+                print("✅ Received airPressure value: \(value)")
+                DispatchQueue.main.async {
+                    self.airPressureMessages = Float(value)
+                }
+            }
+        } else if characteristic == tempratureCharacteristic {
+            if let data = characteristic.value{
+                print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
+                let value = data.withUnsafeBytes {
+                            $0.load(as: Float.self)
+                        }
+                print("✅ Received temprature value: \(value)")
+                DispatchQueue.main.async {
+                    self.tempratureMessages = Float(value)
+                }
+            }
+        } else if characteristic == humidityCharacteristic {
+            if let data = characteristic.value{
+                print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
+                let value = data.withUnsafeBytes {
+                            $0.load(as: Float.self)
+                        }
+                print("✅ Received humidity value: \(value)")
+                DispatchQueue.main.async {
+                    self.humidityMessages = Float(value)
                 }
             }
         }
