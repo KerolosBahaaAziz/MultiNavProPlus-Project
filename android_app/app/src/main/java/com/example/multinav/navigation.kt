@@ -39,7 +39,7 @@ import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
-import com.example.multinav.sing_up.SingUpScreen
+import com.example.multinav.sign_up.SingUpScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch

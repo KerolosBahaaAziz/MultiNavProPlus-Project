@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,9 +82,10 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
+            leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = "Password") },
             value = viewModel.password,
             onValueChange = { viewModel.password = it },
-            label = { Text("password") },
+            label = { Text("Password") },
             visualTransformation = if (viewModel.passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 val imageVector = if (viewModel.passwordVisible)

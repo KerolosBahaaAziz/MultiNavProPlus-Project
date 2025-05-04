@@ -1,4 +1,4 @@
-package com.example.multinav.sing_up
+package com.example.multinav.sign_up
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

@@ -1,4 +1,4 @@
-package com.example.multinav.sing_up
+package com.example.multinav.sign_up
 
 import android.util.Log
 import androidx.compose.runtime.getValue
@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
