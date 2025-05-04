@@ -3,9 +3,13 @@
 
 package com.example.joystick_Screen
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -68,6 +72,13 @@ import com.example.widgets.CircleIconButton
 import com.example.widgets.CircleToggleButton
 import com.example.widgets.FloatingButton
 import com.example.widgets.RadioButtonMode
+import com.google.android.gms.location.LocationAvailability
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.here.sdk.gestures.TapListener
+import com.here.sdk.mapview.MapImageFactory
+import com.here.sdk.mapview.MapMarker
 import kotlin.math.roundToInt
 
 @Composable
@@ -87,6 +98,7 @@ fun CircleIconButton(
     }
 }
 
+@SuppressLint("MissingPermission")
 @Preview(showSystemUi = true)
 @Composable
 fun JoyStickScreen(
@@ -102,59 +114,142 @@ fun JoyStickScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     var mapView by remember { mutableStateOf<MapView?>(null) }
-    var isMapInitialized by remember { mutableStateOf(false) }
     var currentLocation by remember { mutableStateOf<GeoCoordinates?>(null) }
+    var locationMarker by remember { mutableStateOf<MapMarker?>(null) }
+    var isMapLoaded by remember { mutableStateOf(false) }
+    var clickMarker by remember { mutableStateOf<MapMarker?>(null) }
 
-    // Initialize FusedLocationProviderClient for current location
+
+    // Initialize FusedLocationProviderClient for continuous location updates
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val locationRequest = LocationRequest.create().apply {
+        interval = 5000 // Update every 5 seconds
+        fastestInterval = 2000
+        priority = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
+    }
 
+
+
+    val locationCallback = remember {
+        object : LocationCallback() {
+            private var hasCameraUpdated = false // Flag to track if camera has been updated
+
+            override fun onLocationResult(locationResult: LocationResult) {
+                val location = locationResult.lastLocation ?: return
+                currentLocation = GeoCoordinates(location.latitude, location.longitude)
+                Log.i("JoyStickScreen", "Updated location: ${location.latitude}, ${location.longitude}")
+
+                // Update the camera only once
+                if (!hasCameraUpdated) {
+                    val distance = MapMeasure(MapMeasure.Kind.DISTANCE, 1000.0)
+                    mapView?.camera?.lookAt(currentLocation!!, distance)
+                    hasCameraUpdated = true // Set the flag to true after the first update
+                    Log.i("JoyStickScreen", "Camera updated to ${currentLocation!!.latitude}, ${currentLocation!!.longitude}")
+                }
+
+                // Add/update location marker if map is loaded
+                if (isMapLoaded) {
+                    addLocationMarker()
+                }
+            }
+
+            fun addLocationMarker() {
+                if (currentLocation == null) return
+
+                // Create a programmatic red dot marker
+                val bitmap = Bitmap.createBitmap(30, 30, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                val paint = Paint().apply {
+                    style = Paint.Style.FILL
+                    color = android.graphics.Color.RED
+                }
+                canvas.drawCircle(14f, 14f, 14f, paint)
+
+                val mapImage = try {
+                    MapImageFactory.fromBitmap(bitmap)
+                } catch (e: Exception) {
+                    Log.e("JoyStickScreen", "Failed to create MapImage: ${e.message}", e)
+                    null
+                }
+                if (mapImage != null) {
+                    locationMarker?.let { mapView?.mapScene?.removeMapMarker(it) }
+                    locationMarker = MapMarker(currentLocation!!, mapImage).apply {
+                        mapView?.mapScene?.addMapMarker(this)
+                        Log.i("JoyStickScreen", "Location marker added at ${currentLocation!!.latitude}, ${currentLocation!!.longitude}")
+                    }
+                } else {
+                    Log.w("JoyStickScreen", "MapImage is null, skipping location marker addition")
+                }
+            }
+        }
+    }
     DisposableEffect(Unit) {
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
-        // Get current location
-        if (ContextCompat.checkSelfPermission(
-                context,
-                android.Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            fusedLocationClient.lastLocation
-                .addOnSuccessListener { location ->
-                    if (location != null) {
-                        currentLocation = GeoCoordinates(location.latitude, location.longitude)
-                        Log.i(
-                            "JoyStickScreen",
-                            "Current location: ${location.latitude}, ${location.longitude}"
-                        )
-                        // Update map camera if already initialized
-                        if (isMapInitialized) {
-                            val distance = MapMeasure(MapMeasure.Kind.DISTANCE_IN_METERS, 1000.0)
-                            mapView?.camera?.lookAt(currentLocation!!, distance)
-                        }
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.e("JoyStickScreen", "Failed to get location: ${e.message}")
-                }
+        // Start location updates if permission is granted
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+        } else {
+            Log.e("JoyStickScreen", "Location permission not granted")
         }
 
-        // Initialize MapView
+        // Initialize MapView with tap listener
         mapView = MapView(context).apply {
             onCreate(null)
             onResume()
             mapScene.loadScene(MapScheme.NORMAL_DAY) { error ->
-                val defaultCoordinates = GeoCoordinates(30.0444, 31.2357) // Cairo as fallback
-                val coordinates = currentLocation ?: defaultCoordinates
-                val distance = MapMeasure(MapMeasure.Kind.DISTANCE_IN_METERS, 1000.0)
-                camera.lookAt(coordinates, distance)
-                Log.i(
-                    "HERE Map",
-                    "Map scene loaded at ${coordinates.latitude}, ${coordinates.longitude}"
-                )
-                isMapInitialized = true
+                if (error == null) {
+                    val defaultCoordinates = GeoCoordinates(30.0444, 31.2357) // Cairo as fallback
+                    val coordinates = currentLocation ?: defaultCoordinates
+                    val distance = MapMeasure(MapMeasure.Kind.DISTANCE, 1000.0)
+                    camera.lookAt(coordinates, distance)
+                    Log.i("HERE Map", "Map scene loaded at ${coordinates.latitude}, ${coordinates.longitude}")
+                    isMapLoaded = true
+                    // Add initial marker if location is available
+                    if (currentLocation != null) {
+                        locationCallback.addLocationMarker()
+                    }
+//                    // Add tap listener for map clicks
+//                    gestures.tapListener = TapListener { point ->
+//                        val geoCoordinates = viewToGeoCoordinates(point)
+//                        if (geoCoordinates != null) {
+//                            Log.i("JoyStickScreen", "Map clicked at ${geoCoordinates.latitude}, ${geoCoordinates.longitude}")
+//                            // Create a red dot for click marker
+//                            val clickBitmap = Bitmap.createBitmap(20, 20, Bitmap.Config.ARGB_8888)
+//                            val clickCanvas = Canvas(clickBitmap)
+//                            val clickPaint = Paint().apply {
+//                                style = Paint.Style.FILL
+//                                color =android.graphics.Color.DKGRAY
+//                            }
+//                            clickCanvas.drawCircle(10f, 10f, 10f, clickPaint)
+//
+//                            val clickMapImage = try {
+//                                MapImageFactory.fromBitmap(clickBitmap)
+//                            } catch (e: Exception) {
+//                                Log.e("JoyStickScreen", "Failed to create click MapImage: ${e.message}", e)
+//                                null
+//                            }
+//                            if (clickMapImage != null) {
+//                                clickMarker?.let { mapScene.removeMapMarker(it) }
+//                                clickMarker = MapMarker(geoCoordinates, clickMapImage).apply {
+//                                    mapScene.addMapMarker(this)
+//                                    Log.i("JoyStickScreen", "Click marker added at ${geoCoordinates.latitude}, ${geoCoordinates.longitude}")
+//                                }
+//                            }
+//                        }
+//                    }
+                } else {
+                    Log.e("HERE Map", "Failed to load map: ${error.toString()}")
+                }
             }
         }
 
         onDispose {
+            // Stop location updates
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+            // Clean up markers
+            locationMarker?.let { mapView?.mapScene?.removeMapMarker(it) }
+            clickMarker?.let { mapView?.mapScene?.removeMapMarker(it) }
             mapView?.onPause()
             mapView?.onDestroy()
             mapView = null
