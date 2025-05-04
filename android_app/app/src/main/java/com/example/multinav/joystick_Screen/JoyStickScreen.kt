@@ -52,11 +52,13 @@ import androidx.compose.ui.res.painterResource
 
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.desgin.constants.Modes
 import com.example.joystick_Screen.JoyStickViewModel
 import com.example.joystick_Screen.JoyStickViewModelFactory
 import com.example.multinav.BluetoothService
 import com.example.multinav.R
+import com.example.multinav.Screen
 import com.example.multinav.joystick_Screen.MyAnalogJoystick
 
 import com.example.widgets.BluetoothReaders
@@ -89,7 +91,8 @@ fun JoyStickScreen(
     modifier: Modifier = Modifier,
     bluetoothService: BluetoothService,
     deviceAddress: String,
-    isMobileDevice: Boolean
+    isMobileDevice: Boolean,
+    navController: NavController,
 ) {
     val viewModel: JoyStickViewModel = viewModel(
         factory = JoyStickViewModelFactory(bluetoothService, deviceAddress, isMobileDevice)
@@ -352,7 +355,9 @@ fun JoyStickScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(16.dp),
-                    onClick = { }
+                    onClick = {
+                        navController.navigate(Screen.TasksList.route)
+                    }
                 )
             }
         }

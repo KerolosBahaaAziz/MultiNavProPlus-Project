@@ -27,10 +27,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.desgin.actions_delays_screen.ActionsAndDelaysScreen
 import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
 import com.example.multinav.actions_delays_screen.SetDelayScreen
@@ -41,6 +43,8 @@ import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.sing_up.SingUpScreen
+import com.example.multinav.task_actions.TaskActionsScreen
+import com.example.multinav.tasks_list.TaskSListScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
@@ -61,7 +65,10 @@ sealed class Screen(
     object SignUp : Screen("signup")
     object ActionsAndDelays : Screen("actions_delays")
     object SetDelay : Screen("set_delay_screen")
-
+    object TasksList : Screen("tasks_list")
+    object TaskActions : Screen("task_actions/{taskTitle}/{taskId}") {
+        fun createRoute(taskTitle: String, taskId: Int) = "task_actions/$taskTitle/$taskId"
+    }
 }
 
 @Composable
@@ -179,7 +186,8 @@ fun Navigation(
                     JoyStickScreen(
                         bluetoothService = bluetoothService,
                         deviceAddress = it,
-                        isMobileDevice = bluetoothService.isMobileDevice
+                        isMobileDevice = bluetoothService.isMobileDevice,
+                        navController = navController
                     )
                 } ?: run {
                     Text("No device address provided", modifier = Modifier.padding(16.dp))
@@ -233,6 +241,25 @@ fun Navigation(
                     viewModel = actionsAndDelaysViewModel
                 )
             }
+
+            composable(Screen.TasksList.route) {
+                TaskSListScreen(
+                    navController = navController
+                )
+            }
+            composable(
+                route = Screen.TaskActions.route,
+                arguments = listOf(
+                    navArgument("taskTitle") { type = NavType.StringType },
+                    navArgument("taskId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                TaskActionsScreen(
+                    navController = navController,
+                    taskTitle = backStackEntry.arguments?.getString("taskTitle") ?: "",
+                    taskId = backStackEntry.arguments?.getInt("taskId") ?: 0
+                )
         }
     }
+}
 }

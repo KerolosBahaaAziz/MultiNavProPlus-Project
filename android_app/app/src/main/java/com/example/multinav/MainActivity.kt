@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
-                    startDestination = Screen.ActionsAndDelays.route // Start with ActionsAndDelaysScreen for testing
+                    startDestination =Screen.TasksList.route // Start with ActionsAndDelaysScreen for testing
                 )
             }
         }

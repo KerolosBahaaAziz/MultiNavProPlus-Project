@@ -367,6 +367,7 @@ fun ActionsAndDelaysScreen(
                         val taskTitle = textFieldValue.takeIf { textFieldValue.isNotBlank() } ?: "Default Task"
                         val userUid = user?.uid
                         viewModel.saveActionToDatabase(userUid !!, taskTitle)
+                        navController.popBackStack()
                     },
 
                     enabled = selectedAction != null // Enable only if an action is selected
