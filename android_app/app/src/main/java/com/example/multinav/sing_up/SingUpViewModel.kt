@@ -94,6 +94,7 @@ class SingUpViewModel(
     private fun sanitizeEmail(email: String): String {
         return email.replace(".", "-")
     }
+
     private suspend fun saveUserData(user: FirebaseUser) {
         val sanitizedEmail = sanitizeEmail(user.email ?: email)
         try {
@@ -111,7 +112,6 @@ class SingUpViewModel(
             Log.e("SingUp", "Failed to save user data", e)
         }
     }
-
 
 
     private suspend fun sendVerificationEmail(user: FirebaseUser): Result<Void?> = suspendCancellableCoroutine { continuation ->

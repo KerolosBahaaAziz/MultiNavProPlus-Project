@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import com.example.multinav.ui.theme.MultiNavTheme
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import com.example.multinav.bluetooth.BluetoothViewModel
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermissions()
         val auth = FirebaseAuth.getInstance()
         val database = FirebaseDatabase.getInstance()
+
 // Initialize HERE SDK with accessKeyId and accessKeySecret
         val accessKeyId = getString(R.string.here_access_key_id)
         val accessKeySecret = getString(R.string.here_access_key_secret)
@@ -72,13 +74,24 @@ class MainActivity : ComponentActivity() {
             throw RuntimeException("HERE SDK initialization failed", e)
         }
 
+        val user = FirebaseAuth.getInstance().currentUser
+//         val email =user?.email
+//        val Uid = user?.uid
+//        Log.d("email","Email : $email")
+//        Log.d("email","uid : $Uid")
+        val startDestination = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
+            Screen.DeviceList.route // Navigate to main screen if signed in and email verified
+        } else {
+            Screen.Login.route // Navigate to login screen otherwise
+             }
         setContent {
             MultiNavTheme {
+          //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
-                    startDestination = "login"
+                    startDestination = startDestination
                 )
             }
         }
@@ -118,5 +131,4 @@ class MainActivity : ComponentActivity() {
         // Clean up HERE SDK
         SDKNativeEngine.getSharedInstance()?.dispose()
     }
-
 }
