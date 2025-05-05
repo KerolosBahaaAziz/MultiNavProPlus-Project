@@ -41,8 +41,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.Color
@@ -58,6 +60,7 @@ import com.example.joystick_Screen.JoyStickViewModelFactory
 import com.example.multinav.BluetoothService
 import com.example.multinav.R
 import com.example.multinav.joystick_Screen.MyAnalogJoystick
+import com.example.multinav.ui.theme.violetPurple
 
 import com.example.widgets.BluetoothReaders
 import com.example.widgets.CircleToggleButton
@@ -77,8 +80,15 @@ fun CircleIconButton(
         onClick = onCircleButtonClick,
         modifier = modifier
             .size(48.dp)
-            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-    ) {
+            .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
+        colors = IconButtonColors(
+            containerColor = violetPurple,
+            contentColor = violetPurple,
+            disabledContainerColor = violetPurple,
+            disabledContentColor = violetPurple
+        )
+
+        ) {
         icon()
     }
 }
