@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +29,10 @@ import androidx.navigation.NavController
 import com.example.multinav.BluetoothDeviceData
 import com.example.multinav.BluetoothUiState
 import com.example.multinav.Screen
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +46,7 @@ fun BluetoothDeviceScreen(
     val isServerMode = remember { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isScanning)
 
     Scaffold(
         topBar = {
@@ -51,13 +54,19 @@ fun BluetoothDeviceScreen(
                 title = { Text("Bluetooth Devices") },
                 actions = {
                     IconButton(
-                        onClick = { bluetoothViewModel.refreshDevices() }
+                        onClick = {
+                            auth.signOut()
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.DeviceList.route) { inclusive = true }
+                                popUpTo(Screen.JoyStick.route) { inclusive = true }
+                                popUpTo(Screen.Chat.route) { inclusive = true }
+                            }
+                        }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = "Log Out",
                             tint = Color.White
-
                         )
                     }
                 },
@@ -68,125 +77,90 @@ fun BluetoothDeviceScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = {
+                coroutineScope.launch {
+                    delay(1500)
+                    bluetoothViewModel.refreshDevices()
+                }
+            }
         ) {
-            if (!state.isBluetoothEnabled) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = "Bluetooth is disabled. Please enable it to see paired devices.",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
-            //btn settings
-            Button(
-                onClick = bluetoothViewModel::openBluetoothSettings,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Open Bluetooth Settings")
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            //btn scanning
-            Button(
-                onClick = {
-                    if (state.isScanning) {
-                        bluetoothViewModel.stopScanning()
-                    } else {
-                        bluetoothViewModel.startScanning()
-                    }
-
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Text(if (state.isScanning) "Stop Scanning" else " Scan Ble Devices")
-                }
-                if (state.isScanning) {
-                    CircularProgressIndicator(
+                if (!state.isBluetoothEnabled) {
+                    Card(
                         modifier = Modifier
-                            .size(30.dp)
-                            .padding( 8.dp),
-
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    auth.signOut() // Sign out the user
-                    navController.navigate(Screen.Login.route) {
-                        // Clear all protected screens from the back stack
-                        popUpTo(Screen.DeviceList.route) { inclusive = true }
-                        popUpTo(Screen.JoyStick.route) { inclusive = true }
-                        popUpTo(Screen.Chat.route) { inclusive = true }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Log Out")
-            }
-            Text(
-                text = "Paired Devices (${state.pairedDevices.size})",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            LazyColumn(
-                modifier = Modifier.weight(1f)
-            ) {
-                items(state.pairedDevices) { device ->
-                    DeviceItem(
-                        device = device,
-                        onClick = {
-                            // Paired devices are assumed to be mobile phones, so isMobileDevice = true
-
-                            bluetoothViewModel.connectToDeviceAndNavigate(
-                                device = device,
-                                onNavigate = {
-                                    navController.navigate(
-                                        Screen.Chat.createRoute(device.address)
-                                    )
-                                },
-                                isFromPairedList = true
-                            )
-                        }
-                    )
-                }
-                if (state.scannedDevices.isNotEmpty()) {
-                    item {
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
                         Text(
-                            text = "Scanned Devices (${state.scannedDevices.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 16.dp)
+                            text = "Bluetooth is disabled. Please enable it to see paired devices.",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
-                    items(state.scannedDevices) { device ->
+                }
+                //btn settings
+                Button(
+                    onClick = bluetoothViewModel::openBluetoothSettings,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Open Bluetooth Settings")
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                //btn scanning
+                Button(
+                    onClick = {
+                        if (state.isScanning) {
+                            bluetoothViewModel.stopScanning()
+                        } else {
+                            bluetoothViewModel.startScanning()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(if (state.isScanning) "Stop Scanning" else " Scan Ble Devices")
+                    }
+                    if (state.isScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .padding(8.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Paired Devices (${state.pairedDevices.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(state.pairedDevices) { device ->
                         DeviceItem(
                             device = device,
                             onClick = {
@@ -197,27 +171,53 @@ fun BluetoothDeviceScreen(
                                             Screen.Chat.createRoute(device.address)
                                         )
                                     },
-                                    isFromPairedList = false
+                                    isFromPairedList = true
                                 )
                             }
                         )
                     }
+                    if (state.scannedDevices.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Scanned Devices (${state.scannedDevices.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+                        }
+                        items(state.scannedDevices) { device ->
+                            DeviceItem(
+                                device = device,
+                                onClick = {
+                                    bluetoothViewModel.connectToDeviceAndNavigate(
+                                        device = device,
+                                        onNavigate = {
+                                            navController.navigate(
+                                                Screen.Chat.createRoute(device.address)
+                                            )
+                                        },
+                                        isFromPairedList = false
+                                    )
+                                }
+                            )
+                        }
+                    }
                 }
-            }
-            state.errorMessage?.let { error ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                state.errorMessage?.let { error ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
                 }
             }
         }
