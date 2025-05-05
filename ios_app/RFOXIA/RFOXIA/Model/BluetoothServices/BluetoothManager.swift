@@ -256,8 +256,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             if let data = characteristic.value{
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
                 let value = data.withUnsafeBytes {
-                            $0.load(as: Int32.self)
-                        }
+                    $0.load(as: Int32.self)
+                }
                 print("✅ Received accelerometer value: \(value)")
                 DispatchQueue.main.async {
                     self.accelerometerMessages = Int(value)
@@ -267,8 +267,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             if let data = characteristic.value{
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
                 let value = data.withUnsafeBytes {
-                            $0.load(as: Float.self)
-                        }
+                    $0.load(as: Float.self)
+                }
                 print("✅ Received airPressure value: \(value)")
                 DispatchQueue.main.async {
                     self.airPressureMessages = Float(value)
@@ -278,8 +278,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             if let data = characteristic.value{
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
                 let value = data.withUnsafeBytes {
-                            $0.load(as: Float.self)
-                        }
+                    $0.load(as: Float.self)
+                }
                 print("✅ Received temprature value: \(value)")
                 DispatchQueue.main.async {
                     self.tempratureMessages = Float(value)
@@ -289,8 +289,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             if let data = characteristic.value{
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
                 let value = data.withUnsafeBytes {
-                            $0.load(as: Float.self)
-                        }
+                    $0.load(as: Float.self)
+                }
                 print("✅ Received humidity value: \(value)")
                 DispatchQueue.main.async {
                     self.humidityMessages = Float(value)
@@ -343,6 +343,25 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 peripheral.setNotifyValue(false, for: characteristic)
             }
         }
+    }
+    
+    func sendVoiceData(_ data: Data) {
+        guard let peripheral = connectedPeripheral , let characteristic = messageCharacteristic else {
+            print("Bluetooth connection or characteristic not available")
+            return
+        }
+        
+        let mtu = 20  // Adjust based on negotiated MTU size if needed
+        var offset = 0
+        
+        while offset < data.count {
+            let chunkSize = min(mtu, data.count - offset)
+            let chunk = data.subdata(in: offset..<offset + chunkSize)
+            peripheral.writeValue(chunk, for: characteristic, type: .withoutResponse)
+            offset += chunkSize
+        }
+        
+        print("Voice data sent in chunks.")
     }
     
 }

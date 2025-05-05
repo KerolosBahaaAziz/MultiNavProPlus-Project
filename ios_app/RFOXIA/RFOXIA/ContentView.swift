@@ -25,11 +25,15 @@ struct ContentView: View {
 //        GoogleSignInView()
 //        ApplePayView()
 //        CheckBluetoothView()
-    
-        MainTabView()
-            .environment(\.managedObjectContext, viewContext)
+//    
 //        MainTabView()
 //            .environment(\.managedObjectContext, viewContext)
+//        MainTabView()
+//            .environment(\.managedObjectContext, viewContext)
+//        BluetoothChatView()
+        DeviceListView()
+            .environment(\.managedObjectContext, viewContext)
+            .environmentObject(bluetoothManager)
     }
 }
 
