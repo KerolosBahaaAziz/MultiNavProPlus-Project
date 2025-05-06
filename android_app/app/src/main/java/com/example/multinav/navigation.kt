@@ -204,7 +204,7 @@ fun Navigation(
                         bluetoothService = bluetoothService,
                         deviceAddress = it,
                         isMobileDevice = bluetoothService.isMobileDevice,
-                     //   navController = navController
+                        navController = navController
                     )
                 } ?: run {
                     Text("No device address provided", modifier = Modifier.padding(16.dp))
