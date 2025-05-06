@@ -29,6 +29,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -51,6 +52,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.desgin.constants.Modes
 import com.example.multinav.R
+import com.example.multinav.ui.theme.violetPurple
 import com.example.widgets.CircleToggleButton
 import com.example.widgets.CustomTextField
 import com.example.widgets.RadioButtonMode
@@ -70,6 +72,12 @@ fun CircleIconButton(
         modifier = modifier
             .size(48.dp)
             .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
+        colors = IconButtonColors(
+            containerColor = violetPurple,
+            contentColor = violetPurple,
+            disabledContainerColor = violetPurple,
+            disabledContentColor = violetPurple
+        )
     ){
         icon()
     }
