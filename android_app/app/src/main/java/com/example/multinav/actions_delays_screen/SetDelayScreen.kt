@@ -1,6 +1,5 @@
 package com.example.multinav.actions_delays_screen
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,16 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,18 +35,30 @@ fun SetDelayScreen(
     viewModel: ActionsAndDelaysViewModel = viewModel(),
     navController: NavController = rememberNavController()
 ) {
+    // Observe ViewModel state properties
+    val hours by viewModel.selectedHours
+    val minutes by viewModel.selectedMinutes
+    val seconds by viewModel.selectedSeconds
+    val milliseconds by viewModel.selectedMilliseconds
+
+    // Calculate total milliseconds using derivedStateOf to ensure recomposition
+    val totalMilliseconds by derivedStateOf {
+        (hours * 3600000L) +  // Hours to milliseconds
+                (minutes * 60000L) +   // Minutes to milliseconds
+                (seconds * 1000L) +    // Seconds to milliseconds
+                milliseconds           // Add milliseconds
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-    ){
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-
-        ){
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -59,7 +66,6 @@ fun SetDelayScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-
                 Text(
                     text = "Cancel",
                     fontSize = 18.sp,
@@ -67,13 +73,12 @@ fun SetDelayScreen(
                         navController.popBackStack()
                     }
                 )
-
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = "Add",
                     fontSize = 18.sp,
                     modifier = Modifier.clickable {
-                        viewModel.addDelayToHistory()
+                        viewModel.addDelayToHistory(totalMilliseconds)
                         navController.popBackStack()
                     }
                 )
@@ -84,41 +89,36 @@ fun SetDelayScreen(
             ) {
                 DelayPicker(
                     label = "Hours",
-                    values = (0..23).toList(), // Range for hours
-                    selectedValue = viewModel.selectedHours.value,
+                    values = (0..23).toList(),
+                    selectedValue = hours,
                     onValueChange = { viewModel.selectedHours.value = it }
                 )
                 DelayPicker(
                     label = "Minutes",
-                    values = (0..59).toList(), // Range for minutes
-                    selectedValue = viewModel.selectedMinutes.value,
+                    values = (0..59).toList(),
+                    selectedValue = minutes,
                     onValueChange = { viewModel.selectedMinutes.value = it }
                 )
                 DelayPicker(
                     label = "Seconds",
-                    values = (0..59).toList(), // Example range
-                    selectedValue =viewModel.selectedSeconds.value,
+                    values = (0..59).toList(),
+                    selectedValue = seconds,
                     onValueChange = { viewModel.selectedSeconds.value = it }
                 )
                 DelayPicker(
                     label = "Milliseconds",
-                    values = (0..999).toList(), // Example range
-                    selectedValue = viewModel.selectedMilliseconds.value,
+                    values = (0..999).toList(),
+                    selectedValue = milliseconds,
                     onValueChange = { viewModel.selectedMilliseconds.value = it }
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Selected delay: ${String.format("%02d", viewModel.selectedHours.value)}:" +
-                        "${String.format("%02d", viewModel.selectedMinutes.value)}:" +
-                        "${String.format("%02d", viewModel.selectedSeconds.value)}." +
-                        "${String.format("%03d", viewModel.selectedMilliseconds.value)}",
+                text = "Selected delay: $totalMilliseconds milliseconds",
                 fontSize = 16.sp
             )
-
         }
-
     }
 }
 
@@ -134,22 +134,21 @@ fun DelayPicker(
         Spacer(modifier = Modifier.height(4.dp))
         LazyColumn(
             modifier = Modifier
-                .heightIn(max = 100.dp) // Limit the visible height
+                .heightIn(max = 100.dp)
         ) {
             items(values) { value ->
                 val isSelected = value == selectedValue
                 Text(
                     text = value.toString(),
-
                     modifier = Modifier
                         .clickable { onValueChange(value) }
                         .padding(vertical = 8.dp)
                         .then(
                             if (isSelected) {
                                 Modifier.background(
-                                    color = Color(0xFFE0E0E0), // Light gray background
+                                    color = Color(0xFFE0E0E0),
                                     shape = RoundedCornerShape(8.dp)
-                                ).padding(horizontal = 16.dp) // Add padding around selected item
+                                ).padding(horizontal = 16.dp)
                             } else {
                                 Modifier
                             }
@@ -159,4 +158,3 @@ fun DelayPicker(
         }
     }
 }
-
