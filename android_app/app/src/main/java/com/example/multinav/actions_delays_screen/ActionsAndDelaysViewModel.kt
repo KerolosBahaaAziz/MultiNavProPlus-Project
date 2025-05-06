@@ -21,23 +21,19 @@ class ActionsAndDelaysViewModel : ViewModel() {
     val selectedMinutes = mutableStateOf(0)
     val selectedSeconds = mutableStateOf(0)
     val selectedMilliseconds = mutableStateOf(0)
+    val totalDelayMilliseconds = mutableStateOf<Long?>(null)
 
     val selectedAction = mutableStateOf<String?>(null)
     val actionHistory = mutableStateListOf<String>()
-
-    val totalDelayMilliseconds = mutableStateOf<Long?>(null) // Store total milliseconds
-
 
     // Function to add an action to the history
     fun addActionToHistory(action: String) {
         if (!actionHistory.contains(action)) {
             actionHistory.add(action)
-            selectedAction.value = action // Update the selected action
+            selectedAction.value = action
             Log.d("ActionsAndDelaysViewModel", "Action added: $action, History: $actionHistory")
         }
     }
-
-
 
     // Function to add or remove toggle button actions
     fun addActionToHistoryToggleButtons(action: String) {
@@ -88,44 +84,32 @@ class ActionsAndDelaysViewModel : ViewModel() {
         Log.d("ActionsAndDelaysViewModel", "Toggle action: $action, History: $actionHistory")
     }
 
-//    // Function to add a delay to the history
-//    fun addDelayToHistory() {
-//        val delay = (selectedHours.value * 3600000L) +
-//                (selectedMinutes.value * 60000L) +
-//                (selectedSeconds.value * 1000L) +
-//                selectedMilliseconds.value
-//
-//        val formattedDelay = formatDelay(delay)
-//
-//        // Add to actionHistory as "Delay: HH:MM:SS.MMM"
-//        val delayEntry = "Delay: $formattedDelay"
-//        actionHistory.add(delayEntry)
-//        selectedAction.value = delayEntry
-//        selectedHours.value = 0
-//        selectedMinutes.value = 0
-//        selectedSeconds.value = 0
-//        selectedMilliseconds.value = 0
-//
-//        Log.d("ActionsAndDelaysViewModel", "Delay added: $delayEntry, History: $actionHistory")
-//    }
-
     // Function to add a delay to the history
     fun addDelayToHistory(delay: Long) {
+        if (delay <= 0) {
+            Log.w("ActionsAndDelaysViewModel", "Attempted to add invalid delay: $delay")
+            return
+        }
         val formattedDelay = formatDelay(delay)
         val delayEntry = "Delay: $formattedDelay ($delay ms)"
         actionHistory.add(delayEntry)
         selectedAction.value = delayEntry
+        totalDelayMilliseconds.value = delay
+        Log.d("ActionsAndDelaysViewModel", "Delay added: $delayEntry, Total ms: $delay, History: $actionHistory")
+    }
+
+    // Function to reset delay picker values after navigation
+    fun resetDelayPickerValues() {
         selectedHours.value = 0
         selectedMinutes.value = 0
         selectedSeconds.value = 0
         selectedMilliseconds.value = 0
-        Log.d("ActionsAndDelaysViewModel", "Delay added: $delayEntry, History: $actionHistory")
+        Log.d("ActionsAndDelaysViewModel", "Delay picker values reset")
     }
-
 
     // Function to update the mode in history
     fun updateModeInHistory(mode: String) {
-        val modes = listOf("1", "2", "3") // Adjust based on Modes.MODE_ONE, MODE_TWO, MODE_THREE
+        val modes = listOf("1", "2", "3")
         actionHistory.removeAll { it in modes }
         if (!actionHistory.contains(mode)) {
             actionHistory.add(mode)
@@ -135,7 +119,6 @@ class ActionsAndDelaysViewModel : ViewModel() {
     }
 
     // Function to save actions to the database
-    // Function to save actions to the database
     fun saveActionToDatabase(userUid: String?, taskTitle: String) {
         if (userUid == null) {
             Log.e("TaskDatabase", "Cannot save: userUid is null")
@@ -144,7 +127,6 @@ class ActionsAndDelaysViewModel : ViewModel() {
         val modes = listOf("1", "2", "3")
         val actions = actionHistory.filter { it !in modes }.map { action ->
             if (action.startsWith("Delay: ")) {
-                // Extract the HH:MM:SS.MMM part by removing the "Delay: " prefix and the "(X ms)" suffix
                 val formattedDelay = action.removePrefix("Delay: ").replace(Regex("\\(\\d+ ms\\)"), "").trim()
                 Log.d("TaskDatabase", "Processed delay action: $action -> $formattedDelay")
                 formattedDelay
@@ -163,7 +145,7 @@ class ActionsAndDelaysViewModel : ViewModel() {
                 MyDatabase.getInstance().getTaskDao().addTask(task)
                 actionHistory.clear()
                 selectedAction.value = null
-                totalDelayMilliseconds.value = null // Reset total delay
+                totalDelayMilliseconds.value = null
                 isToggleButtonA.value = false
                 isToggleButtonB.value = false
                 isToggleButtonC.value = false
@@ -176,9 +158,9 @@ class ActionsAndDelaysViewModel : ViewModel() {
             }
         }
     }
+
     // Function to create a Task object from actions
     private fun createTaskFromAction(actions: List<String>, userUid: String, taskTitle: String): Task {
-        // Use the stored totalDelayMilliseconds if available
         val delay = totalDelayMilliseconds.value ?: actions.find { it.matches(Regex("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}")) }?.let {
             val parts = it.split(":", ".").map { part -> part.toLong() }
             (parts[0] * 3600000) + (parts[1] * 60000) + (parts[2] * 1000) + parts[3]

@@ -1,5 +1,6 @@
 package com.example.multinav.actions_delays_screen
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
 
+@SuppressLint("UnrememberedMutableState")
 @Composable
 fun SetDelayScreen(
     modifier: Modifier = Modifier,
@@ -70,6 +72,7 @@ fun SetDelayScreen(
                     text = "Cancel",
                     fontSize = 18.sp,
                     modifier = Modifier.clickable {
+                        viewModel.resetDelayPickerValues()
                         navController.popBackStack()
                     }
                 )
@@ -79,6 +82,7 @@ fun SetDelayScreen(
                     fontSize = 18.sp,
                     modifier = Modifier.clickable {
                         viewModel.addDelayToHistory(totalMilliseconds)
+                        viewModel.resetDelayPickerValues()
                         navController.popBackStack()
                     }
                 )
