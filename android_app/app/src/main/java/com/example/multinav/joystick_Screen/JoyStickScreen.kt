@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -357,8 +358,15 @@ fun JoyStickScreen(
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .size(200.dp)
+                        .size(150.dp)
                 ) {
+
+                    Text(
+                        text = " ${ viewModel.currentAngle.value.roundToInt()} degrees",
+                        modifier = Modifier.padding(8.dp)
+                            .align(Alignment.Center)
+                           .fillMaxHeight()
+                    )
                     MyAnalogJoystick(
                         modifier = Modifier.matchParentSize(),
                         onAngleChange = { angle -> viewModel.currentAngle.value = angle }
