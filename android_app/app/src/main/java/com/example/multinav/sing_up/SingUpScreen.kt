@@ -1,5 +1,6 @@
 package com.example.multinav.sing_up
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,11 +28,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.multinav.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
@@ -66,6 +69,14 @@ fun SingUpScreen(
                 )
             }
         }
+        Image(
+            painter = painterResource(id = R.drawable.logo_image),
+            contentDescription = "Logo",
+            modifier = Modifier
+                .padding(bottom = 16.dp)
+
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
