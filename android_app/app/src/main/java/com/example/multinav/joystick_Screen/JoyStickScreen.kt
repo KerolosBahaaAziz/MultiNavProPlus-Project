@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -98,7 +99,7 @@ fun CircleIconButton(
     IconButton(
         onClick = onCircleButtonClick,
         modifier = modifier
-            .size(48.dp)
+            .size(52.dp)
             .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
         colors = IconButtonColors(
             containerColor = violetPurple,
@@ -291,17 +292,17 @@ fun JoyStickScreen(
                     update = { view -> view.onResume() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp)
-                        .background(Color.Red.copy(alpha = 0.5f))
+                        .height(600.dp)
+                        .background(Color.White.copy(alpha = 0.5f))
 
                 )
                 //sensor reeadings
                 Row(
                     modifier = Modifier
-                   //     .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
+                       .fillMaxWidth()
+                       // .horizontalScroll(rememberScrollState())
                         .wrapContentWidth(Alignment.CenterHorizontally)
-                        .background(color = Color.White, shape = RectangleShape)
+                        .background(Color.White.copy(alpha = 0.8f), RectangleShape) // Slight transparency
                         .width(IntrinsicSize.Max),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -309,6 +310,7 @@ fun JoyStickScreen(
                         bluetoothReader = "26",
                         bluetoothReaderType = "°C",
                         modifier = Modifier.weight(1f)
+
                     )
                     BluetoothReaders(
                         bluetoothReader = "48",
@@ -495,8 +497,6 @@ fun JoyStickScreen(
             }
 
             // Rest of the UI components below the map
-
-
             Row(
                 horizontalArrangement = Arrangement.Center,
             ) {

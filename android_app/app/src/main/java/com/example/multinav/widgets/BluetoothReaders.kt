@@ -18,17 +18,17 @@ fun BluetoothReaders(modifier: Modifier = Modifier ,bluetoothReader : String,blu
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp, horizontal = 0.dp),
+            .padding(vertical = 18.dp, horizontal = 0.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = bluetoothReader,
-            fontSize = 24.sp,
+            fontSize = 18.sp,
             modifier = Modifier.padding(start = 16.dp,end = 1.dp)
 
         )
         Text(
             text = bluetoothReaderType,
-            fontSize = 24.sp,
+            fontSize = 18.sp,
             modifier = Modifier.padding(end = 8.dp)
 
         )
