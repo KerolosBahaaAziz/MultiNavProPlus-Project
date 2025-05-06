@@ -15,13 +15,20 @@ import androidx.compose.ui.unit.dp
 
 
 @Composable
-fun RadioButtonMode(modifier: Modifier = Modifier,selectedModeState: MutableState<String> ,modeName :String) {
+fun RadioButtonMode(
+    modifier: Modifier = Modifier,
+    selectedModeState: MutableState<String>,
+    modeName :String,
+    onClick: () -> Unit = {} ) {
    Row(
        verticalAlignment = Alignment.CenterVertically,
    ) {
        RadioButton(
            selected = selectedModeState.value == modeName,
-           onClick = {selectedModeState.value = modeName}
+           onClick =  {
+               selectedModeState.value = modeName
+               onClick()
+           }
        )
        Text(
            modeName,

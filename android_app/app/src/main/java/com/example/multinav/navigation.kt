@@ -1,6 +1,5 @@
 package com.example.multinav
 
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -28,11 +27,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.joystick_Screen.JoyStickScreen
+import androidx.navigation.navArgument
+import com.example.desgin.actions_delays_screen.ActionsAndDelaysScreen
+import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
+import com.example.multinav.actions_delays_screen.SetDelayScreen
 import com.example.multinav.bluetooth.BluetoothDeviceScreen
 import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.chat.ChatScreen
@@ -40,6 +44,8 @@ import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.sign_up.SingUpScreen
+import com.example.multinav.task_actions.TaskActionsScreen
+import com.example.multinav.tasks_list.TaskSListScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
@@ -58,6 +64,12 @@ sealed class Screen(
     }
     object Login : Screen("login")
     object SignUp : Screen("signup")
+    object ActionsAndDelays : Screen("actions_delays")
+    object SetDelay : Screen("set_delay_screen")
+    object TasksList : Screen("tasks_list")
+    object TaskActions : Screen("task_actions/{taskTitle}/{taskId}") {
+        fun createRoute(taskTitle: String, taskId: Int) = "task_actions/$taskTitle/$taskId"
+    }
 }
 
 @Composable
@@ -72,7 +84,7 @@ fun Navigation(
     val bluetoothService = bluetoothViewModel.bluetoothService
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-
+    val actionsAndDelaysViewModel: ActionsAndDelaysViewModel = viewModel()
     // Get the current route to determine the selected tab
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/{deviceAddress}")
@@ -137,7 +149,7 @@ fun Navigation(
                                         } else {
                                             coroutineScope.launch {
                                         snackbarHostState.showSnackbar("Connect to device first" ,
-                                            duration = SnackbarDuration.Short 
+                                            duration = SnackbarDuration.Short
                                                 )
                                            }
                                             navController.navigate(Screen.JoyStick.createRoute("PlaceHolder Address"))
@@ -158,7 +170,8 @@ fun Navigation(
                                             restoreState = true
                                         }
                                     }
-                                }                            )
+                                }
+                            )
                         }
                     }
                 }
@@ -190,7 +203,8 @@ fun Navigation(
                     JoyStickScreen(
                         bluetoothService = bluetoothService,
                         deviceAddress = it,
-                        isMobileDevice = bluetoothService.isMobileDevice
+                        isMobileDevice = bluetoothService.isMobileDevice,
+                     //   navController = navController
                     )
                 } ?: run {
                     Text("No device address provided", modifier = Modifier.padding(16.dp))
@@ -229,6 +243,40 @@ fun Navigation(
                     )
                 }
             }
+            composable(Screen.ActionsAndDelays.route) {
+
+                ActionsAndDelaysScreen(
+                    navController = navController,
+                    viewModel = actionsAndDelaysViewModel
+                )
+            }
+            // Added: SetDelayScreen route
+            composable(Screen.SetDelay.route) {
+
+                SetDelayScreen(
+                    navController = navController,
+                    viewModel = actionsAndDelaysViewModel
+                )
+            }
+
+            composable(Screen.TasksList.route) {
+                TaskSListScreen(
+                    navController = navController
+                )
+            }
+            composable(
+                route = Screen.TaskActions.route,
+                arguments = listOf(
+                    navArgument("taskTitle") { type = NavType.StringType },
+                    navArgument("taskId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                TaskActionsScreen(
+                    navController = navController,
+                    taskTitle = backStackEntry.arguments?.getString("taskTitle") ?: "",
+                    taskId = backStackEntry.arguments?.getInt("taskId") ?: 0
+                )
         }
     }
+}
 }

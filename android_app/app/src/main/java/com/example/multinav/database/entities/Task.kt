@@ -60,6 +60,9 @@ data class Task(
     @ColumnInfo
     val taskOn : Boolean? = false,
 
+    @ColumnInfo
+    val actions: List<String>,
+
     @PrimaryKey(autoGenerate = true)
     val taskId : Int,
 
