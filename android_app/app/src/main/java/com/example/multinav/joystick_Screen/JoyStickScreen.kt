@@ -34,8 +34,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -68,9 +71,12 @@ import com.here.sdk.core.GeoCoordinates
 import com.here.sdk.mapview.MapMeasure
 import com.here.sdk.mapview.MapScheme
 import com.here.sdk.mapview.MapView
+import com.example.multinav.ui.theme.violetPurple
+
 import com.example.widgets.BluetoothReaders
 import com.example.widgets.CircleIconButton
 import com.example.widgets.CircleToggleButton
+
 import com.example.widgets.FloatingButton
 import com.example.widgets.RadioButtonMode
 import com.google.android.gms.location.LocationAvailability
@@ -84,7 +90,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun CircleIconButton(
-    icon: @Composable () -> Unit,
+    icon: @Composable () -> Unit, // Changed to accept a composable lambda
     contentDescription: String,
     onCircleButtonClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -93,8 +99,15 @@ fun CircleIconButton(
         onClick = onCircleButtonClick,
         modifier = modifier
             .size(48.dp)
-            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-    ) {
+            .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
+        colors = IconButtonColors(
+            containerColor = violetPurple,
+            contentColor = violetPurple,
+            disabledContainerColor = violetPurple,
+            disabledContentColor = violetPurple
+        )
+
+        ) {
         icon()
     }
 }
@@ -280,7 +293,40 @@ fun JoyStickScreen(
                         .fillMaxWidth()
                         .height(300.dp)
                         .background(Color.Red.copy(alpha = 0.5f))
+
                 )
+                //sensor reeadings
+                Row(
+                    modifier = Modifier
+                   //     .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                        .background(color = Color.White, shape = RectangleShape)
+                        .width(IntrinsicSize.Max),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BluetoothReaders(
+                        bluetoothReader = "26",
+                        bluetoothReaderType = "°C",
+                        modifier = Modifier.weight(1f)
+                    )
+                    BluetoothReaders(
+                        bluetoothReader = "48",
+                        bluetoothReaderType = "%",
+                        modifier = Modifier.weight(1f)
+
+                    )
+                    BluetoothReaders(
+                        bluetoothReader = "1013",
+                        bluetoothReaderType = "hPa",
+                        modifier = Modifier.weight(1f)
+                    )
+                    BluetoothReaders(
+                        bluetoothReader = "Good",
+                        bluetoothReaderType = "",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
                 // Left side - Directional arrows overlay
                 Column(
@@ -354,18 +400,20 @@ fun JoyStickScreen(
                     )
                 }
 
+
+
                 // Center - Analog Joystick
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .size(150.dp)
+                        .size(200.dp)
                 ) {
-
                     Text(
                         text = " ${ viewModel.currentAngle.value.roundToInt()} degrees",
                         modifier = Modifier.padding(8.dp)
                             .align(Alignment.Center)
-                           .fillMaxHeight()
+                         .fillMaxHeight()
+                        //.background(Color.White, CircleShape)
                     )
                     MyAnalogJoystick(
                         modifier = Modifier.matchParentSize(),
@@ -447,35 +495,7 @@ fun JoyStickScreen(
             }
 
             // Rest of the UI components below the map
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .wrapContentWidth(Alignment.CenterHorizontally)
-                    .width(IntrinsicSize.Max),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BluetoothReaders(
-                    bluetoothReader = "26",
-                    bluetoothReaderType = "°C",
-                    modifier = Modifier.weight(1f)
-                )
-                BluetoothReaders(
-                    bluetoothReader = "48",
-                    bluetoothReaderType = "%",
-                    modifier = Modifier.weight(1f)
-                )
-                BluetoothReaders(
-                    bluetoothReader = "1013",
-                    bluetoothReaderType = "hPa",
-                    modifier = Modifier.weight(1f)
-                )
-                BluetoothReaders(
-                    bluetoothReader = "Good",
-                    bluetoothReaderType = "",
-                    modifier = Modifier.weight(1f)
-                )
-            }
+
 
             Row(
                 horizontalArrangement = Arrangement.Center,
@@ -494,15 +514,6 @@ fun JoyStickScreen(
                 )
             }
 
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(vertical = 16.dp),
-//                contentAlignment = Alignment.Center,
-//            ) {
-//
-//            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -519,16 +530,19 @@ fun JoyStickScreen(
                         Log.e("buttonA", isPressed.toString())
                     }
                 )
+
                 CircleToggleButton(
                     buttonName = "B",
                     isToggled = viewModel.isToggleButtonB,
                     onButtonClick = { toggled -> Log.e("ToggleButton B", "${toggled}B") }
                 )
+
                 CircleToggleButton(
                     buttonName = "C",
                     isToggled = viewModel.isToggleButtonC,
                     onButtonClick = { toggled -> Log.e("ToggleButton C", "${toggled}C") }
                 )
+
                 CircleToggleButton(
                     buttonName = "D",
                     isToggled = viewModel.isToggleButtonD,
@@ -545,7 +559,7 @@ fun JoyStickScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(16.dp),
-                    onClick = {}
+                    onClick = { }
                 )
             }
         }
