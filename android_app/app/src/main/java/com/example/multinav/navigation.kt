@@ -16,6 +16,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -43,10 +44,12 @@ import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.sing_up.SingUpScreen
+import com.example.multinav.splash_screen.SplashScreen
 import com.example.multinav.task_actions.TaskActionsScreen
 import com.example.multinav.tasks_list.TaskSListScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 sealed class Screen(
@@ -54,6 +57,7 @@ sealed class Screen(
     val label: String? = null,
     val icon: Int? = null
 ) {
+    object Splash : Screen("splash")
     object DeviceList : Screen("deviceList", label = "Devices", icon = R.drawable.ic_phone)
     object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
@@ -74,7 +78,7 @@ sealed class Screen(
 @Composable
 fun Navigation(
     bluetoothViewModel: BluetoothViewModel,
-    startDestination: String = Screen.DeviceList.route,
+    startDestination: String = Screen.Splash.route,
     auth: FirebaseAuth, // Added
     database: FirebaseDatabase // Added
 ) {
@@ -90,7 +94,11 @@ fun Navigation(
 
     // Extract the base route for Chat to compare correctly
     val chatBaseRoute = Screen.Chat.route.substringBefore("/{deviceAddress}")
-    val shouldShowNavBar = currentRoute != chatBaseRoute && currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route
+    val shouldShowNavBar = currentRoute !=
+        null && currentRoute != Screen.Splash.route &&
+            currentRoute !=  chatBaseRoute && currentRoute != Screen.Login.route &&
+            currentRoute != Screen.SignUp.route &&
+            currentRoute != Screen.TasksList.route
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -165,6 +173,21 @@ fun Navigation(
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Splash.route) {
+                SplashScreen()
+                LaunchedEffect(Unit) {
+                    delay(2000L) // Delay for 2 seconds
+                    val nextRoute = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
+                        
+                        Screen.DeviceList.route
+                    } else {
+                        Screen.Login.route
+                    }
+                    navController.navigate(nextRoute) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            }
 
             composable(Screen.Login.route) {
                 LoginScreen(

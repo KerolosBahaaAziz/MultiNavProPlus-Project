@@ -59,18 +59,14 @@ class MainActivity : ComponentActivity() {
 //        val Uid = user?.uid
 //        Log.d("email","Email : $email")
 //        Log.d("email","uid : $Uid")
-        val startDestination = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
-            Screen.DeviceList.route // Navigate to main screen if signed in and email verified
-        } else {
-            Screen.Login.route // Navigate to login screen otherwise
-             }
+
         setContent {
             MultiNavTheme {
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
-                    startDestination =Screen.TasksList.route // Start with ActionsAndDelaysScreen for testing
+                    startDestination =Screen.Splash.route // Start with ActionsAndDelaysScreen for testing
                 )
             }
         }
