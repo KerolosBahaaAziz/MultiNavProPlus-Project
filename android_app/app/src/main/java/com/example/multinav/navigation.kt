@@ -178,7 +178,7 @@ fun Navigation(
                 LaunchedEffect(Unit) {
                     delay(2000L) // Delay for 2 seconds
                     val nextRoute = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
-                        
+
                         Screen.DeviceList.route
                     } else {
                         Screen.Login.route
@@ -188,7 +188,6 @@ fun Navigation(
                     }
                 }
             }
-
             composable(Screen.Login.route) {
                 LoginScreen(
                     auth = auth,
