@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun BluetoothReaders(modifier: Modifier = Modifier ,bluetoothReader : String,bluetoothReaderType : String) {
+fun BluetoothReaders(bluetoothReader : String,bluetoothReaderType : String,modifier: Modifier = Modifier ) {
 
     Row(
         modifier = modifier

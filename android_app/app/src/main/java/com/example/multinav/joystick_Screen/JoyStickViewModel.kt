@@ -75,6 +75,18 @@ class JoyStickViewModel(
     fun sendDirectionCommand(s: String) {
 
     }
+
+    fun onButtonBClick(it: Boolean) {
+
+    }
+
+    fun onButtonCClick(it: Boolean) {
+
+    }
+
+    fun onButtonDClick(it: Boolean) {
+
+    }
 }
 
 class JoyStickViewModelFactory(
