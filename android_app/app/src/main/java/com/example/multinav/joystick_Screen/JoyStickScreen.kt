@@ -31,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -106,7 +107,7 @@ fun CircleIconButton(
             .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
         colors = IconButtonColors(
             containerColor = violetPurple,
-            contentColor = violetPurple,
+            contentColor = Color.White,
             disabledContainerColor = violetPurple,
             disabledContentColor = violetPurple
         )
@@ -302,7 +303,7 @@ fun JoyStickScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(600.dp) // MapView + overlays inside here
+                    .height(350.dp)
             ) {
                 // MapView
                 AndroidView(
@@ -311,14 +312,12 @@ fun JoyStickScreen(
                     modifier = Modifier.matchParentSize()
                 )
 
-                // Sensor readings - Top
+                // Sensor Readings - Top Center
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White.copy(alpha = 0.7f))
-                        .padding(8.dp)
                         .align(Alignment.TopCenter),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     BluetoothReaders("26", "°C", Modifier.weight(1f))
@@ -331,12 +330,12 @@ fun JoyStickScreen(
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .size(200.dp)
-                        .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                        .size(150.dp)
+                        .background(Color.White.copy(alpha = 0.4f), CircleShape) // Add semi-transparent background
                 ) {
                     Text(
                         text = "${viewModel.currentAngle.value.roundToInt()}°",
-                        modifier = Modifier.align(Alignment.Center),
+                        modifier = Modifier.align(Alignment.Center).fillMaxHeight(),
                         color = Color.Black
                     )
                     MyAnalogJoystick(
@@ -345,7 +344,7 @@ fun JoyStickScreen(
                     )
                 }
 
-                // Arrows - Left side
+                // Arrows - Left Side
                 Column(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
@@ -361,26 +360,44 @@ fun JoyStickScreen(
                     Spacer(Modifier.height(8.dp))
                     Row {
                         CircleIconButton(
-                            icon = { Icon(Icons.Default.KeyboardArrowLeft, "Left", Modifier.size(24.dp)) },
+                            icon = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                    "Left",
+                                    Modifier.size(24.dp)
+                                )
+                            },
                             contentDescription = "Left",
                             onCircleButtonClick = { viewModel.sendDirectionCommand("LEFT") }
                         )
                         Spacer(Modifier.width(16.dp))
                         CircleIconButton(
-                            icon = { Icon(Icons.Default.KeyboardArrowRight, "Right", Modifier.size(24.dp)) },
+                            icon = {
+                                Icon(
+                                    Icons.Default.KeyboardArrowRight,
+                                    "Right",
+                                    Modifier.size(24.dp)
+                                )
+                            },
                             contentDescription = "Right",
                             onCircleButtonClick = { viewModel.sendDirectionCommand("RIGHT") }
                         )
                     }
                     Spacer(Modifier.height(8.dp))
                     CircleIconButton(
-                        icon = { Icon(Icons.Default.KeyboardArrowDown, "Down", Modifier.size(24.dp)) },
+                        icon = {
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                "Down",
+                                Modifier.size(24.dp)
+                            )
+                        },
                         contentDescription = "Down",
                         onCircleButtonClick = { viewModel.sendDirectionCommand("DOWN") }
                     )
                 }
 
-                // Playstation buttons - Right side
+                // PlayStation Buttons - Right Side
                 Column(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
@@ -389,96 +406,100 @@ fun JoyStickScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircleIconButton(
-                        icon = { Icon(painterResource(R.drawable.ic_triangle), "Triangle", Modifier.size(24.dp)) },
+                        icon = {
+                            Icon(
+                                painterResource(R.drawable.ic_triangle),
+                                "Triangle",
+                                Modifier.size(24.dp)
+                            )
+                        },
                         contentDescription = "Triangle",
                         onCircleButtonClick = { viewModel.sendActionCommand("TRIANGLE") }
                     )
                     Spacer(Modifier.height(8.dp))
                     Row {
                         CircleIconButton(
-                            icon = { Icon(painterResource(R.drawable.ic_square), "Square", Modifier.size(24.dp)) },
+                            icon = {
+                                Icon(
+                                    painterResource(R.drawable.ic_square),
+                                    "Square",
+                                    Modifier.size(24.dp)
+                                )
+                            },
                             contentDescription = "Square",
                             onCircleButtonClick = { viewModel.sendActionCommand("SQUARE") }
                         )
                         Spacer(Modifier.width(16.dp))
                         CircleIconButton(
-                            icon = { Icon(painterResource(R.drawable.ic_circle), "Circle", Modifier.size(24.dp)) },
+                            icon = {
+                                Icon(
+                                    painterResource(R.drawable.ic_circle),
+                                    "Circle",
+                                    Modifier.size(24.dp)
+                                )
+                            },
                             contentDescription = "Circle",
                             onCircleButtonClick = { viewModel.sendActionCommand("CIRCLE") }
                         )
                     }
                     Spacer(Modifier.height(8.dp))
                     CircleIconButton(
-                        icon = { Icon(painterResource(R.drawable.ic_x), "Cross", Modifier.size(24.dp)) },
+                        icon = {
+                            Icon(
+                                painterResource(R.drawable.ic_x),
+                                "Cross",
+                                Modifier.size(24.dp)
+                            )
+                        },
                         contentDescription = "Cross",
                         onCircleButtonClick = { viewModel.sendActionCommand("CROSS") }
                     )
                 }
 
-                // ⬇️ HERE: Under joystick, centered
-                Column(
+                // Toggle Buttons - Bottom Center
+                Row(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    // Radio Buttons
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButtonMode(
-                            selectedModeState = viewModel.selectedMode,
-                            modeName = Modes.MODE_ONE
-                        )
-                        RadioButtonMode(
-                            selectedModeState = viewModel.selectedMode,
-                            modeName = Modes.MODE_TWO
-                        )
-                        RadioButtonMode(
-                            selectedModeState = viewModel.selectedMode,
-                            modeName = Modes.MODE_THREE
-                        )
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // Toggle Buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        CircleToggleButton(
-                            buttonName = "A",
-                            isToggled = viewModel.isToggleButtonA,
-                            onButtonClick = { isPressed -> viewModel.onButtonAClick(isPressed) }
-                        )
-                        CircleToggleButton(
-                            buttonName = "B",
-                            isToggled = viewModel.isToggleButtonB,
-                            onButtonClick = { toggled -> /* handle B */ }
-                        )
-                        CircleToggleButton(
-                            buttonName = "C",
-                            isToggled = viewModel.isToggleButtonC,
-                            onButtonClick = { toggled -> /* handle C */ }
-                        )
-                        CircleToggleButton(
-                            buttonName = "D",
-                            isToggled = viewModel.isToggleButtonD,
-                            onButtonClick = { toggled -> /* handle D */ }
-                        )
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // Floating Button
-                    FloatingButton(
-                        onClick = { navController.navigate(Screen.TasksList.route) }
+                    CircleToggleButton(
+                        buttonName = "A",
+                        isToggled = viewModel.isToggleButtonA,
+                        onButtonClick = { isPressed -> viewModel.onButtonAClick(isPressed) }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    CircleToggleButton(
+                        buttonName = "B",
+                        isToggled = viewModel.isToggleButtonB,
+                        onButtonClick = { toggled -> /* handle B */ }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    CircleToggleButton(
+                        buttonName = "C",
+                        isToggled = viewModel.isToggleButtonC,
+                        onButtonClick = { toggled -> /* handle C */ }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    CircleToggleButton(
+                        buttonName = "D",
+                        isToggled = viewModel.isToggleButtonD,
+                        onButtonClick = { toggled -> /* handle D */ }
                     )
                 }
+
+                // Floating Button - Bottom Right
+                FloatingButton(
+                    onClick = { navController.navigate(Screen.TasksList.route) },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd) // Changed to BottomEnd
+                        .padding(16.dp)
+                )
             }
         }
     }
 }
+
+
