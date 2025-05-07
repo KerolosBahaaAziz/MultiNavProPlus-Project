@@ -12,6 +12,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -312,6 +313,7 @@ fun JoyStickScreen(
                     modifier = Modifier.matchParentSize()
                 )
 
+
                 // Sensor Readings - Top Center
                 Row(
                     modifier = Modifier
@@ -454,6 +456,34 @@ fun JoyStickScreen(
                         contentDescription = "Cross",
                         onCircleButtonClick = { viewModel.sendActionCommand("CROSS") }
                     )
+
+                   // Spacer(modifier = Modifier.height(70.dp))
+
+                }
+
+                // Radio Buttons - Below Joystick, Centered
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 60.dp), // Adjust to position above toggle buttons
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButtonMode(
+                        selectedModeState = viewModel.selectedMode,
+                        modeName = Modes.MODE_ONE
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    RadioButtonMode(
+                        selectedModeState = viewModel.selectedMode,
+                        modeName = Modes.MODE_TWO
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    RadioButtonMode(
+                        selectedModeState = viewModel.selectedMode,
+                        modeName = Modes.MODE_THREE
+                    )
                 }
 
                 // Toggle Buttons - Bottom Center
@@ -490,13 +520,17 @@ fun JoyStickScreen(
                     )
                 }
 
-                // Floating Button - Bottom Right
-                FloatingButton(
-                    onClick = { navController.navigate(Screen.TasksList.route) },
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd) // Changed to BottomEnd
+                        .align(Alignment.BottomEnd)
                         .padding(16.dp)
-                )
+                        .size(50.dp)
+                ) {
+                    FloatingButton(
+                        onClick = { navController.navigate(Screen.TasksList.route) },
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
             }
         }
     }
