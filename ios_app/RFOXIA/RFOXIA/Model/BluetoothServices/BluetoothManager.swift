@@ -16,6 +16,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var airPressureCharacteristic: CBCharacteristic?
     private var tempratureCharacteristic: CBCharacteristic?
     private var humidityCharacteristic: CBCharacteristic?
+    private var audioCharacteristic: CBCharacteristic?
     
     private var sendDirectionCharacteristic: CBCharacteristic?
     
@@ -63,6 +64,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     }
     @Published var connectionErrorMessage: String = ""
     @Published var showConnectionError: Bool = false
+    @Published var receivedAudioData: [Data] = []
     
     let chatCharacteristicUUID = CBUUID(string: "1234")
     
@@ -71,6 +73,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     let airPressureCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2003")
     let tempratureCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2201")
     let humidityCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2202")
+    let audioCharacteristicUUID = CBUUID(string: "0000FE43-8E22-4541-9D4C-21EDAE82ED19") // Replace with correct UUID
+
     
     let sendDirectionCharacteristicUUID = CBUUID(string: "0000FE41-8E22-4541-9D4C-21EDAE82ED19")
     
@@ -230,6 +234,9 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             }else if characteristic.uuid == humidityCharacteristicUUID{
                 humidityCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
+            }else if characteristic.uuid == audioCharacteristicUUID {
+                audioCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
             }
             
             if characteristic.properties.contains(.notify) {
@@ -296,7 +303,15 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                     self.humidityMessages = Float(value)
                 }
             }
+        } else if characteristic == audioCharacteristic {
+            if let data = characteristic.value {
+                print("🎵 Received audio chunk of size \(data.count) bytes")
+                DispatchQueue.main.async {
+                    self.receivedAudioData.append(data)
+                }
+            }
         }
+
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {

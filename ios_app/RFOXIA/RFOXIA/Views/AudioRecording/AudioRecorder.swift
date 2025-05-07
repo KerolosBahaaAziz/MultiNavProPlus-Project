@@ -133,6 +133,20 @@ class AudioRecorder: NSObject, ObservableObject {
         }
         prepareAudioData(from: lastRecording.url, completion: completion)
     }
+    
+    func saveReceivedAudio(data: Data) -> URL? {
+        let filename = "ReceivedVoice_\(UUID().uuidString).m4a"
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+
+        do {
+            try data.write(to: fileURL)
+            return fileURL
+        } catch {
+            print("Error saving received audio: \(error)")
+            return nil
+        }
+    }
+
 }
 
 extension AudioRecorder: AVAudioRecorderDelegate {
