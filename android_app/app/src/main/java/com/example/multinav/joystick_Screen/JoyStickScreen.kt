@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
@@ -94,6 +95,12 @@ import com.here.sdk.mapview.MapImageFactory
 import com.here.sdk.mapview.MapMarker
 import kotlin.math.roundToInt
 
+val gradientColors = listOf(
+    Color(0xFF233992),
+    Color(0xFFA030C7),
+    Color(0xFF1C0090)
+)
+
 @Composable
 fun CircleIconButton(
     icon: @Composable () -> Unit, // Changed to accept a composable lambda
@@ -101,19 +108,18 @@ fun CircleIconButton(
     onCircleButtonClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
+
     IconButton(
         onClick = onCircleButtonClick,
         modifier = modifier
             .size(52.dp)
-            .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
-        colors = IconButtonColors(
-            containerColor = violetPurple,
-            contentColor = Color.White,
-            disabledContainerColor = violetPurple,
-            disabledContentColor = violetPurple
-        )
+            .background(
+                brush = Brush.linearGradient(colors = gradientColors),
+                shape = CircleShape
+            )
 
-        ) {
+    ) {
         icon()
     }
 }
@@ -126,7 +132,7 @@ fun JoyStickScreen(
     bluetoothService: BluetoothService,
     deviceAddress: String,
     isMobileDevice: Boolean,
-    navController:NavController,
+    navController: NavController,
 ) {
     val viewModel: JoyStickViewModel = viewModel(
         factory = JoyStickViewModelFactory(bluetoothService, deviceAddress, isMobileDevice)
@@ -304,7 +310,7 @@ fun JoyStickScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(350.dp)
+                    .height(300.dp)
             ) {
                 // MapView
                 AndroidView(
@@ -333,11 +339,16 @@ fun JoyStickScreen(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .size(150.dp)
-                        .background(Color.White.copy(alpha = 0.4f), CircleShape) // Add semi-transparent background
+                        .background(
+                            Color.White.copy(alpha = 0.4f),
+                            CircleShape
+                        ) // Add semi-transparent background
                 ) {
                     Text(
                         text = "${viewModel.currentAngle.value.roundToInt()}°",
-                        modifier = Modifier.align(Alignment.Center).fillMaxHeight(),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .fillMaxHeight(),
                         color = Color.Black
                     )
                     MyAnalogJoystick(
@@ -355,30 +366,37 @@ fun JoyStickScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircleIconButton(
-                        icon = { Icon(Icons.Default.KeyboardArrowUp, "Up", Modifier.size(24.dp)) },
+                        icon = {
+                            Icon(
+                                Icons.Default.KeyboardArrowUp,
+                                "Up", Modifier.size(24.dp), tint = Color.White
+                            )
+                        },
                         contentDescription = "Up",
                         onCircleButtonClick = { viewModel.sendDirectionCommand("UP") }
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     Row {
                         CircleIconButton(
                             icon = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                     "Left",
-                                    Modifier.size(24.dp)
+                                    Modifier.size(24.dp), tint = Color.White
+
                                 )
                             },
                             contentDescription = "Left",
                             onCircleButtonClick = { viewModel.sendDirectionCommand("LEFT") }
                         )
-                        Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.width(32.dp))
                         CircleIconButton(
                             icon = {
                                 Icon(
                                     Icons.Default.KeyboardArrowRight,
                                     "Right",
-                                    Modifier.size(24.dp)
+                                    Modifier.size(24.dp), tint = Color.White
+
                                 )
                             },
                             contentDescription = "Right",
@@ -391,7 +409,8 @@ fun JoyStickScreen(
                             Icon(
                                 Icons.Default.KeyboardArrowDown,
                                 "Down",
-                                Modifier.size(24.dp)
+                                Modifier.size(24.dp), tint = Color.White
+
                             )
                         },
                         contentDescription = "Down",
@@ -412,32 +431,36 @@ fun JoyStickScreen(
                             Icon(
                                 painterResource(R.drawable.ic_triangle),
                                 "Triangle",
-                                Modifier.size(24.dp)
+                                Modifier.size(24.dp),
+                                tint = Color.White
+
                             )
                         },
                         contentDescription = "Triangle",
                         onCircleButtonClick = { viewModel.sendActionCommand("TRIANGLE") }
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     Row {
                         CircleIconButton(
                             icon = {
                                 Icon(
                                     painterResource(R.drawable.ic_square),
                                     "Square",
-                                    Modifier.size(24.dp)
+                                    Modifier.size(24.dp), tint = Color.White
+
                                 )
                             },
                             contentDescription = "Square",
                             onCircleButtonClick = { viewModel.sendActionCommand("SQUARE") }
                         )
-                        Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.width(32.dp))
                         CircleIconButton(
                             icon = {
                                 Icon(
                                     painterResource(R.drawable.ic_circle),
                                     "Circle",
-                                    Modifier.size(24.dp)
+                                    Modifier.size(24.dp), tint = Color.White
+
                                 )
                             },
                             contentDescription = "Circle",
@@ -450,14 +473,15 @@ fun JoyStickScreen(
                             Icon(
                                 painterResource(R.drawable.ic_x),
                                 "Cross",
-                                Modifier.size(24.dp)
+                                Modifier.size(24.dp), tint = Color.White
+
                             )
                         },
                         contentDescription = "Cross",
                         onCircleButtonClick = { viewModel.sendActionCommand("CROSS") }
                     )
 
-                   // Spacer(modifier = Modifier.height(70.dp))
+                    // Spacer(modifier = Modifier.height(70.dp))
 
                 }
 
@@ -528,7 +552,9 @@ fun JoyStickScreen(
                 ) {
                     FloatingButton(
                         onClick = { navController.navigate(Screen.TasksList.route) },
-                        modifier = Modifier.size(56.dp)
+                        modifier = Modifier.size(24.dp).padding(20.dp)
+
+
                     )
                 }
             }

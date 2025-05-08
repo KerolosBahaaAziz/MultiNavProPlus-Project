@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
@@ -61,28 +62,31 @@ import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun CircleIconButton(
-    icon: @Composable () -> Unit, // Changed to accept a composable lambda
+    icon: @Composable () -> Unit,
     contentDescription: String,
     onCircleButtonClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val gradientColors = listOf(
+        Color(0xFF233992),
+        Color(0xFFA030C7),
+        Color(0xFF1C0090)
+    )
+
     IconButton(
         onClick = onCircleButtonClick,
         modifier = modifier
             .size(48.dp)
-            .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
-        colors = IconButtonColors(
-            containerColor = violetPurple,
-            contentColor = violetPurple,
-            disabledContainerColor = violetPurple,
-            disabledContentColor = violetPurple
-        )
-    ){
+            .background(
+                brush = Brush.linearGradient(colors = gradientColors),
+                shape = CircleShape
+            ),
+        enabled = enabled
+    ) {
         icon()
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActionsAndDelaysScreen(
