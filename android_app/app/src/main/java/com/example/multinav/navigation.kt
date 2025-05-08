@@ -1,5 +1,6 @@
 package com.example.multinav
 
+import JoyStickScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -11,11 +12,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -32,7 +33,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.joystick_Screen.JoyStickScreen
 import androidx.navigation.navArgument
 import com.example.desgin.actions_delays_screen.ActionsAndDelaysScreen
 import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
@@ -43,11 +43,13 @@ import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
-import com.example.multinav.sign_up.SingUpScreen
+import com.example.multinav.sing_up.SingUpScreen
+import com.example.multinav.splash_screen.SplashScreen
 import com.example.multinav.task_actions.TaskActionsScreen
 import com.example.multinav.tasks_list.TaskSListScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 sealed class Screen(
@@ -55,6 +57,7 @@ sealed class Screen(
     val label: String? = null,
     val icon: Int? = null
 ) {
+    object Splash : Screen("splash")
     object DeviceList : Screen("deviceList", label = "Devices", icon = R.drawable.ic_phone)
     object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
@@ -75,7 +78,7 @@ sealed class Screen(
 @Composable
 fun Navigation(
     bluetoothViewModel: BluetoothViewModel,
-    startDestination: String = Screen.DeviceList.route,
+    startDestination: String = Screen.Splash.route,
     auth: FirebaseAuth, // Added
     database: FirebaseDatabase // Added
 ) {
@@ -91,8 +94,11 @@ fun Navigation(
 
     // Extract the base route for Chat to compare correctly
     val chatBaseRoute = Screen.Chat.route.substringBefore("/{deviceAddress}")
-    val shouldShowNavBar =
-        currentRoute != chatBaseRoute && currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route
+    val shouldShowNavBar = currentRoute !=
+        null && currentRoute != Screen.Splash.route &&
+            currentRoute !=  chatBaseRoute && currentRoute != Screen.Login.route &&
+            currentRoute != Screen.SignUp.route &&
+            currentRoute != Screen.TasksList.route
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -129,17 +135,11 @@ fun Navigation(
                                 onClick = {
                                     if (screen.route == Screen.JoyStick.route) {
                                         // Find the connected device
-                                        val connectedDevice =
-                                            bluetoothViewModel.uiState.value.let { state ->
-                                                state.pairedDevices.find { it.isConnected }
-                                                    ?: state.scannedDevices.find { it.isConnected }
-                                            }
+                                        val connectedDevice = bluetoothViewModel.uiState.value.let { state ->
+                                            state.pairedDevices.find { it.isConnected } ?: state.scannedDevices.find { it.isConnected }
+                                        }
                                         if (connectedDevice != null) {
-                                            navController.navigate(
-                                                Screen.JoyStick.createRoute(
-                                                    connectedDevice.address
-                                                )
-                                            ) {
+                                            navController.navigate(Screen.JoyStick.createRoute(connectedDevice.address)) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
                                                 }
@@ -148,17 +148,7 @@ fun Navigation(
                                             }
                                         } else {
                                             coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("Connect to device first" ,
-                                            duration = SnackbarDuration.Short
-                                                )
-                                           }
-                                            navController.navigate(Screen.JoyStick.createRoute("PlaceHolder Address"))
-                                            {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
+                                                snackbarHostState.showSnackbar("Connect to device first")
                                             }
                                         }
                                     } else {
@@ -183,6 +173,21 @@ fun Navigation(
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Splash.route) {
+                SplashScreen()
+                LaunchedEffect(Unit) {
+                    delay(2000L) // Delay for 2 seconds
+                    val nextRoute = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
+
+                        Screen.DeviceList.route
+                    } else {
+                        Screen.Login.route
+                    }
+                    navController.navigate(nextRoute) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            }
             composable(Screen.Login.route) {
                 LoginScreen(
                     auth = auth,
