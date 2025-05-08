@@ -552,7 +552,7 @@ fun JoyStickScreen(
                 ) {
                     FloatingButton(
                         onClick = { navController.navigate(Screen.TasksList.route) },
-                        modifier = Modifier.size(24.dp).padding(20.dp)
+                        modifier = Modifier.size(50.dp)
 
 
                     )
