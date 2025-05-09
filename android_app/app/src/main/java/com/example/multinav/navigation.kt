@@ -1,6 +1,5 @@
 package com.example.multinav
 
-import JoyStickScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -46,6 +45,7 @@ import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.sign_up.SingUpScreen
+import com.example.multinav.splash_screen.SplashScreen
 import com.example.multinav.task_actions.TaskActionsScreen
 import com.example.multinav.tasks_list.TaskSListScreen
 import com.google.firebase.auth.FirebaseAuth
