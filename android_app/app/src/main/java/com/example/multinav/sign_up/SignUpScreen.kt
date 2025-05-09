@@ -44,14 +44,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
 @Composable
-fun SingUpScreen(
+fun SignUpScreen(
     modifier: Modifier = Modifier,
     auth: FirebaseAuth,
     database: FirebaseDatabase,
     navigateToLogin: () -> Unit,
 )
 {
-    val viewModel: SingUpViewModel = viewModel(factory = SingUpViewModelFactory(auth,database))
+    val viewModel: SignUpViewModel = viewModel(factory = SingUpViewModelFactory(auth,database))
     val uiState = viewModel.uiState
     Column(
         modifier = Modifier
@@ -178,15 +178,15 @@ fun SingUpScreen(
                     containerColor = Color.Transparent,
                     contentColor = Color.White
                 ),
-                enabled = uiState != SingUpViewModel.UiState.VerificationPending
+                enabled = uiState != SignUpViewModel.UiState.VerificationPending
             ) {
                 Text("Sign Up")
             }
             when (uiState) {
-                is SingUpViewModel.UiState.Loading -> {
+                is SignUpViewModel.UiState.Loading -> {
                     CircularProgressIndicator()
                 }
-                is SingUpViewModel.UiState.VerificationPending -> {
+                is SignUpViewModel.UiState.VerificationPending -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = viewModel.verificationMessage ?: "Please verify your email.",
@@ -202,11 +202,11 @@ fun SingUpScreen(
                     }
                 }
 
-                is SingUpViewModel.UiState.Success -> {
+                is SignUpViewModel.UiState.Success -> {
                     Text(viewModel.verificationMessage ?: "Sign up successful! ", color = Color.Green)
                     navigateToLogin()
                 }
-                is SingUpViewModel.UiState.Error -> {
+                is SignUpViewModel.UiState.Error -> {
                     Text("Error: ${uiState.errorMessage}", color = Color.Red)
                 }
                 else -> {} // Initial state

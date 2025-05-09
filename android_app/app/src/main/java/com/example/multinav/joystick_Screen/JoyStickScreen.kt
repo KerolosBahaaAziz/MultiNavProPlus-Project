@@ -12,36 +12,27 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonColors
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,11 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -66,33 +54,24 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.desgin.constants.Modes
-import com.example.joystick_Screen.JoyStickViewModel
-import com.example.joystick_Screen.JoyStickViewModelFactory
 import com.example.multinav.BluetoothService
 import com.example.multinav.R
 import com.example.multinav.Screen
 import com.example.multinav.joystick_Screen.MyAnalogJoystick
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.here.sdk.core.GeoCoordinates
-import com.here.sdk.mapview.MapMeasure
-import com.here.sdk.mapview.MapScheme
-import com.here.sdk.mapview.MapView
-import com.example.multinav.ui.theme.violetPurple
-
 import com.example.widgets.BluetoothReaders
-import com.example.widgets.CircleIconButton
 import com.example.widgets.CircleToggleButton
-
 import com.example.widgets.FloatingButton
 import com.example.widgets.RadioButtonMode
-import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
-import com.here.sdk.gestures.TapListener
+import com.google.android.gms.location.LocationServices
+import com.here.sdk.core.GeoCoordinates
 import com.here.sdk.mapview.MapImageFactory
 import com.here.sdk.mapview.MapMarker
+import com.here.sdk.mapview.MapMeasure
+import com.here.sdk.mapview.MapScheme
+import com.here.sdk.mapview.MapView
 import kotlin.math.roundToInt
 
 val gradientColors = listOf(
@@ -323,7 +302,7 @@ fun JoyStickScreen(
                 // Sensor Readings - Top Center
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
+                       .fillMaxWidth()
                         .align(Alignment.TopCenter),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically

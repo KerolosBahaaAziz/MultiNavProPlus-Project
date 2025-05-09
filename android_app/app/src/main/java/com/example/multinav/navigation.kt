@@ -44,7 +44,7 @@ import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
-import com.example.multinav.sign_up.SingUpScreen
+import com.example.multinav.sign_up.SignUpScreen
 import com.example.multinav.splash_screen.SplashScreen
 import com.example.multinav.task_actions.TaskActionsScreen
 import com.example.multinav.tasks_list.TaskSListScreen
@@ -213,7 +213,7 @@ fun Navigation(
                 )
             }
             composable(Screen.SignUp.route) {
-                SingUpScreen(
+                SignUpScreen(
                     auth = auth,
                     database = database,
                     navigateToLogin = { navController.popBackStack() }
