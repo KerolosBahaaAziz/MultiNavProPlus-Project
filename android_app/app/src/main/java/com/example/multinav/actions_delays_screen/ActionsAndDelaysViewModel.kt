@@ -4,12 +4,19 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.multinav.database.MyDatabase
+import com.example.desgin.utils.TimeUtils
 import com.example.multinav.database.entities.Task
+import com.example.multinav.model.TaskRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
-class ActionsAndDelaysViewModel : ViewModel() {
+data class ActionHistoryItem(val type: String, val value: String, val delayMs: Long? = null)
+
+class ActionsAndDelaysViewModel(private val repository: TaskRepository) : ViewModel() {
 
     val textField = mutableStateOf("")
     val selectedMode = mutableStateOf("")
@@ -22,149 +29,133 @@ class ActionsAndDelaysViewModel : ViewModel() {
     val selectedSeconds = mutableStateOf(0)
     val selectedMilliseconds = mutableStateOf(0)
     val totalDelayMilliseconds = mutableStateOf<Long?>(null)
+    val errorMessage = mutableStateOf<String?>(null)
 
     val selectedAction = mutableStateOf<String?>(null)
-    val actionHistory = mutableStateListOf<String>()
+    val actionHistory = mutableStateListOf<ActionHistoryItem>()
 
-    // Function to add an action to the history
     fun addActionToHistory(action: String) {
-        if (!actionHistory.contains(action)) {
-            actionHistory.add(action)
+        if (actionHistory.none { it.value == action }) {
+            actionHistory.add(ActionHistoryItem(type = "Action", value = action))
             selectedAction.value = action
-            Log.d("ActionsAndDelaysViewModel", "Action added: $action, History: $actionHistory")
+
         }
     }
 
-    // Function to add or remove toggle button actions
     fun addActionToHistoryToggleButtons(action: String) {
         when (action) {
             "A" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                if (actionHistory.any { it.value == action }) {
+                    actionHistory.removeAll { it.value == action }
                     isToggleButtonA.value = false
                 } else {
-                    actionHistory.add(action)
+                    actionHistory.add(ActionHistoryItem(type = "Toggle", value = action))
                     isToggleButtonA.value = true
                 }
             }
             "B" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                if (actionHistory.any { it.value == action }) {
+                    actionHistory.removeAll { it.value == action }
                     isToggleButtonB.value = false
                 } else {
-                    actionHistory.add(action)
+                    actionHistory.add(ActionHistoryItem(type = "Toggle", value = action))
                     isToggleButtonB.value = true
                 }
             }
             "C" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                if (actionHistory.any { it.value == action }) {
+                    actionHistory.removeAll { it.value == action }
                     isToggleButtonC.value = false
                 } else {
-                    actionHistory.add(action)
+                    actionHistory.add(ActionHistoryItem(type = "Toggle", value = action))
                     isToggleButtonC.value = true
                 }
             }
             "D" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                if (actionHistory.any { it.value == action }) {
+                    actionHistory.removeAll { it.value == action }
                     isToggleButtonD.value = false
                 } else {
-                    actionHistory.add(action)
+                    actionHistory.add(ActionHistoryItem(type = "Toggle", value = action))
                     isToggleButtonD.value = true
                 }
             }
-            else -> {
-                if (!actionHistory.contains(action)) {
-                    actionHistory.add(action)
-                }
-            }
         }
-        selectedAction.value = if (actionHistory.isNotEmpty()) actionHistory.lastOrNull() else null
-        Log.d("ActionsAndDelaysViewModel", "Toggle action: $action, History: $actionHistory")
+        selectedAction.value = if (actionHistory.isNotEmpty()) actionHistory.lastOrNull()?.value else null
+
     }
 
-    // Function to add a delay to the history
     fun addDelayToHistory(delay: Long) {
         if (delay <= 0) {
-            Log.w("ActionsAndDelaysViewModel", "Attempted to add invalid delay: $delay")
+
             return
         }
-        val formattedDelay = formatDelay(delay)
-        val delayEntry = "Delay: $formattedDelay ($delay ms)"
-        actionHistory.add(delayEntry)
-        selectedAction.value = delayEntry
+        val formattedDelay = TimeUtils.formatDelay(delay)
+        actionHistory.add(ActionHistoryItem(type = "Delay", value = formattedDelay, delayMs = delay))
+        selectedAction.value = formattedDelay
         totalDelayMilliseconds.value = delay
-        Log.d("ActionsAndDelaysViewModel", "Delay added: $delayEntry, Total ms: $delay, History: $actionHistory")
+
     }
 
-    // Function to reset delay picker values after navigation
     fun resetDelayPickerValues() {
         selectedHours.value = 0
         selectedMinutes.value = 0
         selectedSeconds.value = 0
         selectedMilliseconds.value = 0
-        Log.d("ActionsAndDelaysViewModel", "Delay picker values reset")
+
     }
 
-    // Function to update the mode in history
     fun updateModeInHistory(mode: String) {
         val modes = listOf("1", "2", "3")
-        actionHistory.removeAll { it in modes }
-        if (!actionHistory.contains(mode)) {
-            actionHistory.add(mode)
+        actionHistory.removeAll { it.value in modes }
+        if (actionHistory.none { it.value == mode }) {
+            actionHistory.add(ActionHistoryItem(type = "Mode", value = mode))
         }
         selectedMode.value = mode
-        Log.d("ActionsAndDelaysViewModel", "Mode updated: $mode, History: $actionHistory")
+
     }
 
-    // Function to save actions to the database
     fun saveActionToDatabase(userUid: String?, taskTitle: String) {
         if (userUid == null) {
-            Log.e("TaskDatabase", "Cannot save: userUid is null")
+            errorMessage.value = "User not logged in"
             return
         }
         val modes = listOf("1", "2", "3")
-        val actions = actionHistory.filter { it !in modes }.map { action ->
-            if (action.startsWith("Delay: ")) {
-                val formattedDelay = action.removePrefix("Delay: ").replace(Regex("\\(\\d+ ms\\)"), "").trim()
-                Log.d("TaskDatabase", "Processed delay action: $action -> $formattedDelay")
-                formattedDelay
-            } else {
-                action
-            }
-        }
+        val actions = actionHistory.filter { it.value !in modes }.map { it.value }
         if (actions.isEmpty()) {
-            Log.e("TaskDatabase", "No actions to save")
+            errorMessage.value = "No actions to save"
+
             return
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val task = createTaskFromAction(actions, userUid, taskTitle)
-                MyDatabase.getInstance().getTaskDao().addTask(task)
-                actionHistory.clear()
-                selectedAction.value = null
-                totalDelayMilliseconds.value = null
-                isToggleButtonA.value = false
-                isToggleButtonB.value = false
-                isToggleButtonC.value = false
-                isToggleButtonD.value = false
-                textField.value = ""
-                selectedMode.value = ""
-                Log.d("TaskDatabase", "Task saved: $taskTitle, Actions: $actions")
+                repository.addTask(task)
+                withContext(Dispatchers.Main) {
+                    actionHistory.clear()
+                    selectedAction.value = null
+                    totalDelayMilliseconds.value = null
+                    isToggleButtonA.value = false
+                    isToggleButtonB.value = false
+                    isToggleButtonC.value = false
+                    isToggleButtonD.value = false
+                    textField.value = ""
+                    selectedMode.value = ""
+                    errorMessage.value = null
+
+                }
             } catch (e: Exception) {
-                Log.e("TaskDatabase", "Error saving task: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    errorMessage.value = "Failed to save task: ${e.message}"
+
+                }
             }
         }
     }
 
-    // Function to create a Task object from actions
     private fun createTaskFromAction(actions: List<String>, userUid: String, taskTitle: String): Task {
-        val delay = totalDelayMilliseconds.value ?: actions.find { it.matches(Regex("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}")) }?.let {
-            val parts = it.split(":", ".").map { part -> part.toLong() }
-            (parts[0] * 3600000) + (parts[1] * 60000) + (parts[2] * 1000) + parts[3]
-        }
+        val delay = totalDelayMilliseconds.value ?: actionHistory.find { it.type == "Delay" }?.delayMs
 
         return Task(
             actions = actions,
@@ -189,12 +180,23 @@ class ActionsAndDelaysViewModel : ViewModel() {
         )
     }
 
-    // Function to format delay in HH:MM:SS.MMM format
-    fun formatDelay(milliseconds: Long): String {
-        val hours = milliseconds / 3600000
-        val minutes = (milliseconds % 3600000) / 60000
-        val seconds = (milliseconds % 60000) / 1000
-        val millis = milliseconds % 1000
-        return String.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, millis)
+    object TimeUtils {
+        fun formatDelay(milliseconds: Long): String {
+            val hours = milliseconds / 3600000
+            val minutes = (milliseconds % 3600000) / 60000
+            val seconds = (milliseconds % 60000) / 1000
+            val millis = milliseconds % 1000
+            return String.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, millis)
+        }
+    }
+
+    class Factory(private val repository: TaskRepository) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(ActionsAndDelaysViewModel::class.java)) {
+                return ActionsAndDelaysViewModel(repository) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
     }
 }

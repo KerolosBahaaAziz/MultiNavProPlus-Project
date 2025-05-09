@@ -34,7 +34,7 @@ import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
 @Composable
 fun SetDelayScreen(
     modifier: Modifier = Modifier,
-    viewModel: ActionsAndDelaysViewModel = viewModel(),
+    viewModel: ActionsAndDelaysViewModel,
     navController: NavController = rememberNavController()
 ) {
     // Observe ViewModel state properties
