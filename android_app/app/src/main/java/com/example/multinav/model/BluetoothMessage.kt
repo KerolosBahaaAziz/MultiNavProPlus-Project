@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model
 
 sealed interface BluetoothMessage {
     data class Message(val message: String): BluetoothMessage

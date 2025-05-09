@@ -44,6 +44,7 @@ import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
+import com.example.multinav.model.AudioRecorder
 import com.example.multinav.sign_up.SignUpScreen
 import com.example.multinav.splash_screen.SplashScreen
 import com.example.multinav.task_actions.TaskActionsScreen

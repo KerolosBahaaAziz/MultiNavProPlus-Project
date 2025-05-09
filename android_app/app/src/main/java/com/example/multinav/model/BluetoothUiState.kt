@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model
 
 data class BluetoothUiState(
     val scannedDevices: List<BluetoothDeviceData> = emptyList(),

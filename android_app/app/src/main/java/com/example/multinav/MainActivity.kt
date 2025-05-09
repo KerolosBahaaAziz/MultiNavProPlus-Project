@@ -9,7 +9,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import com.example.multinav.ui.theme.MultiNavTheme
 import android.Manifest
-import android.content.Intent
 import android.os.Build
 import android.util.Log
 
@@ -18,7 +17,8 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
-import com.example.multinav.login_screen.LoginScreen
+import com.example.multinav.model.AudioRecorder
+import com.example.multinav.model.BluetoothService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.here.sdk.core.engine.AuthenticationMode

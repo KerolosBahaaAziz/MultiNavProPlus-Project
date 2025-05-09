@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model
 
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor

@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.multinav.BluetoothService
+import com.example.multinav.model.BluetoothService
 import kotlinx.coroutines.launch
 
 class JoyStickViewModel(

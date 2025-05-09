@@ -1,6 +1,5 @@
 package com.example.multinav.bluetooth
 
-import android.bluetooth.BluetoothDevice
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.multinav.BluetoothDeviceData
-import com.example.multinav.BluetoothUiState
+import com.example.multinav.model.BluetoothDeviceData
+import com.example.multinav.model.BluetoothUiState
 import com.example.multinav.Screen
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState

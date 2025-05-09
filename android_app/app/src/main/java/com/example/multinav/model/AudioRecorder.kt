@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model
 
 import android.annotation.SuppressLint
 import android.content.Context

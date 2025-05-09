@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model
 
 data class BluetoothDeviceData(
     val name: String?,

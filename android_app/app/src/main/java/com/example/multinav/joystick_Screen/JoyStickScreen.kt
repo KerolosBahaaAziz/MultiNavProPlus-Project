@@ -54,7 +54,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.desgin.constants.Modes
-import com.example.multinav.BluetoothService
+import com.example.multinav.model.BluetoothService
 import com.example.multinav.R
 import com.example.multinav.Screen
 import com.example.multinav.joystick_Screen.MyAnalogJoystick
