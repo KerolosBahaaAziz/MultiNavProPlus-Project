@@ -9,12 +9,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import com.example.multinav.ui.theme.MultiNavTheme
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.util.Log
+
+
 import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import com.example.multinav.login_screen.LoginScreen
+import com.example.multinav.sing_up.SingUpScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.here.sdk.core.engine.AuthenticationMode
@@ -76,19 +81,14 @@ class MainActivity : ComponentActivity() {
 //        val Uid = user?.uid
 //        Log.d("email","Email : $email")
 //        Log.d("email","uid : $Uid")
-        val startDestination = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
-            Screen.DeviceList.route // Navigate to main screen if signed in and email verified
-        } else {
-            Screen.Login.route // Navigate to login screen otherwise
-             }
+
         setContent {
             MultiNavTheme {
-          //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
-                    startDestination = startDestination
+                    startDestination =Screen.Splash.route // Start with ActionsAndDelaysScreen for testing
                 )
             }
         }
