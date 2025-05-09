@@ -206,7 +206,7 @@ fun ChatScreen(
             Spacer(modifier = Modifier.height(8.dp))
             MessageInput(
                 viewModel = viewModel,
-                enabled = connectionState is BluetoothService.ConnectionStatus.Connected,
+                enabled =true //connectionState is BluetoothService.ConnectionStatus.Connected,
                 //audioRecorder = audioRecorder
             )
         }
