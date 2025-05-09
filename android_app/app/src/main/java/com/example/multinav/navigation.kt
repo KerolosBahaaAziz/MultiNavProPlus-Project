@@ -58,20 +58,20 @@ sealed class Screen(
     val label: String? = null,
     val icon: Int? = null
 ) {
-    object Splash : Screen("splash")
-    object DeviceList : Screen("deviceList", label = "Devices", icon = R.drawable.ic_phone)
-    object Chat : Screen("chat/{deviceAddress}") {
+    data object Splash : Screen("splash")
+    data object DeviceList : Screen("deviceList", label = "Devices", icon = R.drawable.ic_phone)
+    data object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
     }
-    object JoyStick : Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) {
+    data object JoyStick : Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) {
         fun createRoute(deviceAddress: String) = "joystick/$deviceAddress"
     }
-    object Login : Screen("login")
-    object SignUp : Screen("signup")
-    object ActionsAndDelays : Screen("actions_delays")
-    object SetDelay : Screen("set_delay_screen")
-    object TasksList : Screen("tasks_list")
-    object TaskActions : Screen("task_actions/{taskTitle}/{taskId}") {
+    data object Login : Screen("login")
+    data object SignUp : Screen("signup")
+    data object ActionsAndDelays : Screen("actions_delays")
+    data object SetDelay : Screen("set_delay_screen")
+    data object TasksList : Screen("tasks_list")
+    data object TaskActions : Screen("task_actions/{taskTitle}/{taskId}") {
         fun createRoute(taskTitle: String, taskId: Int) = "task_actions/$taskTitle/$taskId"
     }
 }
