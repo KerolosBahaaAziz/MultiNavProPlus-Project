@@ -79,7 +79,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         }
         
         if let messageData = message.data(using: .utf8){
-            peripheral.writeValue(messageData, for: characteristic, type: .withResponse)
+            peripheral.writeValue(messageData, for: characteristic, type: .withoutResponse)
         }
     }
     
