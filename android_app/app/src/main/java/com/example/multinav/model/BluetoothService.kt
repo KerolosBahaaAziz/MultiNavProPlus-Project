@@ -86,6 +86,8 @@ class BluetoothService(private val context: Context) {
     private val _bleModuleScannedDevices = MutableStateFlow<List<BluetoothDeviceData>>(emptyList())
     val bleModuleScannedDevices: StateFlow<List<BluetoothDeviceData>> = _bleModuleScannedDevices.asStateFlow()
 
+    private val _scannedDevicesList = MutableStateFlow<List<BluetoothDeviceData>>(emptyList())
+    val scannedDevicesList: StateFlow<List<BluetoothDeviceData>> = _scannedDevicesList.asStateFlow()
 
     // Request the BLE module to scan for devices
     @SuppressLint("MissingPermission")
