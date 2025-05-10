@@ -32,7 +32,20 @@ class BluetoothViewModel(
     private val _bleModuleConnected = MutableStateFlow(false)
     val bleModuleConnected: StateFlow<Boolean> = _bleModuleConnected
 
-    
+    // Add these at the class level with your other state variables
+    private val _showBottomSheet = MutableStateFlow(false)
+    val showBottomSheet: StateFlow<Boolean> = _showBottomSheet
+
+    // Add these controller methods
+    fun showDeviceBottomSheet() {
+        Log.d("BluetoothViewModel", "Showing bottom sheet")
+
+        _showBottomSheet.value = true
+    }
+
+    fun hideDeviceBottomSheet() {
+        _showBottomSheet.value = false
+    }
 
     init {
         // Monitor Bluetooth state and fetch paired devices when enabled
@@ -400,10 +413,6 @@ class BluetoothViewModel(
             )
         }
 
-        // Check if this is a BLE module device
-        val isBleModule = device.name?.contains("BLE", ignoreCase = true) ?: false ||
-                device.name == "BLE_WB07"
-
         // Increment click count for the clicked device
         val updatedDevice = device.copy(clickCount = device.clickCount + 1)
         val clickCount = updatedDevice.clickCount
@@ -425,81 +434,118 @@ class BluetoothViewModel(
             }
         }
 
-        // Set device type based on inspection
-        bluetoothService.isMobileDevice = !isBleModule
+        // Check if this is a BLE module device
+        val deviceName = device.name ?: "Unknown"
+        val isBleModule =true// deviceName.contains("BLE", ignoreCase = true) || deviceName == "BLE_WB07"
+
+        // Determine isMobileDevice parameter for the connection
+        if (isFromPairedList) {
+            bluetoothService.isMobileDevice = true
+        } else {
+            bluetoothService.isMobileDevice = !isBleModule
+        }
 
         Log.d("BluetoothViewModel", "Device clicked: ${device.name}, Address: ${device.address}, Is BLE Module: $isBleModule, Click count: $clickCount")
 
-        // If it's from the scanned devices list and wasn't scanned by BLE module,
-        // treat it as an index-based selection
-        if (!isFromPairedList && _bleModuleConnected.value) {
-            // This is a device from BLE module scan - connect by index
-            val deviceIndex = _uiState.value.scannedDevices.indexOf(device)
-            if (deviceIndex >= 0) {
-                connectToDeviceByIndex(deviceIndex, onSuccess = onNavigate)
-                return
-            }
-        }
-
-        // Normal connection flow for paired devices or initial BLE module connection
-        deviceConnectionJob?.cancel()
-        deviceConnectionJob = viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(isConnecting = true) }
-
-                withTimeout(10000) {
-                    val success = bluetoothService.connectToDevice(device.address, !isBleModule)
-
-                    _uiState.update { state ->
-                        if (success) {
-                            val updatedList = if (isFromPairedList) {
-                                state.pairedDevices.map {
-                                    if (it.address == device.address) it.copy(isConnected = true) else it
+        if (clickCount == 1) {
+            // First click: Attempt to connect
+            deviceConnectionJob?.cancel()
+            deviceConnectionJob = viewModelScope.launch {
+                try {
+                    _uiState.update { it.copy(isConnecting = true) }
+                    withTimeout(10000) {
+                        val success = bluetoothService.connectToDevice(device.address, bluetoothService.isMobileDevice)
+                        _uiState.update { state ->
+                            if (success) {
+                                if (isFromPairedList) {
+                                    state.copy(
+                                        isConnecting = false,
+                                        pairedDevices = state.pairedDevices.map {
+                                            if (it.address == device.address) it.copy(isConnected = true) else it
+                                        },
+                                        errorMessage = null
+                                    )
+                                } else {
+                                    state.copy(
+                                        isConnecting = false,
+                                        scannedDevices = state.scannedDevices.map {
+                                            if (it.address == device.address) it.copy(isConnected = true) else it
+                                        },
+                                        errorMessage = null
+                                    )
                                 }
                             } else {
-                                state.scannedDevices.map {
-                                    if (it.address == device.address) it.copy(isConnected = true) else it
-                                }
+                                state.copy(
+                                    isConnecting = false,
+                                    errorMessage = "Failed to connect"
+                                )
                             }
+                        }
 
-                            state.copy(
-                                isConnecting = false,
-                                pairedDevices = if (isFromPairedList) updatedList else state.pairedDevices,
-                                scannedDevices = if (!isFromPairedList) updatedList else state.scannedDevices,
-                                errorMessage = null
-                            )
-                        } else {
-                            state.copy(
-                                isConnecting = false,
-                                errorMessage = "Failed to connect"
-                            )
+                        if (success) {
+                            // If this is a BLE module, scan for devices and show the bottom sheet
+                            if (isBleModule) {
+                                _bleModuleConnected.value = true
+                                // Clear any existing scanned devices and request a new scan
+                                _uiState.update { it.copy(scannedDevices = emptyList()) }
+                                // Request scan from BLE module
+                               // requestBleModuleScan()
+                                // Show the bottom sheet for device selection
+                                showDeviceBottomSheet()
+                                // Don't navigate - wait for device selection
+                            } else {
+                                // For regular devices, navigate to chat as usual
+                                onNavigate()
+                            }
                         }
                     }
-
-                    if (success) {
-                        // If this is a BLE module, request scan instead of navigating
-                        if (isBleModule) {
-                            _bleModuleConnected.value = true
-                            // Clear the scanned devices list and request a new scan
-                            _uiState.update { it.copy(scannedDevices = emptyList()) }
-                            requestBleModuleScan()
-                        } else {
-                            // For regular devices, navigate to chat
-                            onNavigate()
-                        }
+                } catch (e: TimeoutCancellationException) {
+                    Log.e("BluetoothViewModel", "Connection timeout", e)
+                    _uiState.update {
+                        it.copy(
+                            isConnecting = false,
+                            errorMessage = "Connection timeout"
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    Log.d("BluetoothViewModel", "Connection cancelled", e)
+                    _uiState.update {
+                        it.copy(
+                            isConnecting = false,
+                            errorMessage = null
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("BluetoothViewModel", "Connection error", e)
+                    _uiState.update {
+                        it.copy(
+                            isConnecting = false,
+                            errorMessage = e.message
+                        )
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("BluetoothViewModel", "Connection error", e)
+            }
+        } else if (clickCount >= 2) {
+            // Second click: Navigate to ChatScreen if connected
+            val currentDevice = if (isFromPairedList) {
+                _uiState.value.pairedDevices.find { it.address == device.address }
+            } else {
+                _uiState.value.scannedDevices.find { it.address == device.address }
+            }
+
+            if (currentDevice?.isConnected == true) {
+                // If it's a BLE module and connected, show the bottom sheet again
+                if (isBleModule) {
+                    _bleModuleConnected.value = true
+                    requestBleModuleScan()
+                    showDeviceBottomSheet()
+                } else {
+                    // For regular devices, navigate to chat
+                    onNavigate()
+                }
+            } else {
                 _uiState.update {
-                    it.copy(
-                        isConnecting = false,
-                        errorMessage = when(e) {
-                            is TimeoutCancellationException -> "Connection timeout"
-                            is CancellationException -> null
-                            else -> e.message
-                        }
-                    )
+                    it.copy(errorMessage = "Device is not connected. Please connect first.")
                 }
             }
         }
