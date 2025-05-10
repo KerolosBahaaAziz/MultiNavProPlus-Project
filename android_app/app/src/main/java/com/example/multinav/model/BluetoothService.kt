@@ -80,10 +80,88 @@ class BluetoothService(private val context: Context) {
     private val messageDebounceMs = 500L // 500ms debounce for notifications
 
     private val deviceNameToAddressMap = mutableMapOf<String, String>()
-
     private var isReceiverRegistered = false
-
     private var leScanCallback: ScanCallback? = null
+
+    private val _bleModuleScannedDevices = MutableStateFlow<List<BluetoothDeviceData>>(emptyList())
+    val bleModuleScannedDevices: StateFlow<List<BluetoothDeviceData>> = _bleModuleScannedDevices.asStateFlow()
+
+
+    // Request the BLE module to scan for devices
+    @SuppressLint("MissingPermission")
+    suspend fun requestBleModuleScan(): Boolean {
+        if (!_isConnected.value) {
+            Log.e("BLE", "Cannot request scan: Not connected to BLE module")
+            return false
+        }
+
+        // Clear previous device list
+        _bleModuleScannedDevices.value = emptyList()
+
+        // Send command to BLE module to start scanning (adjust command as needed)
+        val scanCommand = "S" // Or whatever character your BLE module expects to start scanning
+        Log.d("BLE", "Sending scan command '$scanCommand' to BLE module")
+
+        // Send the command
+        return sendMessage(scanCommand, false)
+    }
+
+    // Process scan results from BLE module
+    private fun processBleModuleScanResult(resultData: String) {
+        try {
+            Log.d("BLE", "Processing scan results from BLE module: $resultData")
+
+            // Parse the device list from the BLE module's response
+            // The format will depend on how your BLE module reports devices
+            // This is an example assuming CSV format: "index,name,address,rssi"
+            val devices = resultData.split(";").mapIndexed { index, deviceInfo ->
+                val parts = deviceInfo.split(",")
+                if (parts.size >= 3) {
+                    BluetoothDeviceData(
+                        name = parts[0],
+                        address = parts[1],
+                        rssi = parts[2].toIntOrNull(),
+                        isConnected = false,
+                        isMobileDevice = false,
+                        clickCount = 0
+                    )
+                } else null
+            }.filterNotNull()
+
+            // Update the device list
+            _bleModuleScannedDevices.value = devices
+        } catch (e: Exception) {
+            Log.e("BLE", "Error processing scan results", e)
+        }
+    }
+
+    // Connect to a device by sending its index to the BLE module
+    suspend fun connectToDeviceByIndex(index: Int): Boolean {
+        if (!_isConnected.value) {
+            Log.e("BLE", "Cannot connect to device: Not connected to BLE module")
+            return false
+        }
+
+        // Validate index
+        if (index < 0 || index >= _bleModuleScannedDevices.value.size) {
+            Log.e("BLE", "Invalid device index: $index")
+            return false
+        }
+
+        // Device selection command - format as required by your BLE module
+        val selectCommand = index.toString()
+        Log.d("BLE", "Sending device selection command: $selectCommand")
+
+        // Send the index to the BLE module
+        val commandSent = sendMessage(selectCommand, false)
+        if (!commandSent) {
+            Log.e("BLE", "Failed to send device selection command")
+            return false
+        }
+
+        // The BLE module will handle the actual connection
+        return true
+    }
 
     // Helper function to get the key for a device (name or address if name is null/blank)
     @SuppressLint("MissingPermission")
@@ -994,61 +1072,111 @@ class BluetoothService(private val context: Context) {
             value: ByteArray
         ) {
             try {
+                val deviceAddress = gatt.device?.address ?: "Unknown"
+                Log.d("BLE", "Received notification from ${deviceAddress} on ${characteristic.uuid}")
+
                 val hexMessage = bytesToHex(value)
-                Log.d(
-                    "BLE",
-                    "Client received hex message: $hexMessage from characteristic: ${characteristic.uuid}"
-                )
+                Log.d("BLE", "Raw hex data: $hexMessage")
+
+                // Determine which service this characteristic belongs to
+                val serviceName = when(characteristic.service.uuid) {
+                    BLEConfig.CHAT_SERVICE_UUID -> "Mobile Chat Service"
+                    BLEConfig.BLE_SERVICE_UUID -> "BLE Service"
+                    else -> "Unknown Service ${characteristic.service.uuid}"
+                }
+
+                // Determine expected characteristic UUID based on service
                 val expectedUuid = if (characteristic.service.uuid == BLEConfig.CHAT_SERVICE_UUID) {
                     BLEConfig.NOTIFY_CHARACTERISTIC_UUID
                 } else {
                     BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID
                 }
-                // Added: Expected UUID for voice notifications
-                val expectedVoiceUuid =
-                    if (characteristic.service.uuid == BLEConfig.CHAT_SERVICE_UUID) {
-                        BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID
-                    } else {
-                        BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID
-                    }
-                gatt.device.address?.let { deviceAddress ->
-                    if (characteristic.uuid == expectedUuid) {
-                        // Convert the raw bytes to floats
+
+                // Expected UUID for voice notifications
+                val expectedVoiceUuid = if (characteristic.service.uuid == BLEConfig.CHAT_SERVICE_UUID) {
+                    BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID
+                } else {
+                    BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID
+                }
+
+                // Process based on which characteristic received the notification
+                if (characteristic.uuid == expectedUuid) {
+                    // This is a text/data notification
+                    try {
+                        val message = String(value, Charsets.UTF_8)
+                        Log.d("BLE", "Received text message: '$message' from $serviceName")
+
+                        // Check if this is a scan result message
+                        if (message.startsWith("SCAN_RESULT:")) {
+                            // Parse scan results from BLE module
+                            val scanData = message.substring("SCAN_RESULT:".length)
+                            processBleModuleScanResult(scanData)
+                            Log.d("BLE", "Processed scan results from BLE module")
+                        }
+                        // Check if this is a raw device list message (without prefix)
+                        else if (message.contains(";") && message.contains(",")) {
+                            // Possible device list in CSV format without prefix
+                            processBleModuleScanResult(message)
+                            Log.d("BLE", "Processed raw scan results from BLE module")
+                        }
+                        // Check if message contains float data (joystick or control data)
+                        else if (value.size >= 4) {
+                            // Might be float data - convert to floats for processing
+                            val floats = bytesToFloats(value)
+                            val displayMessage = "Floats: [${floats.joinToString(", ")}]"
+
+                            // Add the formatted float message to the device's message list
+                            val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
+                            messages.add(Message.Text(displayMessage, false))
+                            _messagesFlow.value = _messagesPerDevice.mapValues { it.value.toList() }
+
+                            // Invoke the message listener with the float values and device address
+                            messageListener?.invoke(floats, deviceAddress) ?:
+                            Log.w("BLE", "No listener set for received floats on client")
+                        }
+                        else {
+                            // Regular text message
+                            val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
+                            messages.add(Message.Text(message, false))
+                            _messagesFlow.value = _messagesPerDevice.mapValues { it.value.toList() }
+                            Log.d("BLE", "Added text message to chat: '$message'")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("BLE", "Error processing text data", e)
+
+                        // Fallback to processing as raw data
                         val floats = bytesToFloats(value)
-                        val displayMessage = "Floats: [${floats.joinToString(", ")}]"
-                        // Add the formatted float message to the device's message list
-                        val messages =
-                            _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
-                        messages.add(
-                            Message.Text(
-                                displayMessage,
-                                false
-                            )
-                        ) // Fixed: Use Message.Text instead of Message
-                        _messagesFlow.value = _messagesPerDevice.mapValues { it.value.toList() }
-                        // Invoke the message listener with the float values and device address
-                        messageListener?.invoke(floats, deviceAddress) ?: Log.w(
-                            "BLE",
-                            "No listener set for received floats on client"
-                        )
+                        messageListener?.invoke(floats, deviceAddress)
                     }
-                    // Added: Handle voice messages
-                    else if (characteristic.uuid == expectedVoiceUuid) {
-                        Log.d(
-                            "BLE",
-                            "Client received voice message from ${deviceAddress}, bytes: ${value.size}"
-                        )
-                        voiceMessageListener?.invoke(value, deviceAddress) ?: Log.w(
-                            "BLE",
-                            "No listener set for received voice message on client"
-                        )
-                    } else {
-                        Log.w(
-                            "BLE",
-                            "Received hex message on unexpected characteristic: ${characteristic.uuid}"
-                        )
+                }
+                // Voice data handling
+                else if (characteristic.uuid == expectedVoiceUuid) {
+                    Log.d("BLE", "Received voice message from ${deviceAddress}, bytes: ${value.size}")
+                    voiceMessageListener?.invoke(value, deviceAddress) ?:
+                    Log.w("BLE", "No listener set for received voice message on client")
+                }
+                // Unknown characteristic
+                else {
+                    Log.w("BLE", "Received data on unexpected characteristic: ${characteristic.uuid}")
+                    // Try to process as generic data
+                    val message = try {
+                        String(value, Charsets.UTF_8)
+                    } catch (e: Exception) {
+                        "Binary data: ${bytesToHex(value)}"
                     }
-                } ?: Log.e("BLE", "Device address is null, cannot process hex message: $hexMessage")
+
+                    Log.d("BLE", "Unknown characteristic data: $message")
+
+                    // Check if this might be scan results (even on unexpected characteristic)
+                    if (message.contains(";") && message.contains(",")) {
+                        try {
+                            processBleModuleScanResult(message)
+                            Log.d("BLE", "Processed scan results from unexpected characteristic")
+                        } catch (e: Exception) {
+                            Log.e("BLE", "Failed to process potential scan results", e)
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("BLE", "Error handling characteristic change", e)
             }
@@ -1440,7 +1568,8 @@ class BluetoothService(private val context: Context) {
         }
     }
 
-    private val messageIdMap = mutableMapOf<Pair<String, Int>, Int>() // (deviceAddress, messageId) -> index in messages
+    private val messageIdMap =
+        mutableMapOf<Pair<String, Int>, Int>() // (deviceAddress, messageId) -> index in messages
 
     @SuppressLint("MissingPermission")
     fun addMessage(deviceAddress: String, message: Message, messageId: Int? = null) {
@@ -1461,7 +1590,12 @@ class BluetoothService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun updateMessageStatus(deviceAddress: String, messageText: String, messageId: Int, isSentSuccessfully: Boolean) {
+    fun updateMessageStatus(
+        deviceAddress: String,
+        messageText: String,
+        messageId: Int,
+        isSentSuccessfully: Boolean
+    ) {
         val messages = _messagesPerDevice[deviceAddress]
         if (messages != null) {
             val key = Pair(deviceAddress, messageId)
@@ -1484,6 +1618,7 @@ class BluetoothService(private val context: Context) {
             }
         }
     }
+
     // Modified: Overloaded sendAsClient to accept a specific characteristic for voice messages
     @SuppressLint("MissingPermission")
     private suspend fun sendAsClient(
