@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+
 import com.example.multinav.Screen
+import formatDelay
 
 @Composable
 fun TaskActionsScreen(
@@ -92,18 +94,29 @@ fun TaskActionsScreen(
                      // Adjust height as needed
             ) {
 
-                items(task?.actions ?: emptyList()) { actions ->
+                items(task?.actions ?: emptyList()) { action ->
+                    val isMode = action.endsWith("m")
+                    val isDelay = action.toLongOrNull() != null
+                    val isToggle = action.matches(Regex("[ABCD]-(on|off)"))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(70.dp)
                             .padding(4.dp)
-                            .background(Color.LightGray, shape = MaterialTheme.shapes.large),
+                            .background(
+                                color =  Color.LightGray,
+                                shape = MaterialTheme.shapes.large
+                            ),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = actions,
+                            text = when {
+                                isDelay -> "Delay: ${formatDelay(action.toLong())}"
+                                isMode -> "Mode: ${action.removeSuffix("m")}"
+                                isToggle -> action // Display A-on, A-off, etc. directly
+                                else -> action
+                            },
                             fontSize = 18.sp,
                             color = Color.Blue,
                             modifier = Modifier

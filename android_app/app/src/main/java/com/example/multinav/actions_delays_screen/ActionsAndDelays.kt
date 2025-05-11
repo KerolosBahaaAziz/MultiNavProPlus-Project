@@ -1,6 +1,8 @@
-package com.example.desgin.actions_delays_screen
+
+
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -29,7 +30,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -53,12 +53,10 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.desgin.constants.Modes
 import com.example.multinav.R
-import com.example.multinav.ui.theme.violetPurple
 import com.example.widgets.CircleToggleButton
 import com.example.widgets.CustomTextField
 import com.example.widgets.RadioButtonMode
 import com.google.firebase.auth.FirebaseAuth
-
 
 @Composable
 fun CircleIconButton(
@@ -87,36 +85,42 @@ fun CircleIconButton(
         icon()
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActionsAndDelaysScreen(
     modifier: Modifier = Modifier,
     viewModel: ActionsAndDelaysViewModel = viewModel(),
-    navController: NavController = rememberNavController())
-{
+    navController: NavController = rememberNavController()
+) {
     val user = FirebaseAuth.getInstance().currentUser
-    val actionHistory = viewModel.actionHistory
+
     val textFieldValue by viewModel.textField
     val selectedAction by viewModel.selectedAction
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    BackHandler(enabled = true) {
+        viewModel.clearActionHistory()
+        navController.popBackStack()
+    }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             CenterAlignedTopAppBar(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.White,
-                    titleContentColor = Color.Black),
+                    titleContentColor = Color.Black
+                ),
                 title = {
                     Text(
                         text = "Actions & Delays",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-
                 },
                 navigationIcon = {
                     IconButton(
                         onClick = {
+                            viewModel.clearActionHistory()
                             navController.popBackStack()
                         }
                     ) {
@@ -125,39 +129,38 @@ fun ActionsAndDelaysScreen(
                             contentDescription = "Arrow Back"
                         )
                     }
-
                 },
-
             )
         }
-      ){
-        innerPadding->
-        Column(modifier =Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
-            .verticalScroll(rememberScrollState()),
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-            Row (
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
-            ){
+            ) {
                 CustomTextField(
-                    placeHolder = "Add Task",
-                    textFiledValue = viewModel.textField,)
+                    placeHolder = "Task Title",
+                    textFiledValue = viewModel.textField,
+                )
             }
 
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
-            ){
+            ) {
                 Column(
                     modifier = Modifier.padding(8.dp),
                     verticalArrangement = Arrangement.Center,
@@ -226,18 +229,17 @@ fun ActionsAndDelaysScreen(
                     )
                 }
             }
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
-            ){
+            ) {
                 Column(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Top: Triangle
                     CircleIconButton(
                         icon = {
                             Icon(
@@ -251,11 +253,8 @@ fun ActionsAndDelaysScreen(
                         onCircleButtonClick = {
                             viewModel.addActionToHistory("Triangle")
                         },
-
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    // Middle: Square (left) and Circle (right)
                     Row {
                         CircleIconButton(
                             icon = {
@@ -288,8 +287,6 @@ fun ActionsAndDelaysScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    // Bottom: Cross
                     CircleIconButton(
                         icon = {
                             Icon(
@@ -307,7 +304,8 @@ fun ActionsAndDelaysScreen(
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
@@ -316,42 +314,41 @@ fun ActionsAndDelaysScreen(
                     buttonName = "A",
                     isToggled = viewModel.isToggleButtonA,
                     onButtonClick = {
-                            toggled ->
                         viewModel.addActionToHistoryToggleButtons("A")
-                        Log.e("ToggleButton A","${toggled}+A") }
+                        Log.d("ToggleButton A", "Toggled A")
+                    }
                 )
-
                 CircleToggleButton(
                     buttonName = "B",
                     isToggled = viewModel.isToggleButtonB,
                     onButtonClick = {
-                            toggled ->
                         viewModel.addActionToHistoryToggleButtons("B")
-                        Log.e("ToggleButton B","${toggled}B")
-                    })
-
+                        Log.d("ToggleButton B", "Toggled B")
+                    }
+                )
                 CircleToggleButton(
                     buttonName = "C",
                     isToggled = viewModel.isToggleButtonC,
                     onButtonClick = {
-                            toggled ->
                         viewModel.addActionToHistoryToggleButtons("C")
-                        Log.e("ToggleButton C","${toggled}C")
-                    })
-
-                CircleToggleButton(buttonName = "D",
+                        Log.d("ToggleButton C", "Toggled C")
+                    }
+                )
+                CircleToggleButton(
+                    buttonName = "D",
                     isToggled = viewModel.isToggleButtonD,
                     onButtonClick = {
-                            toggled ->
                         viewModel.addActionToHistoryToggleButtons("D")
-                        Log.e("ToggleButton D","${toggled}D")
-                    })
+                        Log.d("ToggleButton D", "Toggled D")
+                    }
+                )
             }
-            Row (
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.Center,
-            ){
+            ) {
                 RadioButtonMode(
                     selectedModeState = viewModel.selectedMode,
                     modeName = Modes.MODE_ONE,
@@ -369,20 +366,19 @@ fun ActionsAndDelaysScreen(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(16.dp),
-
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 Button(
                     onClick = {
-                        val taskTitle = textFieldValue.takeIf { textFieldValue.isNotBlank() } ?: "Default Task"
+                        val taskTitle = textFieldValue.takeIf { it.isNotBlank() } ?: "Default Task"
                         val userUid = user?.uid
-                        viewModel.saveActionToDatabase(userUid !!, taskTitle)
+                        viewModel.saveActionToDatabase(userUid!!, taskTitle)
                         navController.popBackStack()
                     },
-
-                    enabled = selectedAction != null // Enable only if an action is selected
+                    enabled = selectedAction != null
                 ) {
                     Text("Add Task")
                 }
@@ -390,37 +386,45 @@ fun ActionsAndDelaysScreen(
                     onClick = {
                         Log.d("ActionsAndDelays", "Add Delay button clicked")
                         navController.navigate("set_delay_screen")
-                    },
-
+                    }
                 ) {
-                    Text("Add Delay ")
+                    Text("Add Delay")
                 }
-
             }
             Text(
                 text = "History",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold)
-
+                fontWeight = FontWeight.Bold
+            )
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp) // Adjust height as needed
-
+                    .height(200.dp)
             ) {
                 Log.d("ActionsAndDelaysScreen", "Rendering LazyColumn with history: ${viewModel.actionHistory}")
                 items(viewModel.actionHistory) { action ->
+                    val isMode = action.endsWith("m")
+                    val isDelay = action.toLongOrNull() != null
+                    val isToggle = action.matches(Regex("[ABCD]-(on|off)"))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(70.dp)
                             .padding(4.dp)
-                            .background(Color.LightGray, shape = MaterialTheme.shapes.large),
+                            .background(
+                                color = Color.LightGray,
+                                shape = MaterialTheme.shapes.large
+                            ),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = action,
+                            text = when {
+                                isDelay -> "Delay: ${formatDelay(action.toLong())}"
+                                isMode -> "Mode: ${action.removeSuffix("m")}"
+                                isToggle -> action // Display A-on, A-off, etc. directly
+                                else -> action
+                            },
                             fontSize = 18.sp,
                             color = Color.Blue,
                             modifier = Modifier
@@ -428,15 +432,13 @@ fun ActionsAndDelaysScreen(
                                 .padding(16.dp)
                         )
                     }
-
                 }
             }
-
-
         }
     }
 }
- fun formatDelay(milliseconds: Long): String {
+
+fun formatDelay(milliseconds: Long): String {
     val hours = milliseconds / 3600000
     val minutes = (milliseconds % 3600000) / 60000
     val seconds = (milliseconds % 60000) / 1000
@@ -448,5 +450,4 @@ fun ActionsAndDelaysScreen(
 @Composable
 private fun ActionsAndDelaysScreenPrev() {
     ActionsAndDelaysScreen()
-
 }

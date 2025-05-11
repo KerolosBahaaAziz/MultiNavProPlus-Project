@@ -1,5 +1,6 @@
 package com.example.multinav.actions_delays_screen
 
+import ActionsAndDelaysViewModel
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,7 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
+import formatDelay
+
 
 @SuppressLint("UnrememberedMutableState")
 @Composable
@@ -119,8 +121,10 @@ fun SetDelayScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Selected delay: $totalMilliseconds milliseconds",
-                fontSize = 16.sp
+                text = "Selected delay: ${formatDelay(totalMilliseconds)}",
+                fontSize = 18.sp, // Match ActionsAndDelaysScreen
+                color = Color(0xFF006064), // Match delay text color in ActionsAndDelaysScreen
+                modifier = Modifier.padding(16.dp)
             )
         }
     }

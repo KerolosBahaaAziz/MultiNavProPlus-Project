@@ -1,5 +1,7 @@
 package com.example.multinav
 
+import ActionsAndDelaysScreen
+import ActionsAndDelaysViewModel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -35,8 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.joystick_Screen.JoyStickScreen
 import androidx.navigation.navArgument
-import com.example.desgin.actions_delays_screen.ActionsAndDelaysScreen
-import com.example.desgin.actions_delays_screen.ActionsAndDelaysViewModel
+
 import com.example.multinav.actions_delays_screen.SetDelayScreen
 import com.example.multinav.bluetooth.BluetoothDeviceScreen
 import com.example.multinav.bluetooth.BluetoothViewModel
