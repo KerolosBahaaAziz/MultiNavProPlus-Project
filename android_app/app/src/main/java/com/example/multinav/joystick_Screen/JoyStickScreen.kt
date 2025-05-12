@@ -37,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -116,6 +117,12 @@ fun JoyStickScreen(
     val viewModel: JoyStickViewModel = viewModel(
         factory = JoyStickViewModelFactory(bluetoothService, deviceAddress, isMobileDevice)
     )
+
+    // Collect sensor states
+    val temperature by viewModel.temperature.collectAsState()
+    val humidity by viewModel.humidity.collectAsState()
+    val pressure by viewModel.pressure.collectAsState()
+    val airQuality by viewModel.airQuality.collectAsState()
 
     val context = LocalContext.current
     val activity = context as? Activity
@@ -300,17 +307,18 @@ fun JoyStickScreen(
 
 
                 // Sensor Readings - Top Center
+                // Update the Sensor Readings section to use the collected states
                 Row(
                     modifier = Modifier
-                       .fillMaxWidth()
+                        .fillMaxWidth()
                         .align(Alignment.TopCenter),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    BluetoothReaders("26", "°C", Modifier.weight(1f))
-                    BluetoothReaders("48", "%", Modifier.weight(1f))
-                    BluetoothReaders("1013", "hPa", Modifier.weight(1f))
-                    BluetoothReaders("Good", "", Modifier.weight(1f))
+                    BluetoothReaders(temperature, "°C", Modifier.weight(1f))
+                    BluetoothReaders(humidity, "%", Modifier.weight(1f))
+                    BluetoothReaders(pressure, "hPa", Modifier.weight(1f))
+                    BluetoothReaders(airQuality, "", Modifier.weight(1f))
                 }
 
                 // Joystick - Center

@@ -15,6 +15,8 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.example.multinav.chat.Message
+import com.example.multinav.utils.ByteUtils
+import com.example.multinav.utils.ByteUtils.bytesToFloats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -812,7 +814,7 @@ class BluetoothService(private val context: Context) {
                 // Handle text messages
                 if (characteristic.uuid == BLEConfig.WRITE_CHARACTERISTIC_UUID) {
                     // Log the raw bytes as hex for debugging
-                    val hexMessage = bytesToHex(value)
+                    val hexMessage = ByteUtils.bytesToHex(value)
                     Log.d(
                         "BLE",
                         "Server received raw message (hex): $hexMessage from ${device.address}"
@@ -1076,8 +1078,15 @@ class BluetoothService(private val context: Context) {
                 val deviceAddress = gatt.device?.address ?: "Unknown"
                 Log.d("BLE", "Received notification from ${deviceAddress} on ${characteristic.uuid}")
 
-                val hexMessage = bytesToHex(value)
+                val hexMessage = ByteUtils.bytesToHex(value)
                 Log.d("BLE", "Raw hex data: $hexMessage")
+
+                // Check if this is sensor data from the Sensor Service
+                if (characteristic.service.uuid == BLEConfig.SENSOR_SERVICE_UUID) {
+                    // Process sensor data
+                    processSensorData(characteristic, value, deviceAddress)
+                    return
+                }
 
                 // Determine which service this characteristic belongs to
                 val serviceName = when(characteristic.service.uuid) {
@@ -1163,7 +1172,7 @@ class BluetoothService(private val context: Context) {
                     val message = try {
                         String(value, Charsets.UTF_8)
                     } catch (e: Exception) {
-                        "Binary data: ${bytesToHex(value)}"
+                        "Binary data: ${ByteUtils.bytesToHex(value)}"
                     }
 
                     Log.d("BLE", "Unknown characteristic data: $message")
@@ -1233,7 +1242,108 @@ class BluetoothService(private val context: Context) {
             }
         }
     }
-    
+
+    private fun processSensorData(
+        characteristic: BluetoothGattCharacteristic,
+        value: ByteArray,
+        deviceAddress: String
+    ) {
+        try {
+            // Create a sensor data message to be stored and processed by listeners
+            var sensorType = ""
+            var sensorValue = ""
+            var unit = ""
+
+            when (characteristic.uuid) {
+                BLEConfig.GYROSCOPE_CHARACTERISTIC_UUID -> {  // Gyroscope Data
+                    sensorType = "GYRO"
+                    if (value.size >= 6) {
+                        val x = ByteUtils.bytesToShort(value[0], value[1])
+                        val y = ByteUtils.bytesToShort(value[2], value[3])
+                        val z = ByteUtils.bytesToShort(value[4], value[5])
+                        sensorValue = "$x,$y,$z"
+                        unit = "raw"
+                    }
+                }
+                BLEConfig.ACCELEROMETER_CHARACTERISTIC_UUID -> {  // Accelerometer Data
+                    sensorType = "ACCEL"
+                    if (value.size >= 6) {
+                        val x = ByteUtils.bytesToShort(value[0], value[1])
+                        val y = ByteUtils.bytesToShort(value[2], value[3])
+                        val z = ByteUtils.bytesToShort(value[4], value[5])
+                        sensorValue = "$x,$y,$z"
+                        unit = "raw"
+                    }
+                }
+                BLEConfig.MAGNETOMETER_CHARACTERISTIC_UUID -> {  // Magnetometer Data
+                    sensorType = "MAG"
+                    if (value.size >= 6) {
+                        val x = ByteUtils.bytesToShort(value[0], value[1])
+                        val y = ByteUtils.bytesToShort(value[2], value[3])
+                        val z = ByteUtils.bytesToShort(value[4], value[5])
+                        sensorValue = "$x,$y,$z"
+                        unit = "raw"
+                    }
+                }
+                BLEConfig.AIR_PRESSURE_CHARACTERISTIC_UUID -> {  // Air Pressure Data
+                    sensorType = "PRESS"
+                    if (value.size >= 3) {
+                        val rawPressure = ByteUtils.bytesToInt(value[0], value[1], value[2])
+                        val pressure = rawPressure / 4098.0f
+                        sensorValue = pressure.toInt().toString()
+                        unit = "hPa"
+                    }
+                }
+                BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID -> {  // Temperature Data
+                    sensorType = "TEMP"
+                    if (value.size >= 2) {
+                        val rawTemp = ByteUtils.bytesToShort(value[0], value[1])
+                        val temperature = (rawTemp / 16383.0f) * 165.0f - 40.0f
+                        sensorValue = temperature.toInt().toString()
+                        unit = "°C"
+                    }
+                }
+                BLEConfig.HUMIDITY_CHARACTERISTIC_UUID -> {  // Humidity Data
+                    sensorType = "HUM"
+                    if (value.size >= 2) {
+                        val rawHumidity = ByteUtils.bytesToShort(value[0], value[1])
+                        val humidity = (rawHumidity / 16383.0f) * 100.0f
+                        sensorValue = humidity.toInt().toString()
+                        unit = "%"
+                    }
+                }
+                BLEConfig.AIR_QUALITY_CHARACTERISTIC_UUID -> {  // Air Quality Data
+                    sensorType = "AQ"
+                    // For air quality, implement a simple mapping for demonstration
+                    val rawValue = value.firstOrNull()?.toInt() ?: 0
+                    sensorValue = when {
+                        rawValue < 50 -> "Excellent"
+                        rawValue < 100 -> "Good"
+                        rawValue < 150 -> "Moderate"
+                        rawValue < 200 -> "Poor"
+                        else -> "Very Poor"
+                    }
+                    unit = ""
+                }
+            }
+
+            // If we processed a recognized sensor
+            if (sensorType.isNotEmpty() && sensorValue.isNotEmpty()) {
+                // Format a sensor message in a standard format
+                val sensorMessage = "SENSOR:$sensorType=$sensorValue;UNIT=$unit"
+
+                // Add the sensor data to the device's message list
+                val messages = _messagesPerDevice.getOrPut(deviceAddress) { mutableListOf() }
+                messages.add(Message.Text(sensorMessage, false))
+                _messagesFlow.value = _messagesPerDevice.mapValues { it.value.toList() }
+
+                Log.d("BLE", "Processed sensor data: $sensorMessage")
+            }
+        } catch (e: Exception) {
+            Log.e("BLE", "Error processing sensor data", e)
+        }
+    }
+
     /**
      * Processes scan results received from the BLE module.
      * Expected format: "deviceName1,deviceAddress1;deviceName2,deviceAddress2;..."
@@ -1281,38 +1391,52 @@ class BluetoothService(private val context: Context) {
         }
     }
 
-
-    private fun bytesToFloats(bytes: ByteArray): List<Float> {
-        if (bytes.size % 2 != 0) {
-            Log.w("BLE", "Byte array length is not a multiple of 2, padding with 0")
-            // Pad with a zero byte if the length is odd
-            val paddedBytes = bytes + byteArrayOf(0)
-            return processBytePairs(paddedBytes)
+    @SuppressLint("MissingPermission")
+    private fun subscribeToSensorCharacteristics(gatt: BluetoothGatt?) {
+        if (gatt == null) {
+            Log.e("BLE", "Cannot subscribe to sensors: GATT connection is null")
+            return
         }
-        return processBytePairs(bytes)
-    }
 
-    private fun processBytePairs(bytes: ByteArray): List<Float> {
-        val floats = mutableListOf<Float>()
-        for (i in bytes.indices step 2) {
-            // Ensure we have at least 2 bytes to process
-            if (i + 1 < bytes.size) {
-                // Combine 2 bytes into a short (16-bit integer)
-                val shortValue =
-                    ((bytes[i].toInt() and 0xFF) shl 8) or (bytes[i + 1].toInt() and 0xFF)
-                // Convert the short to a float (you can adjust the scaling as needed)
-                val floatValue = shortValue.toFloat()
-                floats.add(floatValue)
+        // Get the sensor service
+        val sensorService = gatt.getService(BLEConfig.SENSOR_SERVICE_UUID)
+        if (sensorService == null) {
+            Log.e("BLE", "Sensor service not found")
+            return
+        }
+
+        // List of all sensor characteristics
+        val sensorCharacteristics = listOf(
+            BLEConfig.GYROSCOPE_CHARACTERISTIC_UUID,
+            BLEConfig.ACCELEROMETER_CHARACTERISTIC_UUID,
+            BLEConfig.MAGNETOMETER_CHARACTERISTIC_UUID,
+            BLEConfig.AIR_PRESSURE_CHARACTERISTIC_UUID,
+            BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID,
+            BLEConfig.HUMIDITY_CHARACTERISTIC_UUID,
+            BLEConfig.AIR_QUALITY_CHARACTERISTIC_UUID
+        )
+
+        // Subscribe to each sensor characteristic
+        for (uuid in sensorCharacteristics) {
+            val characteristic = sensorService.getCharacteristic(uuid)
+            if (characteristic != null) {
+                val result = gatt.setCharacteristicNotification(characteristic, true)
+
+                // Set the descriptor for notifications
+                val descriptor = characteristic.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+                if (descriptor != null) {
+                    descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    gatt.writeDescriptor(descriptor)
+                    Log.d("BLE", "Subscribed to sensor: ${uuid}")
+                } else {
+                    Log.e("BLE", "Notification descriptor not found for sensor: ${uuid}")
+                }
+            } else {
+                Log.e("BLE", "Sensor characteristic not found: ${uuid}")
             }
         }
-        return floats
     }
 
-    private fun bytesToHex(bytes: ByteArray): String {
-        return bytes.joinToString(" ") { byte ->
-            String.format("%02X", byte)
-        }
-    }
 
     @SuppressLint("MissingPermission")
     private fun enableNotifications(
