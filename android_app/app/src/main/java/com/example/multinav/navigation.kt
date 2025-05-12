@@ -136,18 +136,12 @@ fun Navigation(
                                 selected = currentRoute == screen.route.substringBefore("/{deviceAddress}"),
                                 onClick = {
                                     if (screen.route == Screen.JoyStick.route) {
-                                        // Find the connected device
-                                        val connectedDevice =
-                                            bluetoothViewModel.uiState.value.let { state ->
-                                                state.pairedDevices.find { it.isConnected }
-                                                    ?: state.scannedDevices.find { it.isConnected }
-                                            }
-                                        if (connectedDevice != null) {
-                                            navController.navigate(
-                                                Screen.JoyStick.createRoute(
-                                                    connectedDevice.address
-                                                )
-                                            ) {
+                                        // First, check if we're already connected to a device
+                                        val connectedDeviceAddress = bluetoothService.getConnectedDeviceAddress()
+
+                                        if (connectedDeviceAddress != null) {
+                                            // We have a connected device - use its address
+                                            navController.navigate(Screen.JoyStick.createRoute(connectedDeviceAddress)) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
                                                 }
@@ -155,21 +149,33 @@ fun Navigation(
                                                 restoreState = true
                                             }
                                         } else {
-                                            coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("Connect to device first" ,
-                                            duration = SnackbarDuration.Short
-                                                )
-                                           }
-                                            navController.navigate(Screen.JoyStick.createRoute("PlaceHolder Address"))
-                                            {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
+                                            // Find a device that's marked as connected in the UI state
+                                            val connectedDevice = bluetoothViewModel.uiState.value.let { state ->
+                                                state.pairedDevices.find { it.isConnected }
+                                                    ?: state.scannedDevices.find { it.isConnected }
+                                            }
+
+                                            if (connectedDevice != null) {
+                                                // Navigate with the connected device from UI state
+                                                navController.navigate(Screen.JoyStick.createRoute(connectedDevice.address)) {
+                                                    popUpTo(navController.graph.startDestinationId) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
                                                 }
-                                                launchSingleTop = true
-                                                restoreState = true
+                                            } else {
+                                                // No connected device found
+                                                coroutineScope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        "Connect to device first",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
                                             }
                                         }
                                     } else {
+                                        // Regular navigation for other tabs
                                         navController.navigate(screen.route) {
                                             popUpTo(navController.graph.startDestinationId) {
                                                 saveState = true

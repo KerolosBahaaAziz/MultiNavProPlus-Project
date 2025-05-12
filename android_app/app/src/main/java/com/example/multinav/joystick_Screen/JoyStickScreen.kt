@@ -123,6 +123,8 @@ fun JoyStickScreen(
     val humidity by viewModel.humidity.collectAsState()
     val pressure by viewModel.pressure.collectAsState()
     val airQuality by viewModel.airQuality.collectAsState()
+    Log.d("JoyStickScreen", "UI update - Temp: $temperature, Humidity: $humidity, Pressure: $pressure, AQ: $airQuality")
+
 
     val context = LocalContext.current
     val activity = context as? Activity

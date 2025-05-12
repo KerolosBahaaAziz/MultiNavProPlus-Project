@@ -1031,6 +1031,15 @@ class BluetoothService(private val context: Context) {
                         Log.e("BLE", "Chat service not found (UUID: $serviceUuid)")
                         _connectionStatus.value = ConnectionStatus.Error("Chat service not found")
                     }
+
+                    // NEW ADDITION: Check for sensor service and enable notifications for sensor characteristics
+                    val sensorService = gatt.getService(BLEConfig.SENSOR_SERVICE_UUID)
+                    if (sensorService != null) {
+                        Log.d("BLE", "Sensor service found (UUID: ${BLEConfig.SENSOR_SERVICE_UUID})")
+                        subscribeToSensorCharacteristics(gatt)
+                    } else {
+                        Log.d("BLE", "Sensor service not found (UUID: ${BLEConfig.SENSOR_SERVICE_UUID})")
+                    }
                 } else {
                     Log.e("BLE", "Service discovery failed with status: $status")
                     _connectionStatus.value =
@@ -1042,7 +1051,6 @@ class BluetoothService(private val context: Context) {
                     ConnectionStatus.Error("Error discovering services: ${e.message}")
             }
         }
-
         // For Android 13+ (API 33+)
         override fun onCharacteristicChanged(
             gatt: BluetoothGatt,
@@ -1243,12 +1251,15 @@ class BluetoothService(private val context: Context) {
         }
     }
 
+
     private fun processSensorData(
         characteristic: BluetoothGattCharacteristic,
         value: ByteArray,
         deviceAddress: String
     ) {
         try {
+            Log.d("Sensor", "Processing sensor data for characteristic: ${characteristic.uuid}")
+
             // Create a sensor data message to be stored and processed by listeners
             var sensorType = ""
             var sensorValue = ""
@@ -1296,7 +1307,8 @@ class BluetoothService(private val context: Context) {
                 }
                 BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID -> {  // Temperature Data
                     sensorType = "TEMP"
-                    if (value.size >= 2) {
+                    if (true)//value.size >= 2)
+                    {
                         val rawTemp = ByteUtils.bytesToShort(value[0], value[1])
                         val temperature = (rawTemp / 16383.0f) * 165.0f - 40.0f
                         sensorValue = temperature.toInt().toString()
@@ -1325,6 +1337,8 @@ class BluetoothService(private val context: Context) {
                     }
                     unit = ""
                 }
+
+
             }
 
             // If we processed a recognized sensor
@@ -1337,11 +1351,30 @@ class BluetoothService(private val context: Context) {
                 messages.add(Message.Text(sensorMessage, false))
                 _messagesFlow.value = _messagesPerDevice.mapValues { it.value.toList() }
 
-                Log.d("BLE", "Processed sensor data: $sensorMessage")
+                Log.d("sensor", "Final sensor message sent: $sensorMessage")
             }
         } catch (e: Exception) {
             Log.e("BLE", "Error processing sensor data", e)
         }
+    }
+
+    // Add this to your BluetoothService class
+    fun getConnectedDeviceAddress(): String? {
+        // Check if we're connected
+        if (!isConnected.value) {
+            return null
+        }
+
+        // Try to get the address from the GATT client
+        val deviceAddress = gattClient?.device?.address
+
+        // If we have a device address, return it
+        if (!deviceAddress.isNullOrBlank()) {
+            return deviceAddress
+        }
+
+        // If we stored a last connected address, use that
+        return lastConnectedDeviceAddress
     }
 
     /**
@@ -1815,6 +1848,17 @@ class BluetoothService(private val context: Context) {
                 false
             }
         }
+    }
+    // Add to BluetoothService class
+    private var lastConnectedDeviceAddress: String? = null
+
+    fun saveLastConnectedAddress(address: String) {
+        lastConnectedDeviceAddress = address
+        Log.d("BLE", "Saved last connected address: $address")
+    }
+
+    fun getLastConnectedAddress(): String? {
+        return lastConnectedDeviceAddress
     }
 
     sealed class ConnectionStatus {

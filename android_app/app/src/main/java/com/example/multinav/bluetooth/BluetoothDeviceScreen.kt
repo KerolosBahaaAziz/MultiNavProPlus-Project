@@ -231,18 +231,18 @@ fun BluetoothDeviceScreen(
 
                 // Display the bottom sheet when needed - OUTSIDE the Scaffold
                 if (showBottomSheet) {
+                    // In BluetoothDeviceScreen.kt, update the onDeviceSelected callback
                     BleDeviceBottomSheet(
                         devices = state.scannedDevices,
                         isScanning = state.isScanning,
                         onScanRequest = { bluetoothViewModel.requestBleModuleScan() },
                         onDeviceSelected = { index ->
-                            bluetoothViewModel.connectToDeviceByIndex(
+                            // Use our new function that provides the address to the navigation callback
+                            bluetoothViewModel.connectToDeviceByIndexAndNavigate(
                                 index = index,
-                                onSuccess = {
-                                    bluetoothViewModel.hideDeviceBottomSheet()
-                                    navController.navigate(Screen.Chat.createRoute(
-                                        state.scannedDevices[index].address
-                                    ))
+                                onNavigate = { deviceAddress ->
+                                    // Now we have the correct device address for navigation
+                                    navController.navigate(Screen.Chat.createRoute(deviceAddress))
                                 }
                             )
                         },

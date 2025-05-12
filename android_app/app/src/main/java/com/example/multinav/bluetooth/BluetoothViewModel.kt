@@ -192,6 +192,79 @@ class BluetoothViewModel(
         }
     }
 
+    /**
+     * Connects to a device by index from the bottom sheet and navigates with the correct address
+     */
+    fun connectToDeviceByIndexAndNavigate(
+        index: Int,
+        onNavigate: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                // Get the current scanned devices list
+                val devices = _uiState.value.scannedDevices
+
+                // Validate index
+                if (index < 0 || index >= devices.size) {
+                    _uiState.update { it.copy(
+                        errorMessage = "Invalid device selection"
+                    )}
+                    return@launch
+                }
+
+                // Get the device at the selected index
+                val selectedDevice = devices[index]
+                Log.d("BluetoothViewModel", "Selected device at index $index: ${selectedDevice.name} (${selectedDevice.address})")
+
+                // Update UI to show we're connecting
+                _uiState.update { it.copy(
+                    isConnecting = true,
+                    errorMessage = null
+                )}
+
+                // Connect to the device through the BLE module
+                val success = bluetoothService.connectToDeviceByIndex(index)
+
+                if (success) {
+                    Log.d("BluetoothViewModel", "Successfully connected to device at index $index")
+
+                    // Update the selected device as connected in the UI
+                    _uiState.update { state ->
+                        val updatedDevices = state.scannedDevices.mapIndexed { i, device ->
+                            if (i == index) device.copy(isConnected = true) else device
+                        }
+                        state.copy(
+                            isConnecting = false,
+                            errorMessage = null,
+                            scannedDevices = updatedDevices
+                        )
+                    }
+
+                    // Store the device address for later reference
+                    bluetoothService.saveLastConnectedAddress(selectedDevice.address)
+
+                    // Hide the bottom sheet
+                    hideDeviceBottomSheet()
+
+                    // Navigate to the appropriate screen with the correct address
+                    onNavigate(selectedDevice.address)
+                } else {
+                    Log.e("BluetoothViewModel", "Failed to connect to device at index $index")
+                    _uiState.update { it.copy(
+                        isConnecting = false,
+                        errorMessage = "Failed to connect to selected device"
+                    )}
+                }
+            } catch (e: Exception) {
+                Log.e("BluetoothViewModel", "Error connecting to device by index", e)
+                _uiState.update { it.copy(
+                    isConnecting = false,
+                    errorMessage = "Connection error: ${e.message}"
+                )}
+            }
+        }
+    }
+
     // Connect to device by index
     fun connectToDeviceByIndex(index: Int, onSuccess: () -> Unit = {}) {
         if (!_bleModuleConnected.value) {
@@ -398,6 +471,7 @@ class BluetoothViewModel(
         }
     }
 
+
     fun connectToDeviceAndNavigate(
         device: BluetoothDeviceData,
         onNavigate: () -> Unit,
@@ -489,7 +563,7 @@ class BluetoothViewModel(
                                 // Clear any existing scanned devices and request a new scan
                                 _uiState.update { it.copy(scannedDevices = emptyList()) }
                                 // Request scan from BLE module
-                               // requestBleModuleScan()
+                                requestBleModuleScan()
                                 // Show the bottom sheet for device selection
                                 showDeviceBottomSheet()
                                 // Don't navigate - wait for device selection

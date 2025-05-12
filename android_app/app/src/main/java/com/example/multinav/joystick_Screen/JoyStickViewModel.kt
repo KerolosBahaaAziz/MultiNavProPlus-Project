@@ -64,6 +64,8 @@ class JoyStickViewModel(
     }
 
     private fun processSensorData(message: String) {
+        Log.d("JoyStickViewModel", "Processing message: $message")
+
         // Check if the message contains sensor data
         if (message.startsWith("SENSOR:")) {
             val sensorData = message.substringAfter("SENSOR:")
