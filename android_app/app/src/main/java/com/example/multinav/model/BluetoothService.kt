@@ -1224,26 +1224,57 @@ class BluetoothService(private val context: Context) {
                     "BLE",
                     "Descriptor write completed with status: $status for ${descriptor.uuid}"
                 )
+
                 if (descriptor.uuid == BLEConfig.CLIENT_CONFIG_UUID) {
-                    if (status == BluetoothGatt.GATT_SUCCESS) {
-                        Log.d("BLE", "Notifications successfully enabled")
-                    } else {
-                        Log.e("BLE", "Failed to enable notifications, status: $status")
-                        val localNotifyCharacteristic =
-                            if (descriptor.characteristic.uuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID) {
-                                notifyCharacteristic
-                            } else {
-                                voiceNotifyCharacteristic
-                            }
-                        if (localNotifyCharacteristic != null) {
-                            retryEnableNotifications(gatt, localNotifyCharacteristic, attempt = 1)
+                    val characteristicUuid = descriptor.characteristic.uuid
+
+                    // Check if this is one of our sensor characteristics
+                    if (sensorCharacteristicsList.contains(characteristicUuid)) {
+                        if (status == BluetoothGatt.GATT_SUCCESS) {
+                            Log.d("Sensor", "Successfully enabled notifications for: $characteristicUuid")
                         } else {
-                            Log.e(
-                                "BLE",
-                                "Cannot retry enabling notifications: notifyCharacteristic is null"
-                            )
+                            Log.e("Sensor", "Failed to enable notifications for: $characteristicUuid, status: $status")
+                        }
+
+                        // Move to the next sensor in the list
+                        pendingSensorIndex++
+
+                        // Process the next sensor
+                        val service = gatt.getService(BLEConfig.SENSOR_SERVICE_UUID)
+                        if (service != null) {
+                            subscribeTNextSensor(gatt, service)
                         }
                     }
+                    // Handle standard notification characteristics
+                    else if (characteristicUuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID ||
+                        characteristicUuid == BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID) {
+
+                        if (status == BluetoothGatt.GATT_SUCCESS) {
+                            Log.d("BLE", "Notifications successfully enabled")
+                        } else {
+                            Log.e("BLE", "Failed to enable notifications, status: $status")
+                            val localNotifyCharacteristic =
+                                if (characteristicUuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID) {
+                                    notifyCharacteristic
+                                } else {
+                                    voiceNotifyCharacteristic
+                                }
+
+                            if (localNotifyCharacteristic != null) {
+                                retryEnableNotifications(gatt, localNotifyCharacteristic, attempt = 1)
+                            } else {
+                                Log.e(
+                                    "BLE",
+                                    "Cannot retry enabling notifications: notifyCharacteristic is null"
+                                )
+                            }
+                        }
+                    }
+                    else {
+                        Log.d("BLE", "Descriptor write for unhandled characteristic: $characteristicUuid")
+                    }
+                } else {
+                    Log.d("BLE", "Descriptor write for non-client config descriptor: ${descriptor.uuid}")
                 }
             } catch (e: Exception) {
                 Log.e("BLE", "Error in onDescriptorWrite", e)
@@ -1268,61 +1299,55 @@ class BluetoothService(private val context: Context) {
             when (characteristic.uuid) {
                 BLEConfig.GYROSCOPE_CHARACTERISTIC_UUID -> {  // Gyroscope Data
                     sensorType = "GYRO"
-                    if (value.size >= 6) {
                         val x = ByteUtils.bytesToShort(value[0], value[1])
                         val y = ByteUtils.bytesToShort(value[2], value[3])
                         val z = ByteUtils.bytesToShort(value[4], value[5])
                         sensorValue = "$x,$y,$z"
                         unit = "raw"
-                    }
+                    
                 }
                 BLEConfig.ACCELEROMETER_CHARACTERISTIC_UUID -> {  // Accelerometer Data
                     sensorType = "ACCEL"
-                    if (value.size >= 6) {
                         val x = ByteUtils.bytesToShort(value[0], value[1])
                         val y = ByteUtils.bytesToShort(value[2], value[3])
                         val z = ByteUtils.bytesToShort(value[4], value[5])
                         sensorValue = "$x,$y,$z"
                         unit = "raw"
-                    }
+
                 }
                 BLEConfig.MAGNETOMETER_CHARACTERISTIC_UUID -> {  // Magnetometer Data
                     sensorType = "MAG"
-                    if (value.size >= 6) {
                         val x = ByteUtils.bytesToShort(value[0], value[1])
                         val y = ByteUtils.bytesToShort(value[2], value[3])
                         val z = ByteUtils.bytesToShort(value[4], value[5])
                         sensorValue = "$x,$y,$z"
                         unit = "raw"
-                    }
+
                 }
                 BLEConfig.AIR_PRESSURE_CHARACTERISTIC_UUID -> {  // Air Pressure Data
                     sensorType = "PRESS"
-                    if (value.size >= 3) {
                         val rawPressure = ByteUtils.bytesToInt(value[0], value[1], value[2])
                         val pressure = rawPressure / 4098.0f
                         sensorValue = pressure.toInt().toString()
                         unit = "hPa"
-                    }
+
                 }
                 BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID -> {  // Temperature Data
                     sensorType = "TEMP"
-                    if (true)//value.size >= 2)
-                    {
+
                         val rawTemp = ByteUtils.bytesToShort(value[0], value[1])
                         val temperature = (rawTemp / 16383.0f) * 165.0f - 40.0f
                         sensorValue = temperature.toInt().toString()
                         unit = "°C"
-                    }
+
                 }
                 BLEConfig.HUMIDITY_CHARACTERISTIC_UUID -> {  // Humidity Data
                     sensorType = "HUM"
-                    if (value.size >= 2) {
                         val rawHumidity = ByteUtils.bytesToShort(value[0], value[1])
                         val humidity = (rawHumidity / 16383.0f) * 100.0f
                         sensorValue = humidity.toInt().toString()
                         unit = "%"
-                    }
+
                 }
                 BLEConfig.AIR_QUALITY_CHARACTERISTIC_UUID -> {  // Air Quality Data
                     sensorType = "AQ"
@@ -1424,49 +1449,87 @@ class BluetoothService(private val context: Context) {
         }
     }
 
+    // Add these as class properties in your BluetoothService class
+    private var pendingSensorIndex = 0
+    private val sensorCharacteristicsList = listOf(
+        BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID,
+        BLEConfig.HUMIDITY_CHARACTERISTIC_UUID,
+        BLEConfig.AIR_PRESSURE_CHARACTERISTIC_UUID,
+        BLEConfig.AIR_QUALITY_CHARACTERISTIC_UUID
+    )
+
     @SuppressLint("MissingPermission")
     private fun subscribeToSensorCharacteristics(gatt: BluetoothGatt?) {
         if (gatt == null) {
-            Log.e("BLE", "Cannot subscribe to sensors: GATT connection is null")
+            Log.e("Sensor", "Cannot subscribe to sensors: GATT connection is null")
             return
         }
 
-        // Get the sensor service
         val sensorService = gatt.getService(BLEConfig.SENSOR_SERVICE_UUID)
         if (sensorService == null) {
-            Log.e("BLE", "Sensor service not found")
+            Log.e("Sensor", "Sensor service not found")
+
             return
         }
 
-        // List of all sensor characteristics
-        val sensorCharacteristics = listOf(
-            BLEConfig.GYROSCOPE_CHARACTERISTIC_UUID,
-            BLEConfig.ACCELEROMETER_CHARACTERISTIC_UUID,
-            BLEConfig.MAGNETOMETER_CHARACTERISTIC_UUID,
-            BLEConfig.AIR_PRESSURE_CHARACTERISTIC_UUID,
-            BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID,
-            BLEConfig.HUMIDITY_CHARACTERISTIC_UUID,
-            BLEConfig.AIR_QUALITY_CHARACTERISTIC_UUID
-        )
+        // Reset the index
+        pendingSensorIndex = 0
 
-        // Subscribe to each sensor characteristic
-        for (uuid in sensorCharacteristics) {
-            val characteristic = sensorService.getCharacteristic(uuid)
-            if (characteristic != null) {
-                val result = gatt.setCharacteristicNotification(characteristic, true)
+        // Start with the first sensor
+        subscribeTNextSensor(gatt, sensorService)
+    }
 
-                // Set the descriptor for notifications
-                val descriptor = characteristic.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
-                if (descriptor != null) {
+    @SuppressLint("MissingPermission")
+    private fun subscribeTNextSensor(gatt: BluetoothGatt, service: BluetoothGattService) {
+        // Check if we've reached the end of our list
+        if (pendingSensorIndex >= sensorCharacteristicsList.size) {
+            Log.d("Sensor", "All sensor subscriptions complete")
+            return
+        }
+
+        // Get the current characteristic to subscribe to
+        val uuid = sensorCharacteristicsList [pendingSensorIndex]
+        val characteristic = service.getCharacteristic(uuid)
+
+        if (characteristic == null) {
+            Log.e("Sensor", "Characteristic not found: $uuid")
+            pendingSensorIndex++
+            subscribeTNextSensor(gatt, service)
+            return
+        }
+
+        // Enable notifications
+        val success = gatt.setCharacteristicNotification(characteristic, true)
+        Log.d("Sensor", "Setting notification for $uuid: $success")
+
+        if (success) {
+            val descriptor = characteristic.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+            if (descriptor != null) {
+                try {
                     descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                    gatt.writeDescriptor(descriptor)
-                    Log.d("BLE", "Subscribed to sensor: ${uuid}")
-                } else {
-                    Log.e("BLE", "Notification descriptor not found for sensor: ${uuid}")
+                    val writeResult = gatt.writeDescriptor(descriptor)
+                    Log.d("Sensor", "Writing descriptor for $uuid: $writeResult")
+
+                    if (!writeResult) {
+                        // If the write failed immediately, move to the next one
+                        Log.e("Sensor", "Descriptor write returned false for $uuid")
+                        pendingSensorIndex++
+                        subscribeTNextSensor(gatt, service)
+                    }
+                } catch (e: Exception) {
+                    Log.e("Sensor", "Error writing descriptor for $uuid", e)
+                    pendingSensorIndex++
+                    subscribeTNextSensor(gatt, service)
                 }
             } else {
-                Log.e("BLE", "Sensor characteristic not found: ${uuid}")
+                Log.e("Sensor", "Descriptor not found for $uuid")
+                pendingSensorIndex++
+                subscribeTNextSensor(gatt, service)
             }
+        } else {
+            Log.e("Sensor", "Failed to enable notification for $uuid")
+            pendingSensorIndex++
+            subscribeTNextSensor(gatt, service)
         }
     }
 
@@ -1629,6 +1692,13 @@ class BluetoothService(private val context: Context) {
     @SuppressLint("MissingPermission")
     fun disconnect() {
         try {
+            // Disable notifications first (while the connection is still active)
+            unsubscribeFromAllCharacteristics()
+        } catch (e: Exception) {
+            Log.e("BLE", "Error disabling notifications", e)
+        }
+
+        try {
             stopScanning()
             stopLeScan() // Add this to ensure all scans are stopped
         } catch (e: Exception) {
@@ -1659,10 +1729,66 @@ class BluetoothService(private val context: Context) {
         _isConnected.value = false
         _connectionStatus.value = ConnectionStatus.Disconnected
 
+        // Reset characteristics
+        writeCharacteristic = null
+        notifyCharacteristic = null
+        voiceWriteCharacteristic = null
+        voiceNotifyCharacteristic = null
+
         // Added: Reset debouncing variables on disconnect
         lastMessageReceivedTime = 0L
         lastMessageReceived = null
+    }
 
+    /**
+     * Disables notifications for all characteristics before disconnecting
+     */
+    @SuppressLint("MissingPermission")
+    private fun unsubscribeFromAllCharacteristics() {
+        val gatt = gattClient ?: return
+
+        // Disable notifications for regular characteristics
+        notifyCharacteristic?.let {
+            try {
+                gatt.setCharacteristicNotification(it, false)
+                Log.d("BLE", "Disabled notifications for ${it.uuid}")
+            } catch (e: Exception) {
+                Log.e("BLE", "Error disabling notifications for ${it.uuid}", e)
+            }
+        }
+
+        voiceNotifyCharacteristic?.let {
+            try {
+                gatt.setCharacteristicNotification(it, false)
+                Log.d("BLE", "Disabled notifications for ${it.uuid}")
+            } catch (e: Exception) {
+                Log.e("BLE", "Error disabling notifications for ${it.uuid}", e)
+            }
+        }
+
+        // Disable notifications for all sensor characteristics
+        val sensorService = gatt.getService(BLEConfig.SENSOR_SERVICE_UUID)
+        if (sensorService != null) {
+            // List of sensor characteristics to unsubscribe from
+            val sensorCharacteristics = listOf(
+                BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID,
+                BLEConfig.HUMIDITY_CHARACTERISTIC_UUID,
+                BLEConfig.AIR_PRESSURE_CHARACTERISTIC_UUID,
+                BLEConfig.AIR_QUALITY_CHARACTERISTIC_UUID
+            )
+
+            for (uuid in sensorCharacteristics) {
+                val characteristic = sensorService.getCharacteristic(uuid)
+                if (characteristic != null) {
+                    try {
+                        gatt.setCharacteristicNotification(characteristic, false)
+                        Log.d("BLE", "Disabled notifications for sensor: ${characteristic.uuid}")
+                    } catch (e: Exception) {
+                        Log.e("BLE", "Error disabling notifications for sensor: ${characteristic.uuid}", e)
+                    }
+                }
+            }
+        }
     }
 
     /**

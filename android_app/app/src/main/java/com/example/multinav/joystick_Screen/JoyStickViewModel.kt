@@ -26,16 +26,16 @@ class JoyStickViewModel(
     private val BUTTON_A_RELEASE = "ol"  // ASCII 'a'
 
     // Add sensor reading states
-    private val _temperature = MutableStateFlow("--")
+    private val _temperature = MutableStateFlow("-")
     val temperature: StateFlow<String> = _temperature
 
-    private val _humidity = MutableStateFlow("--")
+    private val _humidity = MutableStateFlow("-")
     val humidity: StateFlow<String> = _humidity
 
-    private val _pressure = MutableStateFlow("--")
+    private val _pressure = MutableStateFlow("-")
     val pressure: StateFlow<String> = _pressure
 
-    private val _airQuality = MutableStateFlow("--")
+    private val _airQuality = MutableStateFlow("-")
     val airQuality: StateFlow<String> = _airQuality
 
     init {

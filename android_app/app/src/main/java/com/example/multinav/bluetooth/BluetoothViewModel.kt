@@ -106,45 +106,6 @@ class BluetoothViewModel(
                 device.address == "00:11:22:33:44:55" // Replace with your module's address
     }
 
-    // Connect to the BLE module
-    fun connectToBleModule(bleModuleAddress: String, onConnected: () -> Unit = {}) {
-        deviceConnectionJob?.cancel()
-        deviceConnectionJob = viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(
-                    isConnecting = true,
-                    errorMessage = null
-                )}
-
-                Log.d("BluetoothViewModel", "Connecting to BLE module: $bleModuleAddress")
-                val success = bluetoothService.connectToDevice(bleModuleAddress, false)
-
-                if (success) {
-                    Log.d("BluetoothViewModel", "Connected to BLE module successfully")
-                    _bleModuleConnected.value = true
-                    _uiState.update { it.copy(
-                        isConnecting = false,
-                        errorMessage = null
-                    )}
-                    onConnected()
-                } else {
-                    Log.e("BluetoothViewModel", "Failed to connect to BLE module")
-                    _bleModuleConnected.value = false
-                    _uiState.update { it.copy(
-                        isConnecting = false,
-                        errorMessage = "Failed to connect to BLE module"
-                    )}
-                }
-            } catch (e: Exception) {
-                Log.e("BluetoothViewModel", "Error connecting to BLE module", e)
-                _bleModuleConnected.value = false
-                _uiState.update { it.copy(
-                    isConnecting = false,
-                    errorMessage = "Connection error: ${e.message}"
-                )}
-            }
-        }
-    }
 
     // Request BLE module to scan for nearby devices
     fun requestBleModuleScan() {
@@ -265,46 +226,7 @@ class BluetoothViewModel(
         }
     }
 
-    // Connect to device by index
-    fun connectToDeviceByIndex(index: Int, onSuccess: () -> Unit = {}) {
-        if (!_bleModuleConnected.value) {
-            _uiState.update { it.copy(
-                errorMessage = "Not connected to BLE module. Connect first."
-            )}
-            return
-        }
 
-        deviceConnectionJob?.cancel()
-        deviceConnectionJob = viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(
-                    isConnecting = true,
-                    errorMessage = null
-                )}
-
-                Log.d("BluetoothViewModel", "Connecting to device at index: $index")
-                val connectSuccess = bluetoothService.connectToDeviceByIndex(index)
-
-                _uiState.update { it.copy(isConnecting = false) }
-
-                if (connectSuccess) {
-                    Log.d("BluetoothViewModel", "Connection to device at index $index successful")
-                    onSuccess()
-                } else {
-                    Log.e("BluetoothViewModel", "Failed to connect to device at index $index")
-                    _uiState.update { it.copy(
-                        errorMessage = "Failed to connect to selected device"
-                    )}
-                }
-            } catch (e: Exception) {
-                Log.e("BluetoothViewModel", "Error connecting to device at index $index", e)
-                _uiState.update { it.copy(
-                    isConnecting = false,
-                    errorMessage = "Connection error: ${e.message}"
-                )}
-            }
-        }
-    }
 
     private fun fetchPairedDevices() {
         viewModelScope.launch {
@@ -358,20 +280,6 @@ class BluetoothViewModel(
         }
     }
 
-    fun startClient() {
-        viewModelScope.launch {
-            try {
-                bluetoothService.stopAdvertising()
-                _uiState.update { it.copy(
-                    errorMessage = null
-                )}
-                startScanning()
-            } catch (e: Exception) {
-                Log.e("BluetoothViewModel", "Failed to start client", e)
-                _uiState.update { it.copy(errorMessage = "Failed to start client: ${e.message}") }
-            }
-        }
-    }
 
     @SuppressLint("MissingPermission")
     fun startScanning() {
