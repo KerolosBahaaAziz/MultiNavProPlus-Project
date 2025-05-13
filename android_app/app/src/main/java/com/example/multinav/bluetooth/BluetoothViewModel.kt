@@ -549,11 +549,13 @@ class BluetoothViewModel(
             }
         }
     }
+
     override fun onCleared() {
         super.onCleared()
-//        deviceConnectionJob?.cancel()
-//        refreshJob?.cancel()
-//        bluetoothService.disconnect()
+        viewModelScope.launch {
+            Log.d("BluetoothViewModel", "ViewModel being cleared, disconnecting BLE")
+            bluetoothService.disconnect()
+        }
     }
 }
 
