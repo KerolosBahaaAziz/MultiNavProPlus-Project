@@ -17,6 +17,15 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var tempratureCharacteristic: CBCharacteristic?
     private var humidityCharacteristic: CBCharacteristic?
     private var audioCharacteristic: CBCharacteristic?
+    private var deviceNameCharacteristic: CBCharacteristic?
+    
+    
+    @Published var availableDeviceNames: [String] = []
+    
+    private var expectingDeviceCount = false
+    private var expectedDeviceCount = 0
+    private var receivedDeviceNamesBuffer = ""
+    
     
     private var sendDirectionCharacteristic: CBCharacteristic?
     
@@ -36,26 +45,29 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         }
     }
     
-    @Published var airPressureMessages: Float {
-        didSet {
-            let realValue: Float = airPressureMessages/4098.0
-            storage.saveFloat(realValue, forKey: "airPressureMessages")
-        }
-    }
+    @Published var airPressureMessages: Float = 0.0
+//    {
+//        didSet {
+//            let realValue: Float = airPressureMessages/4098.0
+//            storage.saveFloat(realValue, forKey: "airPressureMessages")
+//        }
+//    }
     
-    @Published var tempratureMessages: Float {
-        didSet {
-            let realValue: Float = (tempratureMessages / 16383.0) * 165.0 - 40.0
-            storage.saveFloat(realValue, forKey: "tempratureMessages")
-        }
-    }
+    @Published var tempratureMessages: Float = 0.0
+    //    {
+    //        didSet {
+    //            let realValue: Float = (tempratureMessages / 16383.0) * 165.0 - 40.0
+    //            storage.saveFloat(realValue, forKey: "tempratureMessages")
+    //        }
+    //    }
     
-    @Published var humidityMessages: Float {
-        didSet {
-            let realValue: Float = (humidityMessages / 16383.0) * 100.0
-            storage.saveFloat(realValue, forKey: "humidityMessages")
-        }
-    }
+    @Published var humidityMessages: Float = 0.0
+//    {
+//        didSet {
+//            let realValue: Float = (humidityMessages / 16383.0) * 100.0
+//            storage.saveFloat(realValue, forKey: "humidityMessages")
+//        }
+//    }
     
     @Published var connectedDeviceName: String {
         didSet {
@@ -65,18 +77,21 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var connectionErrorMessage: String = ""
     @Published var showConnectionError: Bool = false
     @Published var receivedAudioData: [Data] = []
+    private var currentAudioBuffer: [Data] = []
+    
     
     let chatCharacteristicUUID = CBUUID(string: "1234")
     
     let accelerometerCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21EDAE82ED19")
+    //    let deviceNameCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21ECAE82ED19") //replace with the real one
     
-    let airPressureCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2003")
-    let tempratureCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2201")
-    let humidityCharacteristicUUID = CBUUID(string: "12345678-1234-5678-1234-56789abc2202")
-    let audioCharacteristicUUID = CBUUID(string: "0000FE43-8E22-4541-9D4C-21EDAE82ED19") // Replace with correct UUID
-
+    let airPressureCharacteristicUUID = CBUUID(string: "0320BC9A-7856-3412-7856-341278563412")
+    let tempratureCharacteristicUUID = CBUUID(string: "0122BC9A-7856-3412-7856-341278563412")
+    let humidityCharacteristicUUID = CBUUID(string: "0222BC9A-7856-3412-7856-341278563412")
+    let audioCharacteristicUUID = CBUUID(string: "0000FD43-8E22-4541-9D4C-21EDAE82ED19") // Replace with correct UUID
     
-    let sendDirectionCharacteristicUUID = CBUUID(string: "0000FE41-8E22-4541-9D4C-21EDAE82ED19")
+    
+    let sendDirectionCharacteristicUUID = CBUUID(string: "0130BC9A-7856-3412-7856-341278563412")
     
     
     private var notifyCapableCharacteristics: [CBUUID: CBCharacteristic] = [:]
@@ -87,9 +102,9 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         self.receivedMessages = storage.load([String].self, forKey: "receivedMessages") ?? []
         self.accelerometerMessages = storage.loadInt(forKey: "accelerometerMessages")
         
-        self.airPressureMessages = storage.loadFloat(forKey: "airPressureMessages")
-        self.tempratureMessages = storage.loadFloat(forKey: "tempratureMessages")
-        self.humidityMessages = storage.loadFloat(forKey: "humidityMessages")
+//        self.airPressureMessages = storage.loadFloat(forKey: "airPressureMessages")
+//        self.tempratureMessages = storage.loadFloat(forKey: "tempratureMessages")
+//        self.humidityMessages = storage.loadFloat(forKey: "humidityMessages")
         
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -238,6 +253,10 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 audioCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
             }
+            //            else if characteristic.uuid == deviceNameCharacteristicUUID {
+            //                deviceNameCharacteristic = characteristic
+            //                peripheral.setNotifyValue(true, for: characteristic)
+            //            }
             
             if characteristic.properties.contains(.notify) {
                 notifyCapableCharacteristics[characteristic.uuid] = characteristic
@@ -270,48 +289,68 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                     self.accelerometerMessages = Int(value)
                 }
             }
-        } else if characteristic == airPressureCharacteristic {
-            if let data = characteristic.value{
+        }
+        else if characteristic == airPressureCharacteristic {
+            if let data = characteristic.value, data.count >= 3 {
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
-                let value = data.withUnsafeBytes {
-                    $0.load(as: Float.self)
-                }
-                print("✅ Received airPressure value: \(value)")
+                
+                // Reorder to [3e, 8e, 6b]
+                let b0 = UInt32(data[2]) // Most significant byte
+                let b1 = UInt32(data[1])
+                let b2 = UInt32(data[0]) // Least significant byte
+                
+                // Combine as 24-bit unsigned integer (big endian assumed)
+                let rawValue = (b0 << 16) | (b1 << 8) | b2
+                
+                print("✅ Reconstructed 24-bit airPressure value: \(rawValue)")
+                
                 DispatchQueue.main.async {
-                    self.airPressureMessages = Float(value)
+                    self.airPressureMessages = Float(rawValue)
                 }
             }
-        } else if characteristic == tempratureCharacteristic {
+        }
+        else if characteristic == tempratureCharacteristic {
             if let data = characteristic.value{
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
                 let value = data.withUnsafeBytes {
-                    $0.load(as: Float.self)
+                    $0.load(as: Int16.self)
                 }
-                print("✅ Received temprature value: \(value)")
+                print("✅ Received Temprature value: \(value)")
                 DispatchQueue.main.async {
                     self.tempratureMessages = Float(value)
                 }
             }
-        } else if characteristic == humidityCharacteristic {
+        }
+        else if characteristic == humidityCharacteristic {
             if let data = characteristic.value{
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
                 let value = data.withUnsafeBytes {
-                    $0.load(as: Float.self)
+                    $0.load(as: Int16.self)
                 }
-                print("✅ Received humidity value: \(value)")
+                print("✅ Received Humidity value: \(value)")
                 DispatchQueue.main.async {
                     self.humidityMessages = Float(value)
                 }
             }
+        }
+        else if characteristic == deviceNameCharacteristic {
+            
         } else if characteristic == audioCharacteristic {
             if let data = characteristic.value {
-                print("🎵 Received audio chunk of size \(data.count) bytes")
-                DispatchQueue.main.async {
-                    self.receivedAudioData.append(data)
+                if data.isEmpty {
+                    print("🔚 End of audio stream received")
+                    DispatchQueue.main.async {
+                        self.receivedAudioData = self.currentAudioBuffer
+                        self.currentAudioBuffer.removeAll()
+                    }
+                } else {
+                    print("🎵 Received audio chunk of size \(data.count) bytes")
+                    currentAudioBuffer.append(data)
                 }
             }
         }
-
+        
+        
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
@@ -366,7 +405,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             return
         }
         
-        let mtu = 20  // Adjust based on negotiated MTU size if needed
+        let mtu = peripheral.maximumWriteValueLength(for: .withoutResponse)  // Adjust based on negotiated MTU size if needed
         var offset = 0
         
         while offset < data.count {
@@ -376,7 +415,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             offset += chunkSize
         }
         
-        print("Voice data sent in chunks.")
+        // Send empty packet to indicate the end of transmission
+        peripheral.writeValue(Data(), for: characteristic, type: .withoutResponse)
+        print("Voice data sent in chunks with final empty packet.")
     }
-    
 }

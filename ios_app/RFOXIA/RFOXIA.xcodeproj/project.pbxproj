@@ -13,6 +13,7 @@
 		8FCAC34A2DB95DC9000F9130 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC3492DB95DC9000F9130 /* FirebaseFirestore */; };
 		8FCAC34D2DB95F2D000F9130 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC34C2DB95F2D000F9130 /* GoogleSignIn */; };
 		8FCAC34F2DB95F2D000F9130 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC34E2DB95F2D000F9130 /* GoogleSignInSwift */; };
+		F5BB0E022DCCCE91009B74C0 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = F5BB0E012DCCCE91009B74C0 /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,6 +76,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8FCAC34D2DB95F2D000F9130 /* GoogleSignIn in Frameworks */,
+				F5BB0E022DCCCE91009B74C0 /* Lottie in Frameworks */,
 				8FCAC3482DB95DC9000F9130 /* FirebaseDatabase in Frameworks */,
 				8FCAC34A2DB95DC9000F9130 /* FirebaseFirestore in Frameworks */,
 				8FCAC34F2DB95F2D000F9130 /* GoogleSignInSwift in Frameworks */,
@@ -146,6 +148,7 @@
 				8FCAC3492DB95DC9000F9130 /* FirebaseFirestore */,
 				8FCAC34C2DB95F2D000F9130 /* GoogleSignIn */,
 				8FCAC34E2DB95F2D000F9130 /* GoogleSignInSwift */,
+				F5BB0E012DCCCE91009B74C0 /* Lottie */,
 			);
 			productName = RFOXIA;
 			productReference = 8FBF349B2DA954A200049105 /* RFOXIA.app */;
@@ -232,6 +235,7 @@
 			packageReferences = (
 				8FCAC3422DB95DC9000F9130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				8FCAC34B2DB95F2D000F9130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				F5BB0E002DCCCE91009B74C0 /* XCRemoteSwiftPackageReference "lottie-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8FBF349C2DA954A200049105 /* Products */;
@@ -620,6 +624,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		F5BB0E002DCCCE91009B74C0 /* XCRemoteSwiftPackageReference "lottie-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -652,6 +664,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8FCAC34B2DB95F2D000F9130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		F5BB0E012DCCCE91009B74C0 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F5BB0E002DCCCE91009B74C0 /* XCRemoteSwiftPackageReference "lottie-spm" */;
+			productName = Lottie;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
