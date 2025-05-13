@@ -1228,8 +1228,28 @@ class BluetoothService(private val context: Context) {
                 if (descriptor.uuid == BLEConfig.CLIENT_CONFIG_UUID) {
                     val characteristicUuid = descriptor.characteristic.uuid
 
-                    // Check if this is one of our sensor characteristics
-                    if (sensorCharacteristicsList.contains(characteristicUuid)) {
+                    // Check if this is a sensor characteristic unsubscribe operation
+                    if (descriptor.value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)) {
+                        Log.d("BLE", "Successfully disabled notifications for: $characteristicUuid")
+
+                        if (sensorCharacteristicsList.contains(characteristicUuid)) {
+                            // Move to the next sensor to unsubscribe
+                            pendingUnsubscribeIndex++
+                            unsubscribeFromNextCharacteristic(gatt)
+                        }
+                        // If this was a main or voice notification characteristic
+                        else if (characteristicUuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID ||
+                            characteristicUuid == BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID) {
+                            // Continue with any remaining unsubscribes or complete disconnect
+                            unsubscribeFromNextCharacteristic(gatt)
+                        }
+                        return
+                    }
+
+                    // Handle subscribe operations (your existing code)
+                    // Check if this is one of our sensor characteristics for subscribe
+                    if (sensorCharacteristicsList.contains(characteristicUuid) &&
+                        descriptor.value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
                         if (status == BluetoothGatt.GATT_SUCCESS) {
                             Log.d("Sensor", "Successfully enabled notifications for: $characteristicUuid")
                         } else {
@@ -1245,7 +1265,7 @@ class BluetoothService(private val context: Context) {
                             subscribeTNextSensor(gatt, service)
                         }
                     }
-                    // Handle standard notification characteristics
+                    // Handle regular notification characteristics
                     else if (characteristicUuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID ||
                         characteristicUuid == BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID) {
 
@@ -1270,15 +1290,100 @@ class BluetoothService(private val context: Context) {
                             }
                         }
                     }
-                    else {
-                        Log.d("BLE", "Descriptor write for unhandled characteristic: $characteristicUuid")
-                    }
-                } else {
-                    Log.d("BLE", "Descriptor write for non-client config descriptor: ${descriptor.uuid}")
                 }
             } catch (e: Exception) {
                 Log.e("BLE", "Error in onDescriptorWrite", e)
             }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun unsubscribeFromNextCharacteristic(gatt: BluetoothGatt) {
+        // First check if we're done with all characteristics
+        if (pendingUnsubscribeIndex >= sensorCharacteristicsList.size) {
+            // If we're done with sensor characteristics, unsubscribe from main characteristics
+            if (notifyCharacteristic != null) {
+                try {
+                    gatt.setCharacteristicNotification(notifyCharacteristic!!, false)
+                    val descriptor = notifyCharacteristic!!.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+                    if (descriptor != null) {
+                        descriptor.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+                        gatt.writeDescriptor(descriptor)
+                        Log.d("BLE", "Disabling notifications for main characteristic")
+                        return // Wait for onDescriptorWrite before continuing
+                    }
+                } catch (e: Exception) {
+                    Log.e("BLE", "Error disabling main notifications", e)
+                }
+            }
+
+            if (voiceNotifyCharacteristic != null) {
+                try {
+                    gatt.setCharacteristicNotification(voiceNotifyCharacteristic!!, false)
+                    val descriptor = voiceNotifyCharacteristic!!.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+                    if (descriptor != null) {
+                        descriptor.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+                        gatt.writeDescriptor(descriptor)
+                        Log.d("BLE", "Disabling notifications for voice characteristic")
+                        return // Wait for onDescriptorWrite before continuing
+                    }
+                } catch (e: Exception) {
+                    Log.e("BLE", "Error disabling voice notifications", e)
+                }
+            }
+
+            // If we get here, we're done with all unsubscribes or they failed
+            completeDisconnect()
+            return
+        }
+
+        // Get the current sensor characteristic
+        val uuid = sensorCharacteristicsList[pendingUnsubscribeIndex]
+        val sensorService = gatt.getService(BLEConfig.SENSOR_SERVICE_UUID)
+
+        if (sensorService == null) {
+            Log.e("BLE", "Sensor service not found during unsubscribe")
+            pendingUnsubscribeIndex++
+            unsubscribeFromNextCharacteristic(gatt)
+            return
+        }
+
+        val characteristic = sensorService.getCharacteristic(uuid)
+
+        if (characteristic == null) {
+            Log.e("BLE", "Characteristic not found during unsubscribe: $uuid")
+            pendingUnsubscribeIndex++
+            unsubscribeFromNextCharacteristic(gatt)
+            return
+        }
+
+        // Disable notification
+        try {
+            gatt.setCharacteristicNotification(characteristic, false)
+            Log.d("BLE", "Set characteristic notification disabled for $uuid")
+
+            // Write the descriptor to disable notifications
+            val descriptor = characteristic.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+            if (descriptor != null) {
+                descriptor.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+                val writeResult = gatt.writeDescriptor(descriptor)
+                Log.d("BLE", "Writing descriptor to disable notifications for $uuid: $writeResult")
+
+                if (!writeResult) {
+                    // If immediate failure, move to next
+                    pendingUnsubscribeIndex++
+                    unsubscribeFromNextCharacteristic(gatt)
+                }
+                // If success, wait for onDescriptorWrite callback
+            } else {
+                Log.e("BLE", "Descriptor not found during unsubscribe for $uuid")
+                pendingUnsubscribeIndex++
+                unsubscribeFromNextCharacteristic(gatt)
+            }
+        } catch (e: Exception) {
+            Log.e("BLE", "Error disabling notifications for $uuid", e)
+            pendingUnsubscribeIndex++
+            unsubscribeFromNextCharacteristic(gatt)
         }
     }
 
@@ -1304,7 +1409,7 @@ class BluetoothService(private val context: Context) {
                         val z = ByteUtils.bytesToShort(value[4], value[5])
                         sensorValue = "$x,$y,$z"
                         unit = "raw"
-                    
+
                 }
                 BLEConfig.ACCELEROMETER_CHARACTERISTIC_UUID -> {  // Accelerometer Data
                     sensorType = "ACCEL"
@@ -1622,17 +1727,6 @@ class BluetoothService(private val context: Context) {
         messageListener = listener
     }
 
-    // Clear listener when no longer needed (optional, for cleanup)
-    fun clearListener() {
-        Log.d("BLE", "Clearing message listener")
-        messageListener = null
-    }
-
-    // Added: Method to start listening for voice messages
-    fun startVoiceMessageListening(listener: (ByteArray, String) -> Unit) {
-        Log.d("BLE", "Setting new voice message listener")
-        voiceMessageListener = listener
-    }
 
     // Get paired devices
     @SuppressLint("MissingPermission")
@@ -1688,19 +1782,40 @@ class BluetoothService(private val context: Context) {
         }
     }
 
-    // Disconnect
+    // Updated disconnect function
     @SuppressLint("MissingPermission")
     fun disconnect() {
         try {
-            // Disable notifications first (while the connection is still active)
-            unsubscribeFromAllCharacteristics()
+            // Start sequential unsubscribe process
+            startUnsubscribeProcess()
         } catch (e: Exception) {
-            Log.e("BLE", "Error disabling notifications", e)
+            Log.e("BLE", "Error starting unsubscribe process", e)
+            // Continue with disconnect even if unsubscribe failed
+            completeDisconnect()
+        }
+    }
+
+
+    @SuppressLint("MissingPermission")
+    private fun startUnsubscribeProcess() {
+        val gatt = gattClient ?: run {
+            completeDisconnect()
+            return
         }
 
+        // Reset the index counter
+        pendingUnsubscribeIndex = 0
+
+        // Start sequential unsubscribe
+        unsubscribeFromNextCharacteristic(gatt)
+    }
+
+
+    @SuppressLint("MissingPermission")
+    private fun completeDisconnect() {
         try {
             stopScanning()
-            stopLeScan() // Add this to ensure all scans are stopped
+            stopLeScan()
         } catch (e: Exception) {
             Log.e("BLE", "Error stopping scanning", e)
         }
@@ -1735,61 +1850,14 @@ class BluetoothService(private val context: Context) {
         voiceWriteCharacteristic = null
         voiceNotifyCharacteristic = null
 
-        // Added: Reset debouncing variables on disconnect
+        // Reset debouncing variables
         lastMessageReceivedTime = 0L
         lastMessageReceived = null
+
+        Log.d("BLE", "Disconnect process completed")
     }
 
-    /**
-     * Disables notifications for all characteristics before disconnecting
-     */
-    @SuppressLint("MissingPermission")
-    private fun unsubscribeFromAllCharacteristics() {
-        val gatt = gattClient ?: return
-
-        // Disable notifications for regular characteristics
-        notifyCharacteristic?.let {
-            try {
-                gatt.setCharacteristicNotification(it, false)
-                Log.d("BLE", "Disabled notifications for ${it.uuid}")
-            } catch (e: Exception) {
-                Log.e("BLE", "Error disabling notifications for ${it.uuid}", e)
-            }
-        }
-
-        voiceNotifyCharacteristic?.let {
-            try {
-                gatt.setCharacteristicNotification(it, false)
-                Log.d("BLE", "Disabled notifications for ${it.uuid}")
-            } catch (e: Exception) {
-                Log.e("BLE", "Error disabling notifications for ${it.uuid}", e)
-            }
-        }
-
-        // Disable notifications for all sensor characteristics
-        val sensorService = gatt.getService(BLEConfig.SENSOR_SERVICE_UUID)
-        if (sensorService != null) {
-            // List of sensor characteristics to unsubscribe from
-            val sensorCharacteristics = listOf(
-                BLEConfig.TEMPERATURE_CHARACTERISTIC_UUID,
-                BLEConfig.HUMIDITY_CHARACTERISTIC_UUID,
-                BLEConfig.AIR_PRESSURE_CHARACTERISTIC_UUID,
-                BLEConfig.AIR_QUALITY_CHARACTERISTIC_UUID
-            )
-
-            for (uuid in sensorCharacteristics) {
-                val characteristic = sensorService.getCharacteristic(uuid)
-                if (characteristic != null) {
-                    try {
-                        gatt.setCharacteristicNotification(characteristic, false)
-                        Log.d("BLE", "Disabled notifications for sensor: ${characteristic.uuid}")
-                    } catch (e: Exception) {
-                        Log.e("BLE", "Error disabling notifications for sensor: ${characteristic.uuid}", e)
-                    }
-                }
-            }
-        }
-    }
+    private var pendingUnsubscribeIndex = 0
 
     /**
      * Opens the system Bluetooth settings screen
@@ -1815,25 +1883,6 @@ class BluetoothService(private val context: Context) {
         } else {
             Log.d("BLE", "Bluetooth is already enabled")
         }
-    }
-
-    fun cleanup() {
-        // Only unregister if the receiver is actually registered
-        if (isReceiverRegistered) {
-            try {
-                context.applicationContext.unregisterReceiver(bluetoothStateReceiver)
-                isReceiverRegistered = false
-                Log.d("BLE", "Bluetooth state receiver unregistered")
-            } catch (e: IllegalArgumentException) {
-                Log.w("BLE", "Receiver was not registered, skipping unregistration", e)
-            } catch (e: Exception) {
-                Log.e("BLE", "Error unregistering receiver", e)
-            }
-        } else {
-            Log.d("BLE", "Receiver already unregistered, skipping")
-        }
-
-        disconnect()
     }
 
     @SuppressLint("MissingPermission")
