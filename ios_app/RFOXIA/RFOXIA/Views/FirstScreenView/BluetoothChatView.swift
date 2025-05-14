@@ -99,7 +99,7 @@ struct BluetoothChatView: View {
                     bluetoothManager.scanForDevices()
                     bluetoothManager.enableNotify(for: [bluetoothManager.chatCharacteristicUUID])
                 }
-                .onChange(of: bluetoothManager.receivedMessages) { newMessages in
+                .onChange(of: bluetoothManager.receivedMessages) { _ ,newMessages in
                     for message in newMessages {
                         let newMessage = ChatMessage(type: .text(message), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
                         messages.append(newMessage)
@@ -107,8 +107,17 @@ struct BluetoothChatView: View {
                 }.onDisappear{
                     bluetoothManager.disableNotify(for: [bluetoothManager.chatCharacteristicUUID])
                 }
+                .onChange(of: bluetoothManager.receivedAudioData) { _ ,audioDataArray in
+                    for audioData in audioDataArray {
+                        if let savedURL = saveReceivedAudio(data: audioData) {
+                            let newMessage = ChatMessage(type: .voice(savedURL), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
+                            messages.append(newMessage)
+                        }
+                    }
+                }
+
          }.navigationBarBackButtonHidden(true)
-            .onChange(of: recorder.recordings) { newRecordings in
+            .onChange(of: recorder.recordings) { _ ,newRecordings in
                 if let last = newRecordings.last {
                     let newMessage = ChatMessage(type: .voice(last.url), isCurrentUser: true, senderName: "Me")
                         messages.append(newMessage)
@@ -116,6 +125,19 @@ struct BluetoothChatView: View {
                     
                 }
         }
+    func saveReceivedAudio(data: Data) -> URL? {
+        let filename = "ReceivedVoice_\(UUID().uuidString).m4a"
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+
+        do {
+            try data.write(to: fileURL)
+            return fileURL
+        } catch {
+            print("Error saving received audio: \(error)")
+            return nil
+        }
+    }
+
 }
 
 
