@@ -133,12 +133,8 @@ class ActionsAndDelaysViewModel : ViewModel() {
 
     // Function to update the mode in history
     fun updateModeInHistory(mode: String) {
-        val modes = listOf("1m", "2m", "3m")
-        actionHistory.removeAll { it in modes } // Remove any existing mode
-        val modeEntry = "${mode}m" // Store mode with 'm' suffix, e.g., "1m"
-        if (!actionHistory.contains(modeEntry)) {
-            actionHistory.add(modeEntry)
-        }
+        val modeEntry = "${mode}m"
+        actionHistory.add(modeEntry)
         selectedMode.value = mode
         Log.d("ActionsAndDelaysViewModel", "Mode updated: $modeEntry, History: $actionHistory")
     }
@@ -156,11 +152,16 @@ class ActionsAndDelaysViewModel : ViewModel() {
     }
 
     // Function to save actions to the database
-    fun saveActionToDatabase(userUid: String?, taskTitle: String) {
+    fun saveActionToDatabase(userUid: String?, taskTitle: String?) {
         if (userUid == null) {
             Log.e("TaskDatabase", "Cannot save: userUid is null")
             return
         }
+        if (taskTitle.isNullOrBlank()) {
+            Log.e("TaskDatabase", "Cannot save: taskTitle is null or empty")
+            return
+        }
+
 
         if (actionHistory.isEmpty()) {
             Log.e("TaskDatabase", "No actions to save")
@@ -188,37 +189,12 @@ class ActionsAndDelaysViewModel : ViewModel() {
 
     // Function to create a Task object from actions
     private fun createTaskFromAction(actions: List<String>, userUid: String, taskTitle: String): Task {
-        val delay = actions.find { it.toLongOrNull() != null }?.toLongOrNull()
-            ?: totalDelayMilliseconds.value
-        // Determine the final state of each toggle button based on the last relevant action
-        val buttonAState = actions.filter { it == "A-on" || it == "A-off" }
-            .lastOrNull()?.let { it == "A-on" } ?: false
-        val buttonBState = actions.filter { it == "B-on" || it == "B-off" }
-            .lastOrNull()?.let { it == "B-on" } ?: false
-        val buttonCState = actions.filter { it == "C-on" || it == "C-off" }
-            .lastOrNull()?.let { it == "C-on" } ?: false
-        val buttonDState = actions.filter { it == "D-on" || it == "D-off" }
-            .lastOrNull()?.let { it == "D-on" } ?: false
         return Task(
             actions = actions,
-            mode = selectedMode.value,
-            delay = delay,
             userUid = userUid,
             taskTitle = taskTitle,
             taskOn = false,
-            taskId = 0,
-            buttonA = if (buttonAState) 'A' else null,
-            buttonB = if (buttonBState) 'B' else null,
-            buttonC = if (buttonCState) 'C' else null,
-            buttonD = if (buttonDState) 'D' else null,
-            buttonUP = if (actions.contains("Up")) "Up" else null,
-            buttonDown = if (actions.contains("Down")) "Down" else null,
-            buttonRight = if (actions.contains("Right")) "Right" else null,
-            buttonLeft = if (actions.contains("Left")) "Left" else null,
-            buttonTriangle = if (actions.contains("Triangle")) "Triangle" else null,
-            buttonX = if (actions.contains("Cross")) "X" else null,
-            buttonCircle = if (actions.contains("Circle")) "Circle" else null,
-            buttonSquare = if (actions.contains("Square")) "Square" else null
+            taskId = 0
         )
     }
 

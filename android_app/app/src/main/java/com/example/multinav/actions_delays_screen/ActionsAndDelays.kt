@@ -2,6 +2,7 @@
 
 
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -42,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,6 +91,7 @@ fun CircleIconButton(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActionsAndDelaysScreen(
@@ -93,8 +99,9 @@ fun ActionsAndDelaysScreen(
     viewModel: ActionsAndDelaysViewModel = viewModel(),
     navController: NavController = rememberNavController()
 ) {
-    val user = FirebaseAuth.getInstance().currentUser
 
+    val user = FirebaseAuth.getInstance().currentUser
+    val context = LocalContext.current
     val textFieldValue by viewModel.textField
     val selectedAction by viewModel.selectedAction
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -373,10 +380,13 @@ fun ActionsAndDelaysScreen(
             ) {
                 Button(
                     onClick = {
-                        val taskTitle = textFieldValue.takeIf { it.isNotBlank() } ?: "Default Task"
-                        val userUid = user?.uid
-                        viewModel.saveActionToDatabase(userUid!!, taskTitle)
-                        navController.popBackStack()
+                        if (textFieldValue.isBlank()) {
+                            Toast.makeText(context, "Task title cannot be empty", Toast.LENGTH_SHORT).show()
+                        } else {
+                            val userUid = user?.uid
+                            viewModel.saveActionToDatabase(userUid, textFieldValue)
+                            navController.popBackStack()
+                        }
                     },
                     enabled = selectedAction != null
                 ) {
@@ -386,7 +396,7 @@ fun ActionsAndDelaysScreen(
                     onClick = {
                         Log.d("ActionsAndDelays", "Add Delay button clicked")
                         navController.navigate("set_delay_screen")
-                    }
+                    },
                 ) {
                     Text("Add Delay")
                 }
@@ -428,9 +438,30 @@ fun ActionsAndDelaysScreen(
                             fontSize = 18.sp,
                             color = Color.Blue,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
+                                .weight(1f)
+                                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
                         )
+                        IconButton(
+                            onClick = {
+                                viewModel.actionHistory.remove(action)
+                                if (viewModel.actionHistory.isEmpty()) {
+                                    viewModel.selectedAction.value = null
+                                } else if (viewModel.selectedAction.value == action) {
+                                    viewModel.selectedAction.value = viewModel.actionHistory.lastOrNull()
+                                }
+                                Log.d("ActionsAndDelaysScreen", "Deleted action: $action, New history: ${viewModel.actionHistory}")
+                            },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .padding(end = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Delete Actions",
+                                tint = Color.Red,
+                                modifier = Modifier.size(24.dp),)
+
+                        }
                     }
                 }
             }
