@@ -19,15 +19,14 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var audioCharacteristic: CBCharacteristic?
     private var deviceNameCharacteristic: CBCharacteristic?
     
-    
-    @Published var availableDeviceNames: [String] = []
-    
+        
     private var expectingDeviceCount = false
     private var expectedDeviceCount = 0
     private var receivedDeviceNamesBuffer = ""
     
     
     private var sendDirectionCharacteristic: CBCharacteristic?
+    private var sendToDiscoverDevicesCharacteristic : CBCharacteristic?
     
     private let storage: StorageService
     
@@ -46,12 +45,12 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     }
     
     @Published var airPressureMessages: Float = 0.0
-//    {
-//        didSet {
-//            let realValue: Float = airPressureMessages/4098.0
-//            storage.saveFloat(realValue, forKey: "airPressureMessages")
-//        }
-//    }
+    //    {
+    //        didSet {
+    //            let realValue: Float = airPressureMessages/4098.0
+    //            storage.saveFloat(realValue, forKey: "airPressureMessages")
+    //        }
+    //    }
     
     @Published var tempratureMessages: Float = 0.0
     //    {
@@ -62,12 +61,14 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     //    }
     
     @Published var humidityMessages: Float = 0.0
-//    {
-//        didSet {
-//            let realValue: Float = (humidityMessages / 16383.0) * 100.0
-//            storage.saveFloat(realValue, forKey: "humidityMessages")
-//        }
-//    }
+    //    {
+    //        didSet {
+    //            let realValue: Float = (humidityMessages / 16383.0) * 100.0
+    //            storage.saveFloat(realValue, forKey: "humidityMessages")
+    //        }
+    //    }
+    
+    @Published var nearByDevicesName : [String] = []
     
     @Published var connectedDeviceName: String {
         didSet {
@@ -83,7 +84,9 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     let chatCharacteristicUUID = CBUUID(string: "1234")
     
     let accelerometerCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21EDAE82ED19")
-    //    let deviceNameCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21ECAE82ED19") //replace with the real one
+    let deviceNameCharacteristicUUID = CBUUID(string: "1545515f-3446-6154-2135-124513562351") //replace with the real one
+    let sendToDiscoverDevicesCharacteristicUUID = CBUUID(string: "0140BC9A-7856-3412-7856-341278563412") //replace with the real one
+    
     
     let airPressureCharacteristicUUID = CBUUID(string: "0320BC9A-7856-3412-7856-341278563412")
     let tempratureCharacteristicUUID = CBUUID(string: "0122BC9A-7856-3412-7856-341278563412")
@@ -102,9 +105,9 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         self.receivedMessages = storage.load([String].self, forKey: "receivedMessages") ?? []
         self.accelerometerMessages = storage.loadInt(forKey: "accelerometerMessages")
         
-//        self.airPressureMessages = storage.loadFloat(forKey: "airPressureMessages")
-//        self.tempratureMessages = storage.loadFloat(forKey: "tempratureMessages")
-//        self.humidityMessages = storage.loadFloat(forKey: "humidityMessages")
+        //        self.airPressureMessages = storage.loadFloat(forKey: "airPressureMessages")
+        //        self.tempratureMessages = storage.loadFloat(forKey: "tempratureMessages")
+        //        self.humidityMessages = storage.loadFloat(forKey: "humidityMessages")
         
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -202,6 +205,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         self.connectedPeripheral = nil
         self.messageCharacteristic = nil
         self.sendDirectionCharacteristic = nil
+        self.sendToDiscoverDevicesCharacteristic = nil
         DispatchQueue.main.async {
             self.isConnected = false
         }
@@ -252,11 +256,13 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             }else if characteristic.uuid == audioCharacteristicUUID {
                 audioCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
+            }else if characteristic.uuid == deviceNameCharacteristicUUID {
+                deviceNameCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
+            }else if characteristic.uuid == sendToDiscoverDevicesCharacteristicUUID {
+                sendToDiscoverDevicesCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
             }
-            //            else if characteristic.uuid == deviceNameCharacteristicUUID {
-            //                deviceNameCharacteristic = characteristic
-            //                peripheral.setNotifyValue(true, for: characteristic)
-            //            }
             
             if characteristic.properties.contains(.notify) {
                 notifyCapableCharacteristics[characteristic.uuid] = characteristic
@@ -334,7 +340,37 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             }
         }
         else if characteristic == deviceNameCharacteristic {
-            
+            if let data = characteristic.value, data.count >= 1 { print("Received raw bytes:",data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
+                // Extract the number of devices from the first byte
+                let numberOfDevices = Int(data[0])
+                
+                // Extract the device names data (skip the first byte)
+                let namesData = data.dropFirst()
+                
+                // Convert to string, assuming UTF-8 encoding
+                if let namesString = String(data: namesData, encoding: .utf8) {
+                    // Split the string by \n to get individual device names
+                    // Remove the trailing \0 by trimming null characters
+                    let deviceNames = namesString
+                        .trimmingCharacters(in: CharacterSet(charactersIn: "\0"))
+                        .components(separatedBy: "\n")
+                        .filter { !$0.isEmpty } // Remove any empty strings
+                    
+                    // Verify the number of devices matches the first byte
+                    if deviceNames.count == numberOfDevices {
+                        print("✅ Received \(numberOfDevices) device names: \(deviceNames)")
+                        DispatchQueue.main.async {
+                            self.nearByDevicesName = deviceNames
+                        }
+                    } else {
+                        print("⚠️ Mismatch: Expected \(numberOfDevices) devices, but found \(deviceNames.count)")
+                    }
+                } else {
+                    print("❌ Failed to decode device names as UTF-8 string")
+                }
+            } else {
+                print("❌ Invalid deviceNameCharacteristic data received")
+            }
         } else if characteristic == audioCharacteristic {
             if let data = characteristic.value {
                 if data.isEmpty {
@@ -418,5 +454,32 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         // Send empty packet to indicate the end of transmission
         peripheral.writeValue(Data(), for: characteristic, type: .withoutResponse)
         print("Voice data sent in chunks with final empty packet.")
+    }
+    
+    func discoverOrSelectNearbyDevices(_ message : Int = 99) {
+        guard let peripheral = connectedPeripheral, let characteristic = sendToDiscoverDevicesCharacteristic else { print("❌ Bluetooth connection or sendToDiscoverDevicesCharacteristic not available")
+            return
+        }
+        
+        // Clear the nearByDevicesName list to prepare for new discovery
+        DispatchQueue.main.async {
+            self.nearByDevicesName.removeAll()
+            print("🧹 Cleared nearByDevicesName list for new discovery")
+        }
+        
+        // Step 1: Send ASCII 'c' (0x63 or 99 in decimal) to trigger device discovery
+        if message == 99 {
+            let discoverCommand = Data([0x63]) // ASCII value of 'c'
+            peripheral.writeValue(discoverCommand, for: characteristic, type: .withoutResponse)
+            print("📡 Sent discovery command 'c' (0x63)")
+        }
+        // Step 2: Send the device index if message is a valid index
+        else if !nearByDevicesName.isEmpty && message >= 0 && message < nearByDevicesName.count {
+            let indexData = withUnsafeBytes(of: UInt8(message)) { Data($0) }
+            peripheral.writeValue(indexData, for: characteristic, type: .withoutResponse)
+            print("📡 Sent device selection index: \(message) for device: \(nearByDevicesName[message])")
+        } else {
+            print("❌ Invalid device index: \(message). Valid range: 0 to \(nearByDevicesName.count - 1) or no devices discovered")
+        }
     }
 }
