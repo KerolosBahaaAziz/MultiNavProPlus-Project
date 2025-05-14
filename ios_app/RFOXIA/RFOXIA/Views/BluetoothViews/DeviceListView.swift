@@ -29,7 +29,7 @@ struct DeviceListView: View {
                 }
 
                 // Hidden navigation trigger
-                NavigationLink(destination: MainTabView(), isActive: $bluetoothManager.isConnected) {
+                NavigationLink(destination: DevicesNamesView(), isActive: $bluetoothManager.isConnected) {
                     EmptyView()
                 }
                 .hidden()

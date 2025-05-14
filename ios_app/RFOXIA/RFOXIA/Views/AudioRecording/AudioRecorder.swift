@@ -7,11 +7,14 @@
 
 import Foundation
 import AVFoundation
+import SwiftUICore
 
 class AudioRecorder: NSObject, ObservableObject {
     @Published var recordings: [Recording] = []
     @Published var isRecording = false
     @Published var recordingTime: TimeInterval = 0
+    private var bluetoothManager = BluetoothManager()  // Bluetooth manager
+
     
     var audioRecorder: AVAudioRecorder?
     var timer: Timer?
@@ -87,6 +90,63 @@ class AudioRecorder: NSObject, ObservableObject {
         timer?.invalidate()
         timer = nil
     }
+    
+    func prepareAudioData(from fileURL: URL, completion: @escaping (Data?) -> Void) {
+        let asset = AVAsset(url: fileURL)
+        
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            print("Failed to create export session.")
+            completion(nil)
+            return
+        }
+
+        let compressedURL = FileManager.default.temporaryDirectory.appendingPathComponent("compressed_\(UUID().uuidString).m4a")
+
+        try? FileManager.default.removeItem(at: compressedURL)
+        
+        exportSession.outputURL = compressedURL
+        exportSession.outputFileType = .m4a
+        exportSession.exportAsynchronously {
+            switch exportSession.status {
+            case .completed:
+                do {
+                    let data = try Data(contentsOf: compressedURL)
+                    completion(data)
+                } catch {
+                    print("Failed to load compressed data: \(error)")
+                    completion(nil)
+                }
+            case .failed, .cancelled:
+                print("Export failed: \(exportSession.error?.localizedDescription ?? "Unknown error")")
+                completion(nil)
+            default:
+                break
+            }
+        }
+    }
+
+    func prepareLastRecordingForBLE(completion: @escaping (Data?) -> Void) {
+        guard let lastRecording = recordings.last else {
+            print("No recordings available.")
+            completion(nil)
+            return
+        }
+        prepareAudioData(from: lastRecording.url, completion: completion)
+    }
+    
+    func saveReceivedAudio(data: Data) -> URL? {
+        let filename = "ReceivedVoice_\(UUID().uuidString).m4a"
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+
+        do {
+            try data.write(to: fileURL)
+            return fileURL
+        } catch {
+            print("Error saving received audio: \(error)")
+            return nil
+        }
+    }
+
 }
 
 extension AudioRecorder: AVAudioRecorderDelegate {
@@ -94,6 +154,14 @@ extension AudioRecorder: AVAudioRecorderDelegate {
         if flag {
             let newRecording = Recording(url: recorder.url, createdAt: Date())
             recordings.append(newRecording)
+            
+            prepareLastRecordingForBLE { data in
+                        if let voiceData = data {
+                            self.bluetoothManager.sendVoiceData(voiceData)
+                        } else {
+                            print("Failed to prepare audio data for BLE")
+                        }
+                    }
         } else {
             print("Recording failed")
         }

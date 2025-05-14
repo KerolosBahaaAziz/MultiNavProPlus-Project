@@ -19,7 +19,10 @@ struct JoyStickView: View {
         Task(action: "action10")
     ]
     @EnvironmentObject var bluetoothManager: BluetoothManager
-    @State var temp: Int = 35
+    @State var temp: Float = 35
+    @State var airPressure : Float = 1013.25
+    @State var humidity : Float = 60
+        
     @State private var isPortrait: Bool = false
     
     @State private var latitude: Double = 40.7128
@@ -37,32 +40,15 @@ struct JoyStickView: View {
                 GeometryReader { geometry in
                     Group {
                         if isPortrait {
-                            VStack {
-                                Spacer()
-                                Text("Please rotate your phone")
-                                    .font(.largeTitle)
-                                    .bold()
-                                    .multilineTextAlignment(.center)
-                                    .padding()
-                                Text("This screen is better used in landscape mode.")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding()
-                                
-                                Image(systemName: "iphone.landscape")
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 150, height: 150) // or any size you like
-                                    .foregroundColor(.gray)
-                                    .padding()
-                                Spacer()
-                            }
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                            .background(Color(.systemBackground)) // match system background color
+                            RotateYourPhoneView()
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                                .background(Color(.systemBackground)) // match system background color
                         } else {
                             VStack(spacing: 16) {
-                                SensorsReadingView(temp: "\(temp)", humidity: "48", pressure: "1013", status: "Good")
+                                SensorsReadingView(temp: $temp,
+                                                   humidity: $humidity,
+                                                   pressure: $airPressure,
+                                                   status: "Good")
                                 
                                 ModeButtonsView(selectedIndex: $selectedMode)
                                     .padding(.horizontal)
@@ -131,7 +117,32 @@ struct JoyStickView: View {
                 }
             }
             .onReceive(bluetoothManager.$accelerometerMessages) { message in
-                temp = message
+//                temp = message
+            }
+//            .onReceive(bluetoothManager.$airPressureMessages) { message in
+//                airPressure = message
+//            }
+//            .onReceive(bluetoothManager.$tempratureMessages) { message in
+//                temp = (message / 16383.0) * 165.0 - 40.0
+//            }
+//            .onReceive(bluetoothManager.$humidityMessages) { message in
+//                humidity = message
+//            }
+            .onChange(of: bluetoothManager.tempratureMessages) { _ , new in
+                print("new temp = \((new / 16383.0) * 165.0 - 40.0)")
+                DispatchQueue.main.async {
+                    temp = new
+                }
+            }
+            .onChange(of: bluetoothManager.humidityMessages) { _ , new in
+                DispatchQueue.main.async {
+                    humidity = new
+                }
+            }
+            .onChange(of: bluetoothManager.airPressureMessages) { _ , new in
+                DispatchQueue.main.async {
+                    airPressure = new
+                }
             }
         }
     }
