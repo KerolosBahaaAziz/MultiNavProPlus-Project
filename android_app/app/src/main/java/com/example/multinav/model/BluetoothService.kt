@@ -109,90 +109,104 @@ class BluetoothService(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     suspend fun requestBleModuleScan(): Boolean {
-        if (!_isConnected.value) {
-            Log.e("BLE", "Cannot request scan: Not connected to BLE module")
-            return false
-        }
-
-        // Clear previous state
-        _scannedDevicesFromBle.value = emptyList()
-        deviceListBuffer.clear()
-        _isScanning.value = true
-
-        // Get the service and characteristics
-        val service = gattClient?.getService(UUID.fromString("0040BC9A-7856-3412-7856-341278563412"))
-        if (service == null) {
-            Log.e("BLE", "Service not found")
+        try {
+            // First, cancel any ongoing scan
+            scanTimeoutJob?.cancel()
             _isScanning.value = false
-            return false
-        }
 
-        val bStateChar = service.getCharacteristic(UUID.fromString("0140BC9A-7856-3412-7856-341278563412"))
-        val bListChar = service.getCharacteristic(UUID.fromString("1545515F-3446-6154-2135-124513562351"))
+            // Clear all previous state completely
+            deviceListBuffer.clear()
+            expectedDeviceCount = -1
+            _scannedDevicesFromBle.value = emptyList()
 
-        if (bStateChar == null) {
-            Log.e("BLE", "B_STATE characteristic not found")
-            _isScanning.value = false
-            return false
-        }
-
-        if (bListChar == null) {
-            Log.e("BLE", "B_LIST characteristic not found")
-            _isScanning.value = false
-            return false
-        }
-
-        // STEP 1: Enable notifications on B_LIST BEFORE sending 'c' command
-        val setNotificationSuccess = gattClient?.setCharacteristicNotification(bListChar, true) ?: false
-        Log.d("BLE", "Set B_LIST characteristic notification: $setNotificationSuccess")
-
-        if (setNotificationSuccess) {
-            // Write to CCCD to enable notifications
-            val descriptor = bListChar.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
-
-            if (descriptor != null) {
-                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                gattClient?.writeDescriptor(descriptor)
-                Log.d("BLE", "Wrote to B_LIST notification descriptor")
-
-                // Add a small delay to ensure the descriptor write completes
-                delay(500)
-            } else {
-                Log.e("BLE", "B_LIST notification descriptor not found")
+            // Make sure we're connected
+            if (!_isConnected.value) {
+                Log.e("BLE", "Cannot request scan: Not connected to BLE module")
+                return false
             }
-        } else {
-            Log.e("BLE", "Failed to enable notifications for B_LIST")
-            _isScanning.value = false
-            return false
-        }
 
-        // STEP 2: After enabling notifications, send the 'c' command
-        bStateChar.value = "c".toByteArray(Charsets.UTF_8)
-        val writeSuccess = gattClient?.writeCharacteristic(bStateChar) ?: false
+            // Reset scanning state
+            _isScanning.value = true
 
-        if (!writeSuccess) {
-            Log.e("BLE", "Failed to send scan command to BLE module")
-            _isScanning.value = false
-            return false
-        }
-
-        Log.d("BLE", "Sent scan command 'c' to BLE module")
-
-        // Set a timeout for the scan
-        scanTimeoutJob = CoroutineScope(Dispatchers.IO).launch {
-            delay(30000) // 30 second timeout
-            if (_isScanning.value) {
-                Log.d("BLE", "Scan timeout - no complete results received")
+            // Get the service and characteristics
+            val service = gattClient?.getService(UUID.fromString("0040BC9A-7856-3412-7856-341278563412"))
+            if (service == null) {
+                Log.e("BLE", "Service not found")
                 _isScanning.value = false
+                return false
+            }
 
-                // Process any data received so far
-                if (deviceListBuffer.isNotEmpty()) {
-                    processReceivedDeviceList()
+            val bStateChar = service.getCharacteristic(UUID.fromString("0140BC9A-7856-3412-7856-341278563412"))
+            val bListChar = service.getCharacteristic(UUID.fromString("1545515F-3446-6154-2135-124513562351"))
+
+            if (bStateChar == null) {
+                Log.e("BLE", "B_STATE characteristic not found")
+                _isScanning.value = false
+                return false
+            }
+
+            if (bListChar == null) {
+                Log.e("BLE", "B_LIST characteristic not found")
+                _isScanning.value = false
+                return false
+            }
+
+            // Enable notifications on B_LIST
+            val setNotificationSuccess = gattClient?.setCharacteristicNotification(bListChar, true) ?: false
+            Log.d("BLE", "Set B_LIST characteristic notification: $setNotificationSuccess")
+
+            if (setNotificationSuccess) {
+                // Write to CCCD to enable notifications
+                val descriptor = bListChar.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+
+                if (descriptor != null) {
+                    descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    gattClient?.writeDescriptor(descriptor)
+                    Log.d("BLE", "Wrote to B_LIST notification descriptor")
+
+                    // Add a small delay to ensure the descriptor write completes
+                    delay(500)
+                } else {
+                    Log.e("BLE", "B_LIST notification descriptor not found")
+                }
+            } else {
+                Log.e("BLE", "Failed to enable notifications for B_LIST")
+                _isScanning.value = false
+                return false
+            }
+
+            // Write 'c' to B_STATE to start scanning
+            bStateChar.value = "c".toByteArray(Charsets.UTF_8)
+            val writeSuccess = gattClient?.writeCharacteristic(bStateChar) ?: false
+
+            if (!writeSuccess) {
+                Log.e("BLE", "Failed to send scan command to BLE module")
+                _isScanning.value = false
+                return false
+            }
+
+            Log.d("BLE", "Sent scan command 'c' to BLE module")
+
+            // Set a timeout for the scan
+            scanTimeoutJob = CoroutineScope(Dispatchers.IO).launch {
+                delay(30000) // 30 second timeout
+                if (_isScanning.value) {
+                    Log.d("BLE", "Scan timeout - no complete results received")
+                    _isScanning.value = false
+
+                    // Process any data received so far
+                    if (deviceListBuffer.isNotEmpty()) {
+                        processReceivedDeviceList()
+                    }
                 }
             }
-        }
 
-        return true
+            return true
+        } catch (e: Exception) {
+            Log.e("BLE", "Error in requestBleModuleScan", e)
+            _isScanning.value = false
+            return false
+        }
     }
 
     // Add this function to your BluetoothService class
@@ -244,40 +258,24 @@ class BluetoothService(private val context: Context) {
             Log.e("BLE", "Error processing device list: ${e.message}")
         }
     }
-
-    // Setup notifications for a characteristic
-    @SuppressLint("MissingPermission")
-    private fun setupNotificationsForCharacteristic(characteristic: BluetoothGattCharacteristic) {
-        try {
-            // Enable notifications
-            gattClient?.setCharacteristicNotification(characteristic, true)
-
-            // Get the Client Characteristic Configuration Descriptor (CCCD)
-            val cccdUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
-            val descriptor = characteristic.getDescriptor(cccdUuid)
-
-            if (descriptor != null) {
-                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                gattClient?.writeDescriptor(descriptor)
-                Log.d("BLEList", "Enabled notifications for characteristic ${characteristic.uuid}")
-            } else {
-                Log.e("BLEList", "CCCD descriptor not found for characteristic ${characteristic.uuid}")
-            }
-        } catch (e: Exception) {
-            Log.e("BLEList", "Error setting up notifications: ${e.message}")
-        }
-    }
-
-
+    
     private fun processDeviceListData(value: ByteArray) {
         try {
             val stringData = String(value, Charsets.UTF_8)
             Log.d("BLE", "Received B_LIST data: $stringData")
 
+            // Check if this is a new scan (first packet with a number)
+            if (stringData.trim().matches(Regex("^\\d+.*"))) {
+                // This looks like a new scan result starting with a number
+                // Clear any previous buffer to avoid mixing old and new data
+                deviceListBuffer.clear()
+            }
+
             // Append to our buffer
             deviceListBuffer.append(stringData)
+            Log.d("BLE", "Updated buffer (${deviceListBuffer.length} chars): ${deviceListBuffer.toString()}")
 
-            // Extract any new devices from the current buffer
+            // Extract and publish devices immediately
             extractAndPublishDevices()
 
             // Check if we've received the terminator
@@ -285,6 +283,9 @@ class BluetoothService(private val context: Context) {
                 Log.d("BLE", "End of device list detected")
                 _isScanning.value = false
                 scanTimeoutJob?.cancel()
+
+                // Final processing of the buffer
+                processReceivedDeviceList()
             }
         } catch (e: Exception) {
             Log.e("BLE", "Error processing device list data", e)
