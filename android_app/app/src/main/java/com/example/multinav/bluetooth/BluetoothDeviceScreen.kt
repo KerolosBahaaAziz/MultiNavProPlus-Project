@@ -328,7 +328,7 @@ fun BleDeviceBottomSheet(
             ) {
                 Column(modifier = Modifier.align(Alignment.CenterStart)) {
                     Text(
-                        text = "BLE Connection",
+                        text = "BLE Connections",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -352,7 +352,7 @@ fun BleDeviceBottomSheet(
                 }
             }
 
-            // Scan button with loading animation
+            // Scan button with simple text change when scanning
             Button(
                 onClick = onScanRequest,
                 modifier = Modifier.fillMaxWidth(),
@@ -362,85 +362,45 @@ fun BleDeviceBottomSheet(
                     disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                 )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isScanning) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .padding(end = 8.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Text("Scanning...")
-                    } else {
-                        Text("Scan for Devices")
-                    }
-                }
+                Text(if (isScanning) "Scanning..." else "Scan for Devices")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Status indicator with animation
-            if (isScanning) {
+            // Simplified status indicator - only show when scanning with no devices
+            if (isScanning && devices.isEmpty()) {
                 LinearProgressIndicator(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
+                        .padding(bottom = 16.dp)
                 )
             }
 
-            // Device list section - ALWAYS show if there are devices, even while scanning
+            // Device list section
             if (devices.isNotEmpty()) {
                 Column {
-                    // Found devices header with count and scanning indicator
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (isScanning)
-                                "Devices Found So Far (${devices.size})"
-                            else
-                                "Available Devices (${devices.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
+                    // Found devices header with count - simplified
+                    Text(
+                        text = if (isScanning)
+                            "Devices Found So Far (${devices.size})"
+                        else
+                            "Available Devices (${devices.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
 
-                        // Show spinner if still scanning, checkmark if completed
-                        if (isScanning) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else if (scanCompleted) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Scan Complete",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    // Device list with animations
+                    // Device list
                     LazyColumn(
                         modifier = Modifier.heightIn(max = 350.dp)
                     ) {
                         itemsIndexed(devices) { index, device ->
-                            // Animate each card entry
                             Card(
                                 onClick = { onDeviceSelected(index) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)
-                                    .animateItemPlacement(), // Add smooth animation when items change
+                                    .animateItemPlacement(),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surface
                                 ),
@@ -469,10 +429,10 @@ fun BleDeviceBottomSheet(
                         }
                     }
 
-                    // If still scanning, show a message that more might be coming
+                    // Simple text indicator if still scanning
                     if (isScanning) {
                         Text(
-                            text = "Still scanning for more devices...",
+                            text = "Looking for more devices...",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
@@ -506,7 +466,7 @@ fun BleDeviceBottomSheet(
                     )
                 }
             }
-            // Scanning indicator - show only when scanning with no devices yet
+            // Simplified scanning state - show only when scanning with no devices yet
             else if (isScanning && devices.isEmpty()) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -514,11 +474,6 @@ fun BleDeviceBottomSheet(
                         .fillMaxWidth()
                         .padding(vertical = 24.dp)
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .padding(bottom = 16.dp)
-                    )
                     Text(
                         text = "Scanning for devices...",
                         style = MaterialTheme.typography.bodyLarge,
