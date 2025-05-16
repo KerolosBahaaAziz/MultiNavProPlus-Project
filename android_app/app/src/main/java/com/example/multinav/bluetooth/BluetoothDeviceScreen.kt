@@ -56,6 +56,8 @@ fun BluetoothDeviceScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isScanning)
 
     val showBottomSheet by bluetoothViewModel.showBottomSheet.collectAsState(initial = false)
+    val isBleModuleScanning by bluetoothViewModel.isBleModuleScanning.collectAsState()
+
 
     Scaffold(
         topBar = {
@@ -211,21 +213,16 @@ fun BluetoothDeviceScreen(
                 }
 
 
-                // Display the bottom sheet when needed - OUTSIDE the Scaffold
+                // When showing the bottom sheet, use the BLE module scanning state:
                 if (showBottomSheet) {
-
-                    // In BluetoothDeviceScreen.kt, update the onDeviceSelected callback
                     BleDeviceBottomSheet(
                         devices = state.scannedDevicesFromBle,
-                        isScanning = state.isScanning,
+                        isScanning = isBleModuleScanning, // Use BLE module scanning state
                         onScanRequest = { bluetoothViewModel.requestBleModuleScan() },
                         onDeviceSelected = { index ->
-                            // Use our new function that provides the address to the navigation callback
                             bluetoothViewModel.connectToDeviceByIndexAndNavigate(
                                 index = index,
-                                onNavigate =
-                                { deviceAddress ->
-                                    // Now we have the correct device address for navigation
+                                onNavigate = { deviceAddress ->
                                     navController.navigate(Screen.Chat.createRoute(deviceAddress))
                                 }
                             )
@@ -313,7 +310,7 @@ fun BleDeviceBottomSheet(
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 32.dp)
         ) {
-            // Header
+            // Header with improved title
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -321,11 +318,18 @@ fun BleDeviceBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "BLE Discovered Modules",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Column {
+                    Text(
+                        text = "BLE Module Connected",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Scan for devices through the BLE module",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 IconButton(onClick = onDismiss) {
                     Icon(
@@ -335,7 +339,7 @@ fun BleDeviceBottomSheet(
                 }
             }
 
-            // Scan button
+            // Scan button with clearer label
             Button(
                 onClick = onScanRequest,
                 modifier = Modifier.fillMaxWidth()
@@ -343,7 +347,7 @@ fun BleDeviceBottomSheet(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Scan for Devices")
+                    Text("Scan Through BLE Module")
                     if (isScanning) {
                         Spacer(modifier = Modifier.width(8.dp))
                         CircularProgressIndicator(
@@ -361,20 +365,20 @@ fun BleDeviceBottomSheet(
             if (devices.isEmpty()) {
                 if (!isScanning) {
                     Text(
-                        text = "No devices found. Try scanning again.",
+                        text = "No devices found through BLE module. Try scanning again.",
                         modifier = Modifier.padding(vertical = 16.dp),
                         textAlign = TextAlign.Center
                     )
                 } else {
                     Text(
-                        text = "Scanning for devices...",
+                        text = "BLE module is scanning for devices...",
                         modifier = Modifier.padding(vertical = 16.dp),
                         textAlign = TextAlign.Center
                     )
                 }
             } else {
                 Text(
-                    text = "Available Devices (${devices.size})",
+                    text = "Devices Found By BLE Module (${devices.size})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)

@@ -17,13 +17,17 @@ import androidx.core.content.ContextCompat
 import com.example.multinav.chat.Message
 import com.example.multinav.utils.ByteUtils
 import com.example.multinav.utils.ByteUtils.bytesToFloats
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -49,7 +53,7 @@ class BluetoothService(private val context: Context) {
     private var voiceWriteCharacteristic: BluetoothGattCharacteristic? = null
     private var voiceNotifyCharacteristic: BluetoothGattCharacteristic? = null
 
-    private var isScanning = false
+    var isScanning = false
     private var isAdvertising = false
 
     private val _isConnected = MutableStateFlow(false)
@@ -91,80 +95,235 @@ class BluetoothService(private val context: Context) {
     private val _scannedDevicesList = MutableStateFlow<List<BluetoothDeviceData>>(emptyList())
     val scannedDevicesList: StateFlow<List<BluetoothDeviceData>> = _scannedDevicesList.asStateFlow()
 
-    // Request the BLE module to scan for devices
+    private val deviceListBuffer = StringBuilder()
+    private var expectedDeviceCount = -1
+    private var scanTimeoutJob: Job? = null
+
+    // MutableStateFlow for scanned devices from BLE module
+    private val _scannedDevicesFromBle = MutableStateFlow<List<BluetoothDeviceData>>(emptyList())
+    val scannedDevicesFromBle: StateFlow<List<BluetoothDeviceData>> = _scannedDevicesFromBle
+
+    // Flag to track scanning state
+    private val _isScanning = MutableStateFlow(false)
+    val isScanningState: StateFlow<Boolean> = _isScanning
+
+
     @SuppressLint("MissingPermission")
     suspend fun requestBleModuleScan(): Boolean {
         if (!_isConnected.value) {
-            Log.e("BLE", "Cannot request scan: Not connected to BLE module")
+            Log.e("BLEList", "Cannot request scan: Not connected to BLE module")
             return false
         }
 
-        // Clear previous device list
-        _scannedDevicesList.value = emptyList()
+        // Clear previous state
+        clearScannedDevicesFromBle()
+        _isScanning.value = true
 
-        // For BLE PRO V2, we need to:
-        // 1. Get the B_STATE characteristic
-        val bStateService = gattClient?.getService(BLEConfig.BLIST_CONNECTION_SERVICE_UUID)
-        val bStateChar = bStateService?.getCharacteristic(BLEConfig.B_STATE_CHARACTERISTIC_UUID)
+        // Cancel any existing timeout
+        scanTimeoutJob?.cancel()
+
+        // Get the BLE service
+        val bleService = gattClient?.getService(BLEConfig.BLIST_CONNECTION_SERVICE_UUID)
+        if (bleService == null) {
+            Log.e("BLEList", "BLE List service not found")
+            _isScanning.value = false
+            return false
+        }
+
+        // Get both characteristics
+        val bStateChar = bleService.getCharacteristic(BLEConfig.B_STATE_CHARACTERISTIC_UUID)
+        val bListChar = bleService.getCharacteristic(BLEConfig.B_LIST_CHARACTERISTIC_UUID)
 
         if (bStateChar == null) {
-            Log.e("BLE", "B_STATE characteristic not found")
+            Log.e("BLEList", "B_STATE characteristic not found")
+            _isScanning.value = false
             return false
         }
 
-        // 2. Write 'c' to start scanning
+        if (bListChar == null) {
+            Log.e("BLEList", "B_LIST characteristic not found")
+            _isScanning.value = false
+            return false
+        }
+
+        // Setup notifications for both characteristics
+        setupNotificationsForCharacteristic(bStateChar)
+        setupNotificationsForCharacteristic(bListChar)
+
+        // Write 'c' to B_STATE to start scanning
         bStateChar.value = "c".toByteArray(Charsets.UTF_8)
         val writeSuccess = gattClient?.writeCharacteristic(bStateChar) ?: false
 
         if (!writeSuccess) {
-            Log.e("BLE", "Failed to send scan command to BLE module")
+            Log.e("BLEList", "Failed to send scan command to BLE module")
+            _isScanning.value = false
             return false
         }
 
-        Log.d("BLE", "Sent scan command 'c' to BLE module")
+        Log.d("BLEList", "Sent scan command 'c' to BLE module")
+
+        // Set a timeout for the scan operation
+        scanTimeoutJob = CoroutineScope(Dispatchers.IO).launch {
+            delay(30000) // 30 second timeout
+            if (_isScanning.value) {
+                Log.d("BLEList", "Scan timeout - no complete results received")
+                _isScanning.value = false
+
+                // If we collected any data, try to parse it
+                if (deviceListBuffer.isNotEmpty()) {
+                    parseDeviceList(deviceListBuffer.toString())
+                }
+            }
+        }
+
         return true
     }
 
+    // Setup notifications for a characteristic
+    @SuppressLint("MissingPermission")
+    private fun setupNotificationsForCharacteristic(characteristic: BluetoothGattCharacteristic) {
+        try {
+            // Enable notifications
+            gattClient?.setCharacteristicNotification(characteristic, true)
+
+            // Get the Client Characteristic Configuration Descriptor (CCCD)
+            val cccdUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+            val descriptor = characteristic.getDescriptor(cccdUuid)
+
+            if (descriptor != null) {
+                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                gattClient?.writeDescriptor(descriptor)
+                Log.d("BLEList", "Enabled notifications for characteristic ${characteristic.uuid}")
+            } else {
+                Log.e("BLEList", "CCCD descriptor not found for characteristic ${characteristic.uuid}")
+            }
+        } catch (e: Exception) {
+            Log.e("BLEList", "Error setting up notifications: ${e.message}")
+        }
+    }
+
+
+    // Process incoming device list data
+    private fun processDeviceListData(data: ByteArray) {
+        try {
+            val stringData = String(data, Charsets.UTF_8)
+            Log.d("BLEList", "Received characteristic data: $stringData")
+
+            // If we haven't determined the device count yet
+            if (expectedDeviceCount == -1) {
+                try {
+                    // Try to extract the first integer as device count
+                    val countStr = stringData.trim()
+                    expectedDeviceCount = countStr.toInt()
+                    Log.d("BLEList", "Expected device count: $expectedDeviceCount")
+
+                    // If zero devices, we're done
+                    if (expectedDeviceCount == 0) {
+                        _isScanning.value = false
+                        scanTimeoutJob?.cancel()
+                        return
+                    }
+                } catch (e: NumberFormatException) {
+                    Log.e("BLEList", "Failed to parse device count: $stringData")
+                    // Continue processing as regular data
+                }
+            } else {
+                // Append to our buffer
+                deviceListBuffer.append(stringData)
+
+                // Check if we've reached the end (null terminator)
+                if (stringData.contains('\u0000')) {
+                    Log.d("BLEList", "End of device list detected")
+                    _isScanning.value = false
+                    scanTimeoutJob?.cancel()
+
+                    // Parse the complete buffer
+                    parseDeviceList(deviceListBuffer.toString())
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("BLEList", "Error processing device list data: ${e.message}")
+            _isScanning.value = false
+        }
+    }
+
+    // Parse the complete device list
+    private fun parseDeviceList(data: String) {
+        try {
+            // Split by newlines
+            val deviceEntries = data.split('\n')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.contains('\u0000') }
+
+            Log.d("BLEList", "Parsing ${deviceEntries.size} device entries")
+
+            // Parse each device entry
+            val deviceList = deviceEntries.mapIndexed { index, entry ->
+                // Parse based on your specific format
+                // This example assumes format: "Device Name|XX:XX:XX:XX:XX:XX|-XX"
+                // Adjust the parsing logic based on your actual format
+                val parts = entry.split('|')
+
+                val name = parts.getOrNull(0) ?: "Unknown Device $index"
+                val address = parts.getOrNull(1) ?: "00:00:00:00:00:00"
+                val rssi = parts.getOrNull(2)?.toIntOrNull()
+
+                BluetoothDeviceData(
+                    name = name,
+                    address = address,
+                    rssi = rssi,
+                    isConnected = false,
+                    isMobileDevice = false,
+                    clickCount = 0
+                )
+            }
+
+            // Update the device list
+            _scannedDevicesFromBle.value = deviceList
+
+            // Log the parsed devices
+            deviceList.forEach { device ->
+                Log.d("BLEList", "Discovered via BLEList module: ${device.name} (${device.address})")
+            }
+        } catch (e: Exception) {
+            Log.e("BLEList", "Error parsing device list: ${e.message}")
+        }
+    }
+
+
+    // Function to connect to a device by its index in the list
     @SuppressLint("MissingPermission")
     suspend fun connectToDeviceByIndex(index: Int): Boolean {
         if (!_isConnected.value) {
-            Log.e("BLE", "Cannot connect: Not connected to BLE module")
+            Log.e("BLEList", "Cannot connect: Not connected to BLEList module")
             return false
         }
 
-        // Validate index
-        if (index < 0 || index >= _scannedDevicesList.value.size) {
-            Log.e("BLE", "Invalid device index: $index")
-            return false
-        }
-
-        // For BLE PRO V2, we need to:
-        // 1. Get the B_STATE characteristic
+        // Get the B_STATE characteristic
         val bStateService = gattClient?.getService(BLEConfig.BLIST_CONNECTION_SERVICE_UUID)
         val bStateChar = bStateService?.getCharacteristic(BLEConfig.B_STATE_CHARACTERISTIC_UUID)
 
         if (bStateChar == null) {
-            Log.e("BLE", "B_STATE characteristic not found for device selection")
+            Log.e("BLEList", "B_STATE characteristic not found")
             return false
         }
 
-        // 2. Write the index as a string (per the spec)
-        val indexCommand = index.toString()
-        bStateChar.value = indexCommand.toByteArray(Charsets.UTF_8)
+        // Format command to connect to device at index
+        // Assuming the protocol is to send "sN" where N is the index
+        val command = "s$index"
+        bStateChar.value = command.toByteArray(Charsets.UTF_8)
+
         val writeSuccess = gattClient?.writeCharacteristic(bStateChar) ?: false
 
         if (!writeSuccess) {
-            Log.e("BLE", "Failed to send device index $index to BLE module")
+            Log.e("BLE", "Failed to send connect command to BLE module")
             return false
         }
 
-        Log.d("BLE", "Sent device index $index to BLE module")
-
-        // Give the BLE module time to process the connection
-        delay(1000)
-
+        Log.d("BLE", "Sent connect command '$command' to BLE module")
         return true
     }
+
 
     // Helper function to get the key for a device (name or address if name is null/blank)
     @SuppressLint("MissingPermission")
@@ -1089,6 +1248,33 @@ class BluetoothService(private val context: Context) {
                 val hexMessage = ByteUtils.bytesToHex(value)
                 Log.d("BLE", "Raw hex data: $hexMessage")
 
+                // Handle B_STATE characteristic - Check for 'R' indicating list is ready
+                if (characteristic.uuid == BLEConfig.B_STATE_CHARACTERISTIC_UUID) {
+                    val stateData = String(value, Charsets.UTF_8)
+                    Log.d("BLEList", "Received B_STATE update: $stateData")
+
+                    // Check if the list is updated and ready
+                    if (stateData.contains("R")) {
+                        Log.d("BLEList", "Device list is updated and ready")
+                        _isScanning.value = false
+                        scanTimeoutJob?.cancel()
+
+                        // At this point, we've received the complete list via B_LIST
+                        // and we can allow the user to select a device
+                    }
+                }   // Handle B_LIST characteristic - Processing the device list
+                else if (characteristic.uuid == BLEConfig.B_LIST_CHARACTERISTIC_UUID) {
+                    processDeviceListData(value)
+                }
+
+                // Check for B_LIST_CHARACTERISTIC_UUID data (device list)
+                if (characteristic.uuid == BLEConfig.B_LIST_CHARACTERISTIC_UUID) {
+                    val stringData = String(value, Charsets.UTF_8)
+                    Log.d("BLE", "Received device list data: $stringData")
+                    processBleModuleScanResult(stringData)
+                    return
+                }
+
                 // Check if this is sensor data from the Sensor Service
                 if (characteristic.service.uuid == BLEConfig.SENSOR_SERVICE_UUID) {
                     // Process sensor data
@@ -1115,6 +1301,20 @@ class BluetoothService(private val context: Context) {
                     BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID
                 } else {
                     BLEConfig.BLE_NOTIFY_CHARACTERISTIC_UUID
+                }
+
+                // Check if this is B_STATE_CHARACTERISTIC_UUID data (control/status)
+                if (characteristic.uuid == BLEConfig.B_STATE_CHARACTERISTIC_UUID) {
+                    val stateData = String(value, Charsets.UTF_8)
+                    Log.d("BLE", "Received B_STATE update: $stateData")
+
+                    // Check if it's a scan status update
+                    if (stateData.contains("scan_complete") || stateData.contains("done")) {
+                        _isScanning.value = false
+                        scanTimeoutJob?.cancel()
+                        Log.d("BLE", "Scan completed based on B_STATE update")
+                    }
+                    return
                 }
 
                 // Process based on which characteristic received the notification
@@ -1507,50 +1707,42 @@ class BluetoothService(private val context: Context) {
         return lastConnectedDeviceAddress
     }
 
-    /**
-     * Processes scan results received from the BLE module.
-     * Expected format: "deviceName1,deviceAddress1;deviceName2,deviceAddress2;..."
-     */
-    private fun processBleModuleScanResult(scanData: String) {
+    private fun processBleModuleScanResult(data: String) {
         try {
-            Log.d("BLE", "Processing scan data: $scanData")
+            Log.d("BLE", "Processing BLE module scan results: $data")
 
-            // Create a mutable list to hold the parsed devices
-            val devicesList = mutableListOf<BluetoothDeviceData>()
+            // Check if this is the first message with device count
+            if (data.trim().matches(Regex("\\d+"))) {
+                expectedDeviceCount = data.trim().toInt()
+                Log.d("BLE", "Device count from BLE module: $expectedDeviceCount")
 
-            // Split the scan data by device entries (separated by semicolons)
-            val deviceEntries = scanData.split(";")
+                // Clear existing data
+                deviceListBuffer.clear()
+                _scannedDevicesFromBle.value = emptyList()
 
-            for (entry in deviceEntries) {
-                // Skip empty entries
-                if (entry.isBlank()) continue
-
-                // Each entry should be in format "deviceName,deviceAddress"
-                val parts = entry.split(",")
-                if (parts.size >= 2) {
-                    val deviceName = parts[0].trim()
-                    val deviceAddress = parts[1].trim()
-
-                    // Create a BluetoothDeviceData object
-                    val deviceInfo = BluetoothDeviceData(
-                        address = deviceAddress,
-                        name = deviceName.ifBlank { "Unknown Device" },
-                        rssi = 0, // RSSI might not be available from module scan
-                        isConnected = true, // Assume all returned devices are connectable
-                    )
-
-                    devicesList.add(deviceInfo)
-                    Log.d("BLE", "Added device from module scan: $deviceName ($deviceAddress)")
-                } else {
-                    Log.w("BLE", "Invalid device entry format: $entry")
+                // If zero devices, we're done
+                if (expectedDeviceCount == 0) {
+                    _isScanning.value = false
+                    scanTimeoutJob?.cancel()
                 }
+                return
             }
 
-            // Update the flow with the new scan results
-            _scannedDevicesList.value = devicesList
-            Log.d("BLE", "Updated scan results with ${devicesList.size} devices")
+            // Append data to buffer
+            deviceListBuffer.append(data)
+
+            // Check if this is the end of the data (contains null terminator)
+            if (data.contains('\u0000')) {
+                Log.d("BLE", "End of device list detected")
+                _isScanning.value = false
+                scanTimeoutJob?.cancel()
+
+                // Parse the complete buffer
+                parseDeviceList(deviceListBuffer.toString())
+            }
         } catch (e: Exception) {
             Log.e("BLE", "Error processing BLE module scan results", e)
+            _isScanning.value = false
         }
     }
 
@@ -2032,8 +2224,17 @@ class BluetoothService(private val context: Context) {
         Log.d("BLE", "Saved last connected address: $address")
     }
 
+
+
     fun getLastConnectedAddress(): String? {
         return lastConnectedDeviceAddress
+    }
+
+    fun clearScannedDevicesFromBle() {
+        _scannedDevicesFromBle.value = emptyList()
+        deviceListBuffer.clear()
+        expectedDeviceCount = -1
+        Log.d("BLE", "Cleared scanned devices from BLE module")
     }
 
     sealed class ConnectionStatus {
