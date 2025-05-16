@@ -1,4 +1,4 @@
-package com.example.desgin.actions_delays_screen
+
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
@@ -28,60 +28,84 @@ class ActionsAndDelaysViewModel : ViewModel() {
 
     // Function to add an action to the history
     fun addActionToHistory(action: String) {
-        if (!actionHistory.contains(action)) {
+        // Allow multiple instances of directional and shape actions
+        val repeatableActions = listOf("Up", "Down", "Right", "Left", "Triangle", "Cross", "Circle", "Square")
+        if (repeatableActions.contains(action)) {
             actionHistory.add(action)
             selectedAction.value = action
             Log.d("ActionsAndDelaysViewModel", "Action added: $action, History: $actionHistory")
+        } else {
+            // For non-repeatable actions, prevent duplicates
+            if (!actionHistory.contains(action)) {
+                actionHistory.add(action)
+                selectedAction.value = action
+                Log.d("ActionsAndDelaysViewModel", "Action added: $action, History: $actionHistory")
+            }
         }
     }
 
-    // Function to add or remove toggle button actions
+    // Function to add toggle button actions
     fun addActionToHistoryToggleButtons(action: String) {
         when (action) {
             "A" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                Log.d("ToggleButtonA", "Before press: isToggleButtonA = ${isToggleButtonA.value}")
+                val lastActionA = actionHistory.lastOrNull { it == "A-on" || it == "A-off" }
+                if (lastActionA == "A-on") {
+                    // Last was on, so add off
+                    actionHistory.add("A-off")
                     isToggleButtonA.value = false
+                    selectedAction.value = "A-off"
                 } else {
-                    actionHistory.add(action)
+                    // Last was off or none, so add on
+                    actionHistory.add("A-on")
                     isToggleButtonA.value = true
+                    selectedAction.value = "A-on"
                 }
+                Log.d("ToggleButtonA", "After press: isToggleButtonA = ${isToggleButtonA.value}, History: $actionHistory")
             }
             "B" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                Log.d("ToggleButtonB", "Before press: isToggleButtonB = ${isToggleButtonB.value}")
+                val lastActionB = actionHistory.lastOrNull { it == "B-on" || it == "B-off" }
+                if (lastActionB == "B-on") {
+                    actionHistory.add("B-off")
                     isToggleButtonB.value = false
+                    selectedAction.value = "B-off"
                 } else {
-                    actionHistory.add(action)
+                    actionHistory.add("B-on")
                     isToggleButtonB.value = true
+                    selectedAction.value = "B-on"
                 }
+                Log.d("ToggleButtonB", "After press: isToggleButtonB = ${isToggleButtonB.value}, History: $actionHistory")
             }
             "C" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                Log.d("ToggleButtonC", "Before press: isToggleButtonC = ${isToggleButtonC.value}")
+                val lastActionC = actionHistory.lastOrNull { it == "C-on" || it == "C-off" }
+                if (lastActionC == "C-on") {
+                    actionHistory.add("C-off")
                     isToggleButtonC.value = false
+                    selectedAction.value = "C-off"
                 } else {
-                    actionHistory.add(action)
+                    actionHistory.add("C-on")
                     isToggleButtonC.value = true
+                    selectedAction.value = "C-on"
                 }
+                Log.d("ToggleButtonC", "After press: isToggleButtonC = ${isToggleButtonC.value}, History: $actionHistory")
             }
             "D" -> {
-                if (actionHistory.contains(action)) {
-                    actionHistory.remove(action)
+                Log.d("ToggleButtonD", "Before press: isToggleButtonD = ${isToggleButtonD.value}")
+                val lastActionD = actionHistory.lastOrNull { it == "D-on" || it == "D-off" }
+                if (lastActionD == "D-on") {
+                    actionHistory.add("D-off")
                     isToggleButtonD.value = false
+                    selectedAction.value = "D-off"
                 } else {
-                    actionHistory.add(action)
+                    actionHistory.add("D-on")
                     isToggleButtonD.value = true
+                    selectedAction.value = "D-on"
                 }
-            }
-            else -> {
-                if (!actionHistory.contains(action)) {
-                    actionHistory.add(action)
-                }
+                Log.d("ToggleButtonD", "After press: isToggleButtonD = ${isToggleButtonD.value}, History: $actionHistory")
             }
         }
-        selectedAction.value = if (actionHistory.isNotEmpty()) actionHistory.lastOrNull() else null
-        Log.d("ActionsAndDelaysViewModel", "Toggle action: $action, History: $actionHistory")
     }
 
     // Function to add a delay to the history
@@ -90,8 +114,7 @@ class ActionsAndDelaysViewModel : ViewModel() {
             Log.w("ActionsAndDelaysViewModel", "Attempted to add invalid delay: $delay")
             return
         }
-        val formattedDelay = formatDelay(delay)
-        val delayEntry = "Delay: $formattedDelay ($delay ms)"
+        val delayEntry = delay.toString() // Store delay as plain string, e.g., "1"
         actionHistory.add(delayEntry)
         selectedAction.value = delayEntry
         totalDelayMilliseconds.value = delay
@@ -107,41 +130,46 @@ class ActionsAndDelaysViewModel : ViewModel() {
         Log.d("ActionsAndDelaysViewModel", "Delay picker values reset")
     }
 
+
     // Function to update the mode in history
     fun updateModeInHistory(mode: String) {
-        val modes = listOf("1", "2", "3")
-        actionHistory.removeAll { it in modes }
-        if (!actionHistory.contains(mode)) {
-            actionHistory.add(mode)
-        }
+        val modeEntry = "${mode}m"
+        actionHistory.add(modeEntry)
         selectedMode.value = mode
-        Log.d("ActionsAndDelaysViewModel", "Mode updated: $mode, History: $actionHistory")
+        Log.d("ActionsAndDelaysViewModel", "Mode updated: $modeEntry, History: $actionHistory")
+    }
+    fun clearActionHistory() {
+        actionHistory.clear()
+        selectedAction.value = null
+        isToggleButtonA.value = false
+        isToggleButtonB.value = false
+        isToggleButtonC.value = false
+        isToggleButtonD.value = false
+        totalDelayMilliseconds.value = null
+        selectedMode.value = ""
+        textField.value = ""
+        Log.d("ActionsAndDelaysViewModel", "Action history cleared")
     }
 
     // Function to save actions to the database
-    fun saveActionToDatabase(userUid: String?, taskTitle: String) {
+    fun saveActionToDatabase(userUid: String?, taskTitle: String?) {
         if (userUid == null) {
             Log.e("TaskDatabase", "Cannot save: userUid is null")
             return
         }
-        val modes = listOf("1", "2", "3")
-        val actions = actionHistory.filter { it !in modes }.map { action ->
-            if (action.startsWith("Delay: ")) {
-                val formattedDelay = action.removePrefix("Delay: ").replace(Regex("\\(\\d+ ms\\)"), "").trim()
-                Log.d("TaskDatabase", "Processed delay action: $action -> $formattedDelay")
-                formattedDelay
-            } else {
-                action
-            }
-        }
-        if (actions.isEmpty()) {
-            Log.e("TaskDatabase", "No actions to save")
+        if (taskTitle.isNullOrBlank()) {
+            Log.e("TaskDatabase", "Cannot save: taskTitle is null or empty")
             return
         }
 
+
+        if (actionHistory.isEmpty()) {
+            Log.e("TaskDatabase", "No actions to save")
+            return
+        }
         viewModelScope.launch {
             try {
-                val task = createTaskFromAction(actions, userUid, taskTitle)
+                val task = createTaskFromAction(actionHistory, userUid, taskTitle)
                 MyDatabase.getInstance().getTaskDao().addTask(task)
                 actionHistory.clear()
                 selectedAction.value = null
@@ -152,7 +180,7 @@ class ActionsAndDelaysViewModel : ViewModel() {
                 isToggleButtonD.value = false
                 textField.value = ""
                 selectedMode.value = ""
-                Log.d("TaskDatabase", "Task saved: $taskTitle, Actions: $actions")
+                Log.d("TaskDatabase", "Task saved: $taskTitle, Actions: $actionHistory")
             } catch (e: Exception) {
                 Log.e("TaskDatabase", "Error saving task: ${e.message}")
             }
@@ -161,31 +189,12 @@ class ActionsAndDelaysViewModel : ViewModel() {
 
     // Function to create a Task object from actions
     private fun createTaskFromAction(actions: List<String>, userUid: String, taskTitle: String): Task {
-        val delay = totalDelayMilliseconds.value ?: actions.find { it.matches(Regex("\\d{2}:\\d{2}:\\d{2}\\.\\d{3}")) }?.let {
-            val parts = it.split(":", ".").map { part -> part.toLong() }
-            (parts[0] * 3600000) + (parts[1] * 60000) + (parts[2] * 1000) + parts[3]
-        }
-
         return Task(
             actions = actions,
-            mode = selectedMode.value,
-            delay = delay,
             userUid = userUid,
             taskTitle = taskTitle,
             taskOn = false,
-            taskId = 0,
-            buttonA = if (actions.contains("A")) 'A' else null,
-            buttonB = if (actions.contains("B")) 'B' else null,
-            buttonC = if (actions.contains("C")) 'C' else null,
-            buttonD = if (actions.contains("D")) 'D' else null,
-            buttonUP = if (actions.contains("Up")) "Up" else null,
-            buttonDown = if (actions.contains("Down")) "Down" else null,
-            buttonRight = if (actions.contains("Right")) "Right" else null,
-            buttonLeft = if (actions.contains("Left")) "Left" else null,
-            buttonTriangle = if (actions.contains("Triangle")) "Triangle" else null,
-            buttonX = if (actions.contains("Cross")) "X" else null,
-            buttonCircle = if (actions.contains("Circle")) "Circle" else null,
-            buttonSquare = if (actions.contains("Square")) "Square" else null
+            taskId = 0
         )
     }
 
