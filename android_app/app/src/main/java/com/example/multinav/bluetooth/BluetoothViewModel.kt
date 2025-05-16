@@ -106,20 +106,42 @@ class BluetoothViewModel(
             }
         }
 
-        // Collect scanned devices from BLE
+        // Collect and update devices from BLE in real-time
         viewModelScope.launch {
-            bluetoothService.scannedDevicesFromBle.collectLatest { devices ->
-                _uiState.update { state ->
-                    state.copy(scannedDevicesFromBle = devices)
+            bluetoothService.scannedDevicesFromBle.collect { devices ->
+                Log.d("BLE", "ViewModel received ${devices.size} devices from service")
+
+                if (devices.isNotEmpty()) {
+                    // Always update UI with any devices we've found
+                    _uiState.update { state ->
+                        state.copy(
+                            scannedDevicesFromBle = devices,
+                            // If scanning but we have devices, show a status message
+                            statusMessage = if (state.isScanning)
+                                "Found ${devices.size} devices so far..."
+                            else
+                                "Found ${devices.size} devices"
+                        )
+                    }
                 }
             }
         }
 
         // Collect scanning state
         viewModelScope.launch {
-            bluetoothService.isScanningState.collectLatest { isScanning ->
+            bluetoothService.isScanningState.collect { isScanning ->
                 _uiState.update { state ->
-                    state.copy(isScanning = isScanning)
+                    state.copy(
+                        isScanning = isScanning,
+                        // When scanning finishes, update status and scanCompleted flag
+                        statusMessage = if (!isScanning && state.scannedDevicesFromBle.isNotEmpty())
+                            "Scan complete: Found ${state.scannedDevicesFromBle.size} devices"
+                        else if (!isScanning && state.scannedDevicesFromBle.isEmpty())
+                            "No devices found"
+                        else
+                            "Scanning for devices...",
+                        scanCompleted = !isScanning
+                    )
                 }
             }
         }
@@ -135,34 +157,59 @@ class BluetoothViewModel(
 
     fun requestBleModuleScan() {
         Log.d("BLEList", "Requesting BLE module scan")
+
+        // Immediately update UI to show scanning state
+        _uiState.update { it.copy(
+            isBleModuleScanning = true,  // Use the specific state
+            statusMessage = "Starting scan...",
+            scanCompleted = false
+        )}
+
         viewModelScope.launch {
             try {
-                // Clear existing device list
-                _uiState.update { it.copy(
-                    scannedDevicesFromBle = emptyList(),
-                    errorMessage = null
-                )}
-
                 val success = bluetoothService.requestBleModuleScan()
 
                 if (success) {
                     Log.d("BLEList", "BLE module scan request successful")
-                    _uiState.update { it.copy(isScanning = true) }
                 } else {
                     Log.e("BLEList", "BLE module scan request failed")
                     _uiState.update { it.copy(
-                        errorMessage = "Failed to request scan from BLE module"
+                        isBleModuleScanning = false,  // Update the specific state
+                        errorMessage = "Failed to start scan",
+                        statusMessage = "Scan failed to start",
+                        scanCompleted = true
                     )}
+                }
+
+                // Also collect the isScanning state from the service
+                bluetoothService.isScanningState.collect { isScanning ->
+                    _uiState.update { it.copy(
+                        isBleModuleScanning = isScanning  // Update the specific state
+                    )}
+
+                    if (!isScanning) {
+                        // Scanning completed
+                        _uiState.update { it.copy(
+                            scanCompleted = true,
+                            statusMessage = if (it.scannedDevicesFromBle.isEmpty())
+                                "No devices found"
+                            else
+                                "Found ${it.scannedDevicesFromBle.size} devices"
+                        )}
+                        return@collect
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("BLEList", "Error requesting BLE module scan", e)
                 _uiState.update { it.copy(
-                    errorMessage = "Scan error: ${e.message}"
+                    isBleModuleScanning = false,  // Update the specific state
+                    errorMessage = "Error: ${e.message}",
+                    statusMessage = "Scan error occurred",
+                    scanCompleted = true
                 )}
             }
         }
     }
-
     /**
      * Connects to a device by index from the bottom sheet and navigates with the correct address
      */

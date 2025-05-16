@@ -1,7 +1,12 @@
 package com.example.multinav.bluetooth
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
@@ -217,7 +223,9 @@ fun BluetoothDeviceScreen(
                 if (showBottomSheet) {
                     BleDeviceBottomSheet(
                         devices = state.scannedDevicesFromBle,
-                        isScanning = isBleModuleScanning, // Use BLE module scanning state
+                        isScanning = state.isBleModuleScanning,
+                        statusMessage = state.statusMessage,
+                        scanCompleted = state.scanCompleted,
                         onScanRequest = { bluetoothViewModel.requestBleModuleScan() },
                         onDeviceSelected = { index ->
                             bluetoothViewModel.connectToDeviceByIndexAndNavigate(
@@ -291,11 +299,13 @@ private fun DeviceItem(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun BleDeviceBottomSheet(
     devices: List<BluetoothDeviceData>,
     isScanning: Boolean,
+    statusMessage: String?,
+    scanCompleted: Boolean,
     onScanRequest: () -> Unit,
     onDeviceSelected: (Int) -> Unit,
     onDismiss: () -> Unit
@@ -310,28 +320,31 @@ fun BleDeviceBottomSheet(
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 32.dp)
         ) {
-            // Header with improved title
-            Row(
+            // Header with improved styling
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(bottom = 16.dp)
             ) {
-                Column {
+                Column(modifier = Modifier.align(Alignment.CenterStart)) {
                     Text(
-                        text = "BLE Module Connected",
+                        text = "BLE Connection",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "Scan for devices through the BLE module",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    statusMessage?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                IconButton(onClick = onDismiss) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close"
@@ -339,91 +352,185 @@ fun BleDeviceBottomSheet(
                 }
             }
 
-            // Scan button with clearer label
+            // Scan button with loading animation
             Button(
                 onClick = onScanRequest,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isScanning, // Disable while scanning
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                )
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Scan Through BLE Module")
                     if (isScanning) {
-                        Spacer(modifier = Modifier.width(8.dp))
                         CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(end = 8.dp),
                             color = Color.White,
                             strokeWidth = 2.dp
                         )
+                        Text("Scanning...")
+                    } else {
+                        Text("Scan for Devices")
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Device list or placeholder
-            if (devices.isEmpty()) {
-                if (!isScanning) {
-                    Text(
-                        text = "No devices found through BLE module. Try scanning again.",
-                        modifier = Modifier.padding(vertical = 16.dp),
-                        textAlign = TextAlign.Center
-                    )
-                } else {
-                    Text(
-                        text = "BLE module is scanning for devices...",
-                        modifier = Modifier.padding(vertical = 16.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                Text(
-                    text = "Devices Found By BLE Module (${devices.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            // Status indicator with animation
+            if (isScanning) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
                 )
+            }
 
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 350.dp)
-                ) {
-                    itemsIndexed(devices) { index, device ->
-                        Card(
-                            onClick = { onDeviceSelected(index) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
+            // Device list section - ALWAYS show if there are devices, even while scanning
+            if (devices.isNotEmpty()) {
+                Column {
+                    // Found devices header with count and scanning indicator
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isScanning)
+                                "Devices Found So Far (${devices.size})"
+                            else
+                                "Available Devices (${devices.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Show spinner if still scanning, checkmark if completed
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
                             )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
+                        } else if (scanCompleted) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Scan Complete",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    // Device list with animations
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 350.dp)
+                    ) {
+                        itemsIndexed(devices) { index, device ->
+                            // Animate each card entry
+                            Card(
+                                onClick = { onDeviceSelected(index) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .animateItemPlacement(), // Add smooth animation when items change
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = 2.dp
+                                )
                             ) {
-                                Text(
-                                    text = "#$index: ${device.name ?: "Unknown Device"}",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Text(
-                                    text = device.address,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-
-                                device.rssi?.let {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
                                     Text(
-                                        text = "Signal: $it dBm",
-                                        style = MaterialTheme.typography.bodySmall,
+                                        text = "#$index: ${device.name}",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = device.address,
+                                        style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                         }
                     }
+
+                    // If still scanning, show a message that more might be coming
+                    if (isScanning) {
+                        Text(
+                            text = "Still scanning for more devices...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+            // Empty state - only show when not scanning and no devices found
+            else if (!isScanning && devices.isEmpty()) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
+                ) {
+                    Text(
+                        text = "No devices found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Try scanning again or checking that devices are in range",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
+                    )
+                }
+            }
+            // Scanning indicator - show only when scanning with no devices yet
+            else if (isScanning && devices.isEmpty()) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(bottom = 16.dp)
+                    )
+                    Text(
+                        text = "Scanning for devices...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "This may take a few moments",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
             }
         }
