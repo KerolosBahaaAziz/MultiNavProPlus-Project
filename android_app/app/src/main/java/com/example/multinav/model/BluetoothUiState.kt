@@ -2,6 +2,7 @@ package com.example.multinav.model
 
 data class BluetoothUiState(
     val scannedDevices: List<BluetoothDeviceData> = emptyList(),
+    val scannedDevicesFromBle:List<BluetoothDeviceData> = emptyList(),
     val pairedDevices: List<BluetoothDeviceData> = emptyList(),
     val isConnected: Boolean = false,
     val isConnecting: Boolean = false,

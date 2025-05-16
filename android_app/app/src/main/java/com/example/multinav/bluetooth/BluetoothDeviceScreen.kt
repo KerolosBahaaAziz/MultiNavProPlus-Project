@@ -1,5 +1,6 @@
 package com.example.multinav.bluetooth
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -159,32 +160,13 @@ fun BluetoothDeviceScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Paired Devices (${state.pairedDevices.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+
 
                 LazyColumn(
                     modifier = Modifier.weight(1f)
                 ) {
-                    items(state.pairedDevices) { device ->
-                        DeviceItem(
-                            device = device,
-                            onClick = {
-                                bluetoothViewModel.connectToDeviceAndNavigate(
-                                    device = device,
-                                    onNavigate = {
-                                        navController.navigate(
-                                            Screen.Chat.createRoute(device.address)
-                                        )
-                                    },
-                                    isFromPairedList = true
-                                )
-                            }
-                        )
-                    }
-                    if (state.scannedDevices.isNotEmpty()) {
+                    if (true)//state.scannedDevices.isNotEmpty() )
+                    {
                         item {
                             Text(
                                 text = "Scanned Devices (${state.scannedDevices.size})",
@@ -231,16 +213,18 @@ fun BluetoothDeviceScreen(
 
                 // Display the bottom sheet when needed - OUTSIDE the Scaffold
                 if (showBottomSheet) {
+
                     // In BluetoothDeviceScreen.kt, update the onDeviceSelected callback
                     BleDeviceBottomSheet(
-                        devices = state.scannedDevices,
+                        devices = state.scannedDevicesFromBle,
                         isScanning = state.isScanning,
                         onScanRequest = { bluetoothViewModel.requestBleModuleScan() },
                         onDeviceSelected = { index ->
                             // Use our new function that provides the address to the navigation callback
                             bluetoothViewModel.connectToDeviceByIndexAndNavigate(
                                 index = index,
-                                onNavigate = { deviceAddress ->
+                                onNavigate =
+                                { deviceAddress ->
                                     // Now we have the correct device address for navigation
                                     navController.navigate(Screen.Chat.createRoute(deviceAddress))
                                 }
@@ -338,7 +322,7 @@ fun BleDeviceBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "BLE Module Devices",
+                    text = "BLE Discovered Modules",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
