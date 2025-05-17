@@ -109,6 +109,8 @@ class BluetoothService(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     suspend fun requestBleModuleScan(): Boolean {
+       // resetScanState()
+
         if (!_isConnected.value) {
             Log.e("BLE", "Cannot request scan: Not connected to BLE module")
             return false
@@ -192,7 +194,30 @@ class BluetoothService(private val context: Context) {
             }
         }
 
-        return true
+        return try {
+            writeSuccess
+        } catch (e: Exception) {
+            Log.e("BLE", "Error during scan request", e)
+            // Make sure we reset state even if an error occurs
+            resetScanState()
+            false
+        }
+    }
+
+    private fun resetScanState() {
+        // Cancel any existing timeout job
+        scanTimeoutJob?.cancel()
+        scanTimeoutJob = null
+
+        // Reset scanning state
+        _isScanning.value = false
+
+        // Clear data buffers and results
+        deviceListBuffer.clear()
+        expectedDeviceCount = -1
+        _scannedDevicesFromBle.value = emptyList()
+
+        Log.d("BLE", "Scan state completely reset")
     }
 
     // Add this function to your BluetoothService class
