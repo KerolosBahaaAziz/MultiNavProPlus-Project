@@ -1,4 +1,4 @@
-package com.example.multinav.model
+package com.example.multinav.model.bluetooth_service
 
 import android.annotation.SuppressLint
 import android.bluetooth.*
@@ -1532,7 +1532,8 @@ class BluetoothService(private val context: Context) {
                         }
                         // If this was a main or voice notification characteristic
                         else if (characteristicUuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID ||
-                            characteristicUuid == BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID) {
+                            characteristicUuid == BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID
+                        ) {
                             // Continue with any remaining unsubscribes or complete disconnect
                             unsubscribeFromNextCharacteristic(gatt)
                         }
@@ -1560,7 +1561,8 @@ class BluetoothService(private val context: Context) {
                     }
                     // Handle regular notification characteristics
                     else if (characteristicUuid == BLEConfig.NOTIFY_CHARACTERISTIC_UUID ||
-                        characteristicUuid == BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID) {
+                        characteristicUuid == BLEConfig.VOICE_NOTIFY_CHARACTERISTIC_UUID
+                    ) {
 
                         if (status == BluetoothGatt.GATT_SUCCESS) {
                             Log.d("BLE", "Notifications successfully enabled")

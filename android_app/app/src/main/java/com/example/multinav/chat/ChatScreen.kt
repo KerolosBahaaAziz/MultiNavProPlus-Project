@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.multinav.model.AudioRecorder
-import com.example.multinav.model.BluetoothService
+import com.example.multinav.model.bluetooth_service.BluetoothService
 import com.example.multinav.R
 import java.io.File
 import java.io.FileOutputStream

@@ -5,9 +5,9 @@ package com.example.multinav.bluetooth
     import androidx.lifecycle.ViewModel
     import androidx.lifecycle.ViewModelProvider
     import androidx.lifecycle.viewModelScope
-    import com.example.multinav.model.BluetoothDeviceData
-    import com.example.multinav.model.BluetoothService
-    import com.example.multinav.model.BluetoothUiState
+    import com.example.multinav.model.bluetooth_service.BluetoothDeviceData
+    import com.example.multinav.model.bluetooth_service.BluetoothService
+    import com.example.multinav.model.bluetooth_service.BluetoothUiState
     import kotlinx.coroutines.Job
     import kotlinx.coroutines.TimeoutCancellationException
     import kotlinx.coroutines.delay

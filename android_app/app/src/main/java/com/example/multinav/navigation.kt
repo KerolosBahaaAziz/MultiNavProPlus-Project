@@ -5,6 +5,10 @@ import ActionsAndDelaysViewModel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -50,6 +54,7 @@ import com.example.multinav.sign_up.SignUpScreen
 import com.example.multinav.splash_screen.SplashScreen
 import com.example.multinav.task_actions.TaskActionsScreen
 import com.example.multinav.tasks_list.TaskSListScreen
+import com.example.multinav.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.delay
@@ -65,9 +70,12 @@ sealed class Screen(
     data object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
     }
-    data object JoyStick : Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) {
+
+    data object JoyStick :
+        Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) {
         fun createRoute(deviceAddress: String) = "joystick/$deviceAddress"
     }
+
     data object Login : Screen("login")
     data object SignUp : Screen("signup")
     data object ActionsAndDelays : Screen("actions_delays")
@@ -98,10 +106,16 @@ fun Navigation(
     // Extract the base route for Chat to compare correctly
     val chatBaseRoute = Screen.Chat.route.substringBefore("/{deviceAddress}")
     val shouldShowNavBar = currentRoute !=
-        null && currentRoute != Screen.Splash.route &&
-            currentRoute !=  chatBaseRoute && currentRoute != Screen.Login.route &&
+            null && currentRoute != Screen.Splash.route &&
+            currentRoute != chatBaseRoute && currentRoute != Screen.Login.route &&
             currentRoute != Screen.SignUp.route &&
             currentRoute != Screen.TasksList.route
+
+    val gradientColors = listOf(
+        Color(0xFF233992),
+        Color(0xFFA030C7),
+        Color(0xFF1C0090)
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -111,6 +125,18 @@ fun Navigation(
                 enter = slideInVertically(initialOffsetY = { it }),
                 exit = slideOutVertically(targetOffsetY = { it })
             ) {
+                // Wrapper Box for the navigation bar with gradient background
+                Box(
+                    modifier = Modifier
+                        .height(56.dp)
+                        .fillMaxWidth()
+                ) {
+                    // Apply gradient background to the entire nav bar
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(brush = AppTheme.horizontalGradient)
+                    )
                 NavigationBar(
                     modifier = Modifier.height(56.dp),
                     containerColor = MaterialTheme.colorScheme.primary
@@ -138,11 +164,16 @@ fun Navigation(
                                 onClick = {
                                     if (screen.route == Screen.JoyStick.route) {
                                         // First, check if we're already connected to a device
-                                        val connectedDeviceAddress = bluetoothService.getConnectedDeviceAddress()
+                                        val connectedDeviceAddress =
+                                            bluetoothService.getConnectedDeviceAddress()
 
                                         if (connectedDeviceAddress != null) {
                                             // We have a connected device - use its address
-                                            navController.navigate(Screen.JoyStick.createRoute(connectedDeviceAddress)) {
+                                            navController.navigate(
+                                                Screen.JoyStick.createRoute(
+                                                    connectedDeviceAddress
+                                                )
+                                            ) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
                                                 }
@@ -151,14 +182,19 @@ fun Navigation(
                                             }
                                         } else {
                                             // Find a device that's marked as connected in the UI state
-                                            val connectedDevice = bluetoothViewModel.uiState.value.let { state ->
-                                                state.pairedDevices.find { it.isConnected }
-                                                    ?: state.scannedDevices.find { it.isConnected }
-                                            }
+                                            val connectedDevice =
+                                                bluetoothViewModel.uiState.value.let { state ->
+                                                    state.pairedDevices.find { it.isConnected }
+                                                        ?: state.scannedDevices.find { it.isConnected }
+                                                }
 
                                             if (connectedDevice != null) {
                                                 // Navigate with the connected device from UI state
-                                                navController.navigate(Screen.JoyStick.createRoute(connectedDevice.address)) {
+                                                navController.navigate(
+                                                    Screen.JoyStick.createRoute(
+                                                        connectedDevice.address
+                                                    )
+                                                ) {
                                                     popUpTo(navController.graph.startDestinationId) {
                                                         saveState = true
                                                     }
@@ -202,12 +238,13 @@ fun Navigation(
                 SplashScreen()
                 LaunchedEffect(Unit) {
                     delay(2000L) // Delay for 2 seconds
-                    val nextRoute = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
+                    val nextRoute =
+                        if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
 
-                        Screen.DeviceList.route
-                    } else {
-                        Screen.Login.route
-                    }
+                            Screen.DeviceList.route
+                        } else {
+                            Screen.Login.route
+                        }
                     navController.navigate(nextRoute) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
@@ -306,7 +343,7 @@ fun Navigation(
                     taskTitle = backStackEntry.arguments?.getString("taskTitle") ?: "",
                     taskId = backStackEntry.arguments?.getInt("taskId") ?: 0
                 )
+            }
         }
     }
-}
 }

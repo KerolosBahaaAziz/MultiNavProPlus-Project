@@ -8,8 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.multinav.model.AudioRecorder
-import com.example.multinav.model.BluetoothService
-import com.example.multinav.model.BluetoothService.*
+import com.example.multinav.model.bluetooth_service.BluetoothService
+import com.example.multinav.model.bluetooth_service.BluetoothService.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
