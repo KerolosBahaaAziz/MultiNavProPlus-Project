@@ -210,6 +210,19 @@ fun Navigation(
                                                         duration = SnackbarDuration.Short
                                                     )
                                                 }
+                                                coroutineScope.launch {  // Navigate with the connected device from UI state
+                                                    navController.navigate(
+                                                        Screen.JoyStick.createRoute(
+                                                            "placeholder_address"
+                                                        )
+                                                    ) {
+                                                        popUpTo(navController.graph.startDestinationId) {
+                                                            saveState = true
+                                                        }
+                                                        launchSingleTop = true
+                                                        restoreState = true
+                                                    }
+                                                }
                                             }
                                         }
                                     } else {
