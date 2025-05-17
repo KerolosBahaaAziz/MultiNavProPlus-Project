@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -139,7 +140,7 @@ fun Navigation(
                     )
                 NavigationBar(
                     modifier = Modifier.height(56.dp),
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = Color.Transparent // Make container transparent
                 ) {
                     val tabItems = listOf(Screen.JoyStick, Screen.DeviceList)
                     tabItems.forEach { screen ->
@@ -150,7 +151,7 @@ fun Navigation(
                                         painter = painterResource(id = screen.icon),
                                         contentDescription = screen.label,
                                         modifier = Modifier.size(20.dp),
-                                        tint = Color.White
+                                        tint = AppTheme.onGradientColor // Use theme constant for consistent coloring
                                     )
                                 },
                                 label = {
@@ -221,10 +222,18 @@ fun Navigation(
                                             restoreState = true
                                         }
                                     }
-                                }
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = AppTheme.onGradientColor,
+                                    unselectedIconColor = AppTheme.onGradientColorMuted,
+                                    selectedTextColor = AppTheme.onGradientColor,
+                                    unselectedTextColor = AppTheme.onGradientColorMuted,
+                                    indicatorColor = AppTheme.selectionOverlay
+                                )
                             )
                         }
                     }
+                }
                 }
             }
         }
