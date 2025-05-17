@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -27,6 +28,7 @@ android {
                 "proguard-rules.pro"
             )
         }
+
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -39,8 +41,27 @@ android {
         compose = true
     }
 }
+//
+//repositories {
+//    flatDir {
+//        dirs("libs") // Look for AAR files in app/libs
+//    }
+//    google()
+//    mavenCentral()
+//}
 
 dependencies {
+
+    val lottieVersion = "6.0.0"
+    implementation("com.airbnb.android:lottie-compose:$lottieVersion")
+
+    val room_version = "2.7.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
+
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1") // Or the latest version
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-auth")
     implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
@@ -68,4 +89,8 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
+    implementation(files("libs/heresdk-explore-android-4.22.2.0.186672.aar")) // Direct AAR reference
+    implementation("com.google.android.gms:play-services-location:21.3.0") // Corrected syntax
+// implementation ("com.here.sdk:explore:4.22.2.0")
+    implementation ("com.google.accompanist:accompanist-swiperefresh:0.27.0")
 }

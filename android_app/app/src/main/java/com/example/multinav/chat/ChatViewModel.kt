@@ -1,19 +1,15 @@
 package com.example.multinav.chat
 
-import android.annotation.SuppressLint
-import android.bluetooth.BluetoothDevice
 import android.media.MediaRecorder
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.multinav.AudioRecorder
-import com.example.multinav.BluetoothService
-import com.example.multinav.BluetoothService.*
+import com.example.multinav.model.AudioRecorder
+import com.example.multinav.model.bluetooth_service.BluetoothService
+import com.example.multinav.model.bluetooth_service.BluetoothService.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,8 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileInputStream
-import java.nio.file.Files.delete
 
 sealed class Message {
     data class Text(

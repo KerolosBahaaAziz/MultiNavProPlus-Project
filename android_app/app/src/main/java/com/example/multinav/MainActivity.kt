@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.multinav
 
 import android.os.Bundle
@@ -13,10 +15,14 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
-import com.example.multinav.login_screen.LoginScreen
-import com.example.multinav.sing_up.SingUpScreen
+import com.example.multinav.model.AudioRecorder
+import com.example.multinav.model.bluetooth_service.BluetoothService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.here.sdk.core.engine.AuthenticationMode
+import com.here.sdk.core.engine.SDKNativeEngine
+import com.here.sdk.core.engine.SDKOptions
+import com.here.sdk.core.errors.InstantiationErrorException
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
@@ -50,7 +56,33 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
         val auth = FirebaseAuth.getInstance()
-        val database : FirebaseDatabase = FirebaseDatabase.getInstance()
+        val database = FirebaseDatabase.getInstance()
+
+// Initialize HERE SDK with accessKeyId and accessKeySecret
+        val accessKeyId = getString(R.string.here_access_key_id)
+        val accessKeySecret = getString(R.string.here_access_key_secret)
+        val authenticationMode = AuthenticationMode.withKeySecret(accessKeyId, accessKeySecret)
+        val sdkOptions = SDKOptions(authenticationMode).apply {
+            cachePath = "${filesDir}/here_sdk_cache"
+        }
+        try {
+            SDKNativeEngine.makeSharedInstance(this, sdkOptions)
+            Log.i("MainActivity", "HERE SDK initialized successfully")
+        } catch (e: InstantiationErrorException) {
+            Log.e("MainActivity", "Failed to initialize HERE SDK: ${e.message}")
+            throw RuntimeException("HERE SDK initialization failed", e)
+        }
+
+        val user = FirebaseAuth.getInstance().currentUser
+//         val email =user?.email
+//        val Uid = user?.uid
+//        Log.d("email","Email : $email")
+//        Log.d("email","uid : $Uid")
+        val startDestination = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
+            Screen.DeviceList.route // Navigate to main screen if signed in and email verified
+        } else {
+            Screen.Login.route // Navigate to login screen otherwise
+             }
         setContent {
             MultiNavTheme {
           //     SingUpScreen(auth = auth)
@@ -58,7 +90,8 @@ class MainActivity : ComponentActivity() {
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
-                    startDestination = "login")
+                    startDestination = startDestination
+                )
             }
         }
     }
@@ -94,5 +127,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         bluetoothService.disconnect()
+        // Clean up HERE SDK
+        SDKNativeEngine.getSharedInstance()?.dispose()
     }
 }
