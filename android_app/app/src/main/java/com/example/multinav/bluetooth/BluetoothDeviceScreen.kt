@@ -197,7 +197,11 @@ fun BluetoothDeviceScreen(
                                             },
                                             isFromPairedList = false
                                         )
-                                    }
+                                    },
+                                    onDisconnect = if (device.isConnected) {
+                                        // Only provide disconnect callback if device is connected
+                                        { bluetoothViewModel.disconnectDevice(device) }
+                                    } else null
                                 )
                             }
                         }
@@ -250,7 +254,9 @@ fun BluetoothDeviceScreen(
     @Composable
     private fun DeviceItem(
         device: BluetoothDeviceData,
-        onClick: () -> Unit
+        onClick: () -> Unit,
+        onDisconnect: (() -> Unit)? = null // New parameter for disconnect callback
+
     ) {
         Card(
             onClick = onClick,
@@ -258,8 +264,9 @@ fun BluetoothDeviceScreen(
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (device.isConnected)
+                containerColor = if (device.isConnected) {
                     MaterialTheme.colorScheme.primaryContainer
+                }
                 else
                     MaterialTheme.colorScheme.surface
             )
@@ -289,11 +296,37 @@ fun BluetoothDeviceScreen(
                         )
                     }
                 }
-                if (device.isConnected) {
-                    Text(
-                        text = "Connected",
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                // Connection status and disconnect button
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (device.isConnected) {
+                        // Connection status
+                        Text(
+                            text = "Connected",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+
+                        // Disconnect button - only show if connected and callback provided
+                        if (onDisconnect != null) {
+                            IconButton(
+                                onClick = onDisconnect,
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor =AppTheme.gradientColors[1],
+                                    contentColor = Color.White
+
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Disconnect",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

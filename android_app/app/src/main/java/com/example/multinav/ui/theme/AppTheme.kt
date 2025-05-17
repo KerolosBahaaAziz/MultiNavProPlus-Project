@@ -23,6 +23,8 @@ object AppTheme {
         Color(0xFF1C0090)
     )
 
+val appColor = Color(0xFF9375A6)
+
     /**
      * Top app bar gradient - blue teal gradient as shown in screenshot
      */
