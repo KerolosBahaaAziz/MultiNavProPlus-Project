@@ -373,7 +373,8 @@ fun BluetoothDeviceScreen(
                     LinearProgressIndicator(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp)
+                            .padding(bottom = 16.dp),
+                        color = AppTheme.gradientColors[1]
                     )
                 }
 

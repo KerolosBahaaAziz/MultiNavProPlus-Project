@@ -248,9 +248,9 @@ class BluetoothService(private val context: Context) {
             _scannedDevicesFromBle.value = devices
 
             // Log the parsed devices
-            devices.forEach { device ->
-                Log.d("BLE", "Found device via BLE module: ${device.name} (${device.address})")
-            }
+//            devices.forEach { device ->
+//                Log.d("BLE", "Found device via BLE module: ${device.name} (${device.address})")
+//            }
 
             // Clear buffer for next scan
             deviceListBuffer.clear()
@@ -402,11 +402,12 @@ class BluetoothService(private val context: Context) {
             return false
         }
 
-        // Write the index to B_STATE characteristic
-        // Convert the index to ASCII character (e.g., '0', '1', etc.)
-        val indexChar = index.toString()[0]
-        bStateChar.value = indexChar.toString().toByteArray(Charsets.UTF_8)
+        // Create a byte array with a single byte containing the index value
+        // This will send the raw byte value (e.g., 0x00, 0x01, 0x02) instead of ASCII
+        val byteValue = byteArrayOf(index.toByte())
+        bStateChar.value = byteValue
 
+        // Write the value to the characteristic
         val writeSuccess = gattClient?.writeCharacteristic(bStateChar) ?: false
 
         if (!writeSuccess) {
@@ -414,7 +415,7 @@ class BluetoothService(private val context: Context) {
             return false
         }
 
-        Log.d("BLEList", "Sent connect command '$indexChar' to BLE module")
+        Log.d("BLEList", "Sent connect command with raw byte value: 0x${String.format("%02X", index)} to BLE module")
         return true
     }
 
@@ -634,7 +635,7 @@ class BluetoothService(private val context: Context) {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val device = result.device
             scanResults[device.address] = device
-            Log.d("BLE", "Found device: ${device.name ?: "Unknown"} (${device.address})")
+          //  Log.d("BLE", "Found device: ${device.name ?: "Unknown"} (${device.address})")
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -875,10 +876,7 @@ class BluetoothService(private val context: Context) {
                 val rssi = result.rssi
                 // Log all service UUIDs to debug
                 val serviceUuids = result.scanRecord?.serviceUuids?.joinToString() ?: "None"
-                Log.d(
-                    "BLE",
-                    "Found device: ${device.name} (${device.address}), RSSI: $rssi, Service UUIDs: $serviceUuids"
-                )
+               // Log.d("BLE", "Found device: ${device.name} (${device.address}), RSSI: $rssi, Service UUIDs: $serviceUuids" )
                 // Still classify based on expected UUIDs for UI purposes
                 val isMobileDevice =
                     result.scanRecord?.serviceUuids?.contains(ParcelUuid(BLEConfig.CHAT_SERVICE_UUID)) == true
@@ -1336,10 +1334,10 @@ class BluetoothService(private val context: Context) {
         ) {
             try {
                 val deviceAddress = gatt.device?.address ?: "Unknown"
-                Log.d("BLE", "Received notification from ${deviceAddress} on ${characteristic.uuid}")
+                //Log.d("BLE", "Received notification from ${deviceAddress} on ${characteristic.uuid}")
 
                 val hexMessage = ByteUtils.bytesToHex(value)
-                Log.d("BLE", "Raw hex data: $hexMessage")
+              //  Log.d("BLE", "Raw hex data: $hexMessage")
 
                 // Handle B_STATE characteristic - Check for 'R' indicating list is ready
                 if (characteristic.uuid == BLEConfig.B_STATE_CHARACTERISTIC_UUID) {
