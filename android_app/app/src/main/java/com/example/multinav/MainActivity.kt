@@ -15,6 +15,8 @@ import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import com.example.multinav.model.AudioRecorder
+import com.example.multinav.model.bluetooth_service.BluetoothService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.here.sdk.core.engine.AuthenticationMode
