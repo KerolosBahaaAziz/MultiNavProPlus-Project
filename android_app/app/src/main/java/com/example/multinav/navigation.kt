@@ -241,7 +241,7 @@ fun Navigation(
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding) .fillMaxSize()
         ) {
             composable(Screen.Splash.route) {
                 SplashScreen()
