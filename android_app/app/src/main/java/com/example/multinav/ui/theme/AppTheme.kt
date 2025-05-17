@@ -24,6 +24,45 @@ object AppTheme {
     )
 
     /**
+     * Top app bar gradient - blue teal gradient as shown in screenshot
+     */
+    val topAppBarGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF1A6B87),  // Darker teal blue
+            Color(0xFF2980A0)   // Lighter teal blue
+        )
+    )
+
+    /**
+     * Button gradient - darker blue gradient as shown in screenshot
+     */
+    val buttonGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF1A6587),  // Darker blue
+            Color(0xFF2776A0)   // Medium blue
+        )
+    )
+
+    /**
+     * Bottom navigation gradient - purple-blue gradient as shown in screenshot
+     */
+    val bottomNavGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF261489),  // Deep blue
+            Color(0xFF512DA8)   // Purple
+        )
+    )
+
+    /**
+     * Error message gradient (for the red notification at bottom)
+     */
+    val errorGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFFFF9A9A),  // Light red
+            Color(0xFFFFD6D6)   // Very light red
+        )
+    )
+    /**
      * Pre-defined gradient brushes for quick access
      */
     val horizontalGradient = Brush.horizontalGradient(colors = gradientColors)
