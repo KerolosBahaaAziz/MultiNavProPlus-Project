@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.example.multinav.chat.Message
 import com.example.multinav.utils.ByteUtils
 import com.example.multinav.utils.ByteUtils.bytesToFloats
+import com.example.multinav.utils.ByteUtils.bytesToHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -259,28 +260,27 @@ class BluetoothService(private val context: Context) {
         }
     }
 
+    // Simple function to process data received from the BLE module
     private fun processDeviceListData(value: ByteArray) {
         try {
             // Convert the received bytes to a string
             val stringData = String(value, Charsets.UTF_8)
-            Log.d("BLE", "Received data: $stringData")
+            Log.d("BLE", "Received data (hex): ${bytesToHex(value)}") // Add hex logging
+            Log.d("BLE", "Received data (string): $stringData")
 
             // Append to our buffer
             deviceListBuffer.append(stringData)
 
-            // Log the current buffer state
-            Log.d("BLE", "Current buffer: $deviceListBuffer")
-
-            // Check if we've received the end marker ('\0')
-            if (stringData.contains('\u0000')) {
-                Log.d("BLE", "End of list detected (null terminator)")
+            // Check if we've received the end marker ('#')
+            if (stringData.contains('#') || stringData.contains('\u0000') ) {
+                Log.d("BLE", "End of list detected (#)")
                 _isScanning.value = false
                 scanTimeoutJob?.cancel()
 
                 // Process the complete list
                 publishDeviceList()
             } else {
-                // Even if we don't have the complete list yet, publish what we have so far
+                // Still scanning, update with what we have so far
                 publishDeviceList()
             }
         } catch (e: Exception) {
@@ -288,21 +288,29 @@ class BluetoothService(private val context: Context) {
         }
     }
 
+    // Very simple function to parse and publish the device list
     private fun publishDeviceList() {
         try {
-            // Get the raw data
+            // Get the raw buffer data
             val data = deviceListBuffer.toString()
+            Log.d("BLE", "Processing buffer: $data")
 
-            // Split by newlines - this is the key part
-            val deviceNames = data.split('\n')
-                .map { it.trim() }
-                .filter { it.isNotEmpty() } // Only filter empty lines
-                .distinct() // Remove duplicates
+            // Skip the first line (number of devices)
+            val lines = data.split('\n')
 
-            Log.d("BLE", "Found ${deviceNames.size} devices: $deviceNames")
+            // Get all lines except the first (which contains the count)
+            val deviceNames = if (lines.size > 1) lines.drop(1) else emptyList()
+
+            // Clean up the device names
+            val cleanedNames = deviceNames
+               // .map { it.trim() }
+             //   .filter { it.isNotEmpty() && !it.contains('#') } // Remove empty lines and lines with '#'
+              //  .distinct() // Remove duplicates
+
+            Log.d("BLE", "Found ${cleanedNames.size} device names: $cleanedNames")
 
             // Create device objects
-            val devices = deviceNames.mapIndexed { index, name ->
+            val devices = cleanedNames.mapIndexed { index, name ->
                 BluetoothDeviceData(
                     name = name,
                     address = "BLE_DEVICE_$index",
@@ -319,7 +327,7 @@ class BluetoothService(private val context: Context) {
                 Log.d("BLE", "Published ${devices.size} devices to UI")
             }
 
-            // If scanning is done, clear the buffer
+            // If scanning is complete, clear the buffer
             if (!_isScanning.value) {
                 deviceListBuffer.clear()
                 Log.d("BLE", "Cleared buffer after scan completion")
