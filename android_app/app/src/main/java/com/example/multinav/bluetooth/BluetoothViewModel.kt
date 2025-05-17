@@ -14,6 +14,7 @@ package com.example.multinav.bluetooth
     import kotlinx.coroutines.flow.MutableStateFlow
     import kotlinx.coroutines.flow.StateFlow
     import kotlinx.coroutines.flow.collectLatest
+    import kotlinx.coroutines.flow.takeWhile
     import kotlinx.coroutines.flow.update
     import kotlinx.coroutines.isActive
     import kotlinx.coroutines.launch
@@ -160,7 +161,7 @@ class BluetoothViewModel(
 
         // Immediately update UI to show scanning state
         _uiState.update { it.copy(
-            isBleModuleScanning = true,  // Use the specific state
+            isBleModuleScanning = true,
             statusMessage = "Starting scan...",
             scanCompleted = false
         )}
@@ -169,40 +170,37 @@ class BluetoothViewModel(
             try {
                 val success = bluetoothService.requestBleModuleScan()
 
-                if (success) {
-                    Log.d("BLEList", "BLE module scan request successful")
-                } else {
+                if (!success) {
                     Log.e("BLEList", "BLE module scan request failed")
                     _uiState.update { it.copy(
-                        isBleModuleScanning = false,  // Update the specific state
+                        isBleModuleScanning = false,
                         errorMessage = "Failed to start scan",
                         statusMessage = "Scan failed to start",
                         scanCompleted = true
                     )}
+                    return@launch
                 }
 
-                // Also collect the isScanning state from the service
-                bluetoothService.isScanningState.collect { isScanning ->
-                    _uiState.update { it.copy(
-                        isBleModuleScanning = isScanning  // Update the specific state
-                    )}
+                Log.d("BLEList", "BLE module scan request successful")
 
-                    if (!isScanning) {
-                        // Scanning completed
-                        _uiState.update { it.copy(
-                            scanCompleted = true,
-                            statusMessage = if (it.scannedDevicesFromBle.isEmpty())
-                                "No devices found"
-                            else
-                                "Found ${it.scannedDevicesFromBle.size} devices"
-                        )}
-                        return@collect
-                    }
-                }
+                // Use takeWhile to automatically complete when scan is done
+                bluetoothService.isScanningState
+                    .takeWhile { isScanning -> isScanning }  // Collection ends when isScanning becomes false
+                    .collect { /* just wait while scanning */ }
+
+                // This code will execute after scanning completes
+                _uiState.update { it.copy(
+                    isBleModuleScanning = false,
+                    scanCompleted = true,
+                    statusMessage = if (it.scannedDevicesFromBle.isEmpty())
+                        "No devices found"
+                    else
+                        "Found ${it.scannedDevicesFromBle.size} devices"
+                )}
             } catch (e: Exception) {
                 Log.e("BLEList", "Error requesting BLE module scan", e)
                 _uiState.update { it.copy(
-                    isBleModuleScanning = false,  // Update the specific state
+                    isBleModuleScanning = false,
                     errorMessage = "Error: ${e.message}",
                     statusMessage = "Scan error occurred",
                     scanCompleted = true
@@ -220,7 +218,7 @@ class BluetoothViewModel(
         viewModelScope.launch {
             try {
                 // Get the current scanned devices list
-                val devices = _uiState.value.scannedDevices
+                val devices = _uiState.value.scannedDevicesFromBle //scannedDevices
 
                 // Validate index
                 if (index < 0 || index >= devices.size) {
