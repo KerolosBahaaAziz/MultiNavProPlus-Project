@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model.bluetooth_service
 
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
@@ -28,6 +28,31 @@ object BLEConfig {
 
     // Client config descriptor UUID (standard for notifications)
     val CLIENT_CONFIG_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB")
+
+    // Base UUID prefix for BLE PRO V2
+    private const val BASE_UUID_PREFIX = "bc9a-7856-3412-7856-341278563412"
+
+
+    // BLE PRO V2 specific UUIDs
+    // 1. Sensor Service
+    val SENSOR_SERVICE_UUID: UUID = UUID.fromString("0020$BASE_UUID_PREFIX")
+
+    val GYROSCOPE_CHARACTERISTIC_UUID: UUID = UUID.fromString("${BASE_UUID_PREFIX}2101")
+    val ACCELEROMETER_CHARACTERISTIC_UUID: UUID = UUID.fromString("${BASE_UUID_PREFIX}2102")
+    val MAGNETOMETER_CHARACTERISTIC_UUID: UUID = UUID.fromString("${BASE_UUID_PREFIX}2002")
+    val AIR_PRESSURE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0320$BASE_UUID_PREFIX")
+    val TEMPERATURE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0122$BASE_UUID_PREFIX")
+    val HUMIDITY_CHARACTERISTIC_UUID: UUID = UUID.fromString("0222$BASE_UUID_PREFIX")
+    val AIR_QUALITY_CHARACTERISTIC_UUID: UUID = UUID.fromString("0320$BASE_UUID_PREFIX")
+
+    // 2. Motor Service
+    val MOTOR_SERVICE_UUID: UUID = UUID.fromString("0030$BASE_UUID_PREFIX")
+    val CONTROL_COMMAND_CHARACTERISTIC_UUID: UUID = UUID.fromString("0130$BASE_UUID_PREFIX")
+
+    // 3. Bluetooth Connection Service - IMPORTANT FOR YOUR USE CASE
+    val BLIST_CONNECTION_SERVICE_UUID: UUID = UUID.fromString("0040$BASE_UUID_PREFIX")
+    val B_STATE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0140$BASE_UUID_PREFIX")
+    val B_LIST_CHARACTERISTIC_UUID: UUID = UUID.fromString("1545515f-3446-6154-2135-124513562351")
 
     // Function to create GATT service for mobile-to-mobile communication
     fun createChatService(): BluetoothGattService {

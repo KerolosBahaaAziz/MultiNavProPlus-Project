@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model.bluetooth_service
 
 // Add ConnectionState sealed class
 sealed class ConnectionState {

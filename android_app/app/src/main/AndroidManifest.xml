@@ -31,16 +31,31 @@
         android:theme="@style/Theme.MultiNav"
         android:name=".MyApplication"
         tools:targetApi="31">
+
+        <!-- Add this meta-data for cutout support -->
+        <meta-data
+            android:name="android:windowLayoutInDisplayCutoutMode"
+            android:value="shortEdges" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.MultiNav"
             android:configChanges="orientation|screenSize"> <!-- Added to handle rotation -->
+
+
+            <!-- Add this to support fullscreen mode -->
+            <meta-data
+                android:name="android:windowLayoutInDisplayCutoutMode"
+                android:value="shortEdges" />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+
         </activity>
 
 
