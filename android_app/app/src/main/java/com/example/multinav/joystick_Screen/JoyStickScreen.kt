@@ -400,7 +400,7 @@ fun JoyStickScreen(
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
-                            .padding(20.dp),
+                            .padding(25.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -461,7 +461,7 @@ fun JoyStickScreen(
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(14.dp),
+                            .padding(25.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
