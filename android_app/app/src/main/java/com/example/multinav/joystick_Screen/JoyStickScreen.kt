@@ -400,7 +400,7 @@ fun JoyStickScreen(
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
-                            .padding(8.dp),
+                            .padding(20.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -414,7 +414,7 @@ fun JoyStickScreen(
                             contentDescription = "Up",
                             onCircleButtonClick = { viewModel.sendDirectionCommand("UP") }
                         )
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(10.dp))
                         Row {
                             CircleIconButton(
                                 icon = {
@@ -428,7 +428,7 @@ fun JoyStickScreen(
                                 contentDescription = "Left",
                                 onCircleButtonClick = { viewModel.sendDirectionCommand("LEFT") }
                             )
-                            Spacer(Modifier.width(32.dp))
+                            Spacer(Modifier.width(42.dp))
                             CircleIconButton(
                                 icon = {
                                     Icon(
@@ -461,7 +461,7 @@ fun JoyStickScreen(
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(8.dp),
+                            .padding(14.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -478,7 +478,8 @@ fun JoyStickScreen(
                             contentDescription = "Triangle",
                             onCircleButtonClick = { viewModel.sendActionCommand("TRIANGLE") }
                         )
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(10.dp))
+
                         Row {
                             CircleIconButton(
                                 icon = {
@@ -492,7 +493,7 @@ fun JoyStickScreen(
                                 contentDescription = "Square",
                                 onCircleButtonClick = { viewModel.sendActionCommand("SQUARE") }
                             )
-                            Spacer(Modifier.width(32.dp))
+                            Spacer(Modifier.width(42.dp))
                             CircleIconButton(
                                 icon = {
                                     Icon(
