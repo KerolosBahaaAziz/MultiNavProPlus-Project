@@ -11,6 +11,7 @@ import com.example.multinav.ui.theme.MultiNavTheme
 import android.Manifest
 import android.os.Build
 import android.util.Log
+import androidx.core.view.WindowCompat
 import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
 import com.example.multinav.chat.ChatViewModel
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+      //  WindowCompat.setDecorFitsSystemWindows(window,false)
         checkAndRequestPermissions()
         val auth = FirebaseAuth.getInstance()
         val database = FirebaseDatabase.getInstance()

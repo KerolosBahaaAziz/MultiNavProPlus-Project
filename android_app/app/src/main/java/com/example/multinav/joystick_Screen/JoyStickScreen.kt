@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,6 +57,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.desgin.constants.Modes
@@ -108,7 +110,7 @@ fun CircleIconButton(
     }
 }
 
-@SuppressLint("MissingPermission")
+@SuppressLint("MissingPermission", "NewApi")
 @Preview(showSystemUi = true)
 @Composable
 fun JoyStickScreen(
@@ -213,8 +215,43 @@ fun JoyStickScreen(
             }
         }
     }
+
     DisposableEffect(Unit) {
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        activity?.let { act ->
+            // Set landscape orientation
+            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+
+            // Enable edge-to-edge display
+            WindowCompat.setDecorFitsSystemWindows(act.window, false)
+
+            // Make window fullscreen, extend into cutout area, and hide status bar
+            act.window.apply {
+                attributes.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+
+                setFlags(
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN or  // Hide status bar
+                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                )
+            }
+        }
+
+        onDispose {
+            activity?.let { act ->
+                // Reset orientation and window flags
+                act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                WindowCompat.setDecorFitsSystemWindows(act.window, true)
+                act.window.clearFlags(
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                )
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+       // activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
         // Start location updates if permission is granted
         if (ContextCompat.checkSelfPermission(
@@ -290,13 +327,16 @@ fun JoyStickScreen(
             mapView?.onPause()
             mapView?.onDestroy()
             mapView = null
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+          //  activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
 
          Scaffold(
-                containerColor = Color.Transparent, // Make scaffold background transparent
+             contentWindowInsets = WindowInsets(0.dp , 0.dp , 0.dp , 0.dp),
+             //   containerColor = Color.Transparent, // Make scaffold background transparent
         modifier = Modifier.fillMaxSize()
+
+          //  .systemBarsPadding()
         ) { innerPadding ->
             Column(
                 modifier = Modifier
@@ -308,13 +348,13 @@ fun JoyStickScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp)
+                        .height(340.dp)
                 ) {
                     // MapView
                     AndroidView(
                         factory = { mapView!! },
                         update = { view -> view.onResume() },
-                        modifier = Modifier.matchParentSize()
+                        modifier = Modifier.matchParentSize().fillMaxSize()
                     )
 
 

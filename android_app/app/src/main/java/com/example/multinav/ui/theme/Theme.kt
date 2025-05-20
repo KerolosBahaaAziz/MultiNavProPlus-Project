@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.multinav.ui.theme
 
 import android.app.Activity
@@ -10,13 +12,18 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 
 // Define basic colors at the file level
 val gradientColors = listOf(
@@ -79,6 +86,7 @@ fun MultiNavTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
+
 
     // Create button colors inside the @Composable function
     val buttonColors = ButtonDefaults.buttonColors(
