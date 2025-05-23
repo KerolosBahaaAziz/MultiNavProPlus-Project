@@ -363,6 +363,7 @@ fun JoyStickScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .padding(4.dp)
                             .align(Alignment.TopCenter),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
@@ -371,6 +372,39 @@ fun JoyStickScreen(
                         BluetoothReaders(humidity, "%", Modifier.weight(1f))
                         BluetoothReaders(pressure, "hPa", Modifier.weight(1f))
                         BluetoothReaders(airQuality, "", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(20.dp))
+
+
+                    // Radio Buttons - Below Joystick, Centered
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top= 50.dp), // Adjust to position above toggle buttons
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+
+                    ) {
+                        RadioButtonMode(
+                            selectedModeState = viewModel.selectedMode,
+                            modeName = Modes.MODE_ONE,
+                            radioButtonColor= gradientColors.get(1)
+
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        RadioButtonMode(
+                            selectedModeState = viewModel.selectedMode,
+                            modeName = Modes.MODE_TWO,
+                            radioButtonColor= gradientColors[1]
+
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        RadioButtonMode(
+                            selectedModeState = viewModel.selectedMode,
+                            modeName = Modes.MODE_THREE,
+                            radioButtonColor= gradientColors[1]
+
+                        )
                     }
 
                     // Joystick - Center
@@ -525,30 +559,7 @@ fun JoyStickScreen(
 
                     }
 
-                    // Radio Buttons - Below Joystick, Centered
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 60.dp), // Adjust to position above toggle buttons
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButtonMode(
-                            selectedModeState = viewModel.selectedMode,
-                            modeName = Modes.MODE_ONE
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        RadioButtonMode(
-                            selectedModeState = viewModel.selectedMode,
-                            modeName = Modes.MODE_TWO
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        RadioButtonMode(
-                            selectedModeState = viewModel.selectedMode,
-                            modeName = Modes.MODE_THREE
-                        )
-                    }
+
 
                     // Toggle Buttons - Bottom Center
                     Row(
