@@ -9,10 +9,10 @@ import SwiftUI
 
 struct HistoryOfCreatedTask: View {
     let taskName: String
-      let items: [ButtonHistoryItem]
+    let items: [ButtonHistoryItem]
       
       var body: some View {
-          VStack {
+          ScrollView {
               Text(taskName)
                   .font(.largeTitle)
                   .padding()

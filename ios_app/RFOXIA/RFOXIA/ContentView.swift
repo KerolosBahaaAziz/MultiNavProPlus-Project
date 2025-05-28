@@ -34,7 +34,7 @@ struct ContentView: View {
         //        DevicesNamesView()
         //            .environment(\.managedObjectContext, viewContext)
         //            .environmentObject(bluetoothManager)
-        DeviceListView()
+        MainTabView()
             .environment(\.managedObjectContext, viewContext)
             .environmentObject(bluetoothManager)
     }
