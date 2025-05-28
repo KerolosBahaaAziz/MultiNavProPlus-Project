@@ -61,5 +61,25 @@ Where `XXXX` is a unique 4-digit hex identifier per service/characteristic.
  - 255byte chars to contorl command
    - 1st byte number of devices
    - rest is devices local name separeted with '\n' and end of the list with '\0'
+ 
 
+ ### 3. RFOXIA CHAT
+
+- **Service UUID**:
+  ```c
+   ABC0
+  ```
+#### chat_write
+ - **Characteristic UUID**:
+    ```c
+    ABC1
+    ```
+ - 50byte chars to write chat(send only)
+   
+ #### chat_read
+ - **Characteristic UUID**:
+    ```c
+    ABC2
+    ```
+ - 50byte chars to read chat(receive only)
 ---
