@@ -11,11 +11,15 @@ import com.example.multinav.ui.theme.MultiNavTheme
 import android.Manifest
 import android.os.Build
 import android.util.Log
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.view.WindowCompat
 import com.example.multinav.bluetooth.BluetoothViewModel
 import com.example.multinav.bluetooth.BluetoothViewModelFactory
+import com.example.multinav.chat.ChatScreen
 import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
+import com.example.multinav.chat.Message
 import com.example.multinav.model.AudioRecorder
 import com.example.multinav.model.bluetooth_service.BluetoothService
 import com.google.firebase.auth.FirebaseAuth
@@ -93,6 +97,12 @@ class MainActivity : ComponentActivity() {
                     auth = auth,
                     startDestination = startDestination
                 )
+//                ChatScreen(
+//                    viewModel = chatViewModel,
+//                    deviceAddress = "MOCK_DEVICE_ADDRESS",
+//                    onNavigateBack = { finish() },
+//                    bluetoothService = bluetoothService // Exit app on back
+//                )
             }
         }
     }
@@ -132,3 +142,4 @@ class MainActivity : ComponentActivity() {
         SDKNativeEngine.getSharedInstance()?.dispose()
     }
 }
+

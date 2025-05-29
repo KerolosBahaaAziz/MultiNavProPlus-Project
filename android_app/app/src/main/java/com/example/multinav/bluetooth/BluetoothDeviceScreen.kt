@@ -161,13 +161,7 @@ fun BluetoothDeviceScreen(
                         }
                     }
 
-                    GradientButton(
-                        text = "Open Bluetooth Settings",
-                        onClick = bluetoothViewModel::openBluetoothSettings,
-                        modifier = Modifier.fillMaxWidth(),
-                        gradientColors = AppTheme.gradientColors
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+              
 
                     GradientButton(
                         text = if (state.isScanning) "Scanning..." else "Scan for BLE Modules",
