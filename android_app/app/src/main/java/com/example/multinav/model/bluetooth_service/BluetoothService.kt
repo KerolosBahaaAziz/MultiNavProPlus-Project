@@ -107,6 +107,9 @@ class BluetoothService(private val context: Context) {
     private val _isScanning = MutableStateFlow(false)
     val isScanningState: StateFlow<Boolean> = _isScanning
 
+    private val _receivedAudioData = MutableStateFlow<ByteArray>(ByteArray(0))
+    val receivedAudioData: StateFlow<ByteArray> = _receivedAudioData.asStateFlow()
+
     @SuppressLint("MissingPermission")
     suspend fun requestBleModuleScan(): Boolean {
         if (!_isConnected.value) {
@@ -2182,24 +2185,41 @@ class BluetoothService(private val context: Context) {
                     return@withContext false
                 }
 
-                // Chunk the audio data if necessary (Bluetooth MTU is typically 20-512 bytes)
-                val mtu = 512 // Adjust based on your device's MTU
+                val audioCharacteristic = gatt?.getService(SERVICE_UUID)
+                    ?.getCharacteristic(AUDIO_CHARACTERISTIC_UUID)
+
+                if (audioCharacteristic == null) {
+                    Log.e("BLE", "Audio characteristic not found")
+                    return@withContext false
+                }
+
+                // Get the actual MTU for this connection
+                val mtu = gatt?.requestMtu(512) ?: 23 // Default BLE MTU is 23
                 val chunkSize = mtu - 3 // Leave room for GATT overhead
                 var offset = 0
 
+                // Send audio data in chunks
                 while (offset < audioBytes.size) {
                     val chunkLength = minOf(chunkSize, audioBytes.size - offset)
                     val chunk = audioBytes.copyOfRange(offset, offset + chunkLength)
-                    val success = sendAsClient(chunk)
+
+                    audioCharacteristic.value = chunk
+                    val success = gatt?.writeCharacteristic(audioCharacteristic) ?: false
+
                     if (!success) {
                         Log.e("BLE", "Failed to send voice message chunk at offset $offset")
                         return@withContext false
                     }
+
                     offset += chunkLength
-                    delay(50) // Small delay to avoid overwhelming the Bluetooth stack
+                    delay(20) // Small delay to avoid overwhelming the Bluetooth stack
                 }
 
-                Log.d("BLE", "Voice message sent successfully, total bytes: ${audioBytes.size}")
+                // Send empty packet to indicate end of transmission (matching iOS)
+                audioCharacteristic.value = ByteArray(0)
+                gatt?.writeCharacteristic(audioCharacteristic)
+
+                Log.d("BLE", "Voice message sent successfully with end marker, total bytes: ${audioBytes.size}")
                 return@withContext true
             } catch (e: Exception) {
                 Log.e("BLE", "Send voice message error", e)
