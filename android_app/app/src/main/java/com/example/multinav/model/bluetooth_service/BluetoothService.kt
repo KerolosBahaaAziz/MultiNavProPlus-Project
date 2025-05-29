@@ -1,5 +1,7 @@
 package com.example.multinav.model.bluetooth_service
 
+
+/*
 import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.bluetooth.le.*
@@ -39,9 +41,6 @@ class BluetoothService(private val context: Context) {
     private val bluetoothAdapter by lazy {
         bluetoothManager?.adapter
     }
-
-    private val prefs = context.getSharedPreferences("BLEPrefs", Context.MODE_PRIVATE)
-
 
     private var gattServer: BluetoothGattServer? = null
     private var gattClient: BluetoothGatt? = null
@@ -2376,3 +2375,4 @@ class BluetoothService(private val context: Context) {
         data class Error(val message: String) : ConnectionStatus()
     }
 }
+*/

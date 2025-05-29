@@ -61,7 +61,6 @@ fun BluetoothDeviceScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isScanning)
 
     val showBottomSheet by bluetoothViewModel.showBottomSheet.collectAsState(initial = false)
-    val isBleModuleScanning by bluetoothViewModel.isBleModuleScanning.collectAsState()
 
     Box(
         modifier = Modifier

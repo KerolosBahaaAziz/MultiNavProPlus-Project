@@ -25,47 +25,25 @@ class BluetoothViewModel(
     val bluetoothService: BluetoothService
 ) : ViewModel() {
     private var deviceConnectionJob: Job? = null
-    private var refreshJob: Job? = null
     private val _uiState = MutableStateFlow(BluetoothUiState())
     val uiState: StateFlow<BluetoothUiState> = _uiState
 
-    // Track BLE module connection state separately
+    // Track BLE module connection state
     private val _bleModuleConnected = MutableStateFlow(false)
     val bleModuleConnected: StateFlow<Boolean> = _bleModuleConnected
 
-    // Add these at the class level with your other state variables
+    // Bottom sheet state
     private val _showBottomSheet = MutableStateFlow(false)
     val showBottomSheet: StateFlow<Boolean> = _showBottomSheet
 
-    // Add this property to track BLE module scanning separately
-    private val _isBleModuleScanning = MutableStateFlow(false)
-    val isBleModuleScanning: StateFlow<Boolean> = _isBleModuleScanning
-
-
-    // Add these controller methods
-    fun showDeviceBottomSheet() {
-        Log.d("BluetoothViewModel", "Showing bottom sheet")
-
-        _showBottomSheet.value = true
-    }
-
-    fun hideDeviceBottomSheet() {
-        _showBottomSheet.value = false
-    }
-
     init {
-        // Monitor Bluetooth state and fetch paired devices when enabled
+        // Monitor Bluetooth state
         viewModelScope.launch {
             bluetoothService.bluetoothState.collectLatest { isEnabled ->
                 Log.d("BluetoothViewModel", "Bluetooth state changed: $isEnabled")
-                _uiState.value = _uiState.value.copy(isBluetoothEnabled = isEnabled)
-                if (isEnabled) {
-                    fetchPairedDevices()
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        pairedDevices = emptyList(),
-                        errorMessage = "Bluetooth is disabled"
-                    )
+                _uiState.update { it.copy(isBluetoothEnabled = isEnabled) }
+                if (!isEnabled) {
+                    _uiState.update { it.copy(errorMessage = "Bluetooth is disabled") }
                     bluetoothService.enableBluetooth()
                 }
             }
@@ -76,71 +54,56 @@ class BluetoothViewModel(
             bluetoothService.connectionStatus.collectLatest { status ->
                 when (status) {
                     is BluetoothService.ConnectionStatus.Connected -> {
-                        val connectedDevice = bluetoothService.getConnectedDevice()
-                        if (connectedDevice != null) {
-                            // Determine if this is the BLE module or another device
-                            // You'd need to set a way to identify your BLE module
-                            _bleModuleConnected.value = isBleModule(connectedDevice)
-                        }
+                        _bleModuleConnected.value = true
                     }
-
                     is BluetoothService.ConnectionStatus.Disconnected -> {
                         _bleModuleConnected.value = false
                     }
-
-                    else -> { /* Other states */
+                    is BluetoothService.ConnectionStatus.Connecting -> {
+                        _uiState.update { it.copy(isConnecting = true) }
+                    }
+                    is BluetoothService.ConnectionStatus.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isConnecting = false,
+                                errorMessage = status.message
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Monitor scanned devices list
+        // Monitor devices from BLE module
         viewModelScope.launch {
-            bluetoothService.scannedDevicesList.collectLatest { devices ->
-                Log.d("BluetoothViewModel", "Received updated device list: ${devices.size} devices")
+            bluetoothService.scannedDevicesFromBle.collect { devices ->
+                Log.d("BLE", "ViewModel received ${devices.size} devices from service")
                 _uiState.update { state ->
                     state.copy(
-                        scannedDevices = devices,
-                        isScanning = false // Turn off scanning indicator when we get results
+                        scannedDevicesFromBle = devices,
+                        statusMessage = if (devices.isNotEmpty())
+                            "Found ${devices.size} devices"
+                        else
+                            state.statusMessage
                     )
                 }
             }
         }
 
-        // Collect and update devices from BLE in real-time
-        viewModelScope.launch {
-            bluetoothService.scannedDevicesFromBle.collect { devices ->
-                Log.d("BLE", "ViewModel received ${devices.size} devices from service")
-
-                if (devices.isNotEmpty()) {
-                    // Always update UI with any devices we've found
-                    _uiState.update { state ->
-                        state.copy(
-                            scannedDevicesFromBle = devices,
-                            // If scanning but we have devices, show a status message
-                            statusMessage = if (state.isScanning)
-                                "Found ${devices.size} devices so far..."
-                            else
-                                "Found ${devices.size} devices"
-                        )
-                    }
-                }
-            }
-        }
-
-        // Collect scanning state
+        // Monitor scanning state
         viewModelScope.launch {
             bluetoothService.isScanningState.collect { isScanning ->
                 _uiState.update { state ->
                     state.copy(
-                        isScanning = isScanning,
-                        // When scanning finishes, update status and scanCompleted flag
-                        statusMessage = if (!isScanning && state.scannedDevicesFromBle.isNotEmpty())
-                            "Scan complete: Found ${state.scannedDevicesFromBle.size} devices"
-                        else if (!isScanning && state.scannedDevicesFromBle.isEmpty())
-                            "No devices found"
-                        else
-                            "Scanning for devices...",
+                        isBleModuleScanning = isScanning,
+                        statusMessage = when {
+                            isScanning -> "Scanning for devices..."
+                            !isScanning && state.scannedDevicesFromBle.isNotEmpty() ->
+                                "Scan complete: Found ${state.scannedDevicesFromBle.size} devices"
+                            !isScanning && state.scannedDevicesFromBle.isEmpty() ->
+                                "No devices found"
+                            else -> state.statusMessage
+                        },
                         scanCompleted = !isScanning
                     )
                 }
@@ -148,96 +111,88 @@ class BluetoothViewModel(
         }
     }
 
-    // Helper to identify the BLE module - customize this based on your needs
-    private fun isBleModule(device: BluetoothDeviceData): Boolean {
-        // Check if this is your BLE module based on name, address, or other criteria
-        return device.name?.contains("BLE", ignoreCase = true) ?: false ||
-                device.address == "00:11:22:33:44:55" // Replace with your module's address
+    fun showDeviceBottomSheet() {
+        Log.d("BluetoothViewModel", "Showing bottom sheet")
+        _showBottomSheet.value = true
     }
 
+    fun hideDeviceBottomSheet() {
+        _showBottomSheet.value = false
+    }
 
     fun requestBleModuleScan() {
-        Log.d("BLEList", "Requesting BLE module scan")
+        Log.d("BLE", "Requesting BLE module scan")
 
-        // Immediately update UI to show scanning state
-        _uiState.update { it.copy(
-            isBleModuleScanning = true,
-            statusMessage = "Starting scan...",
-            scanCompleted = false
-        )}
+        _uiState.update {
+            it.copy(
+                isBleModuleScanning = true,
+                statusMessage = "Starting scan...",
+                scanCompleted = false,
+                scannedDevicesFromBle = emptyList()
+            )
+        }
 
         viewModelScope.launch {
             try {
                 val success = bluetoothService.requestBleModuleScan()
 
                 if (!success) {
-                    Log.e("BLEList", "BLE module scan request failed")
-                    _uiState.update { it.copy(
-                        isBleModuleScanning = false,
-                        errorMessage = "Failed to start scan",
-                        statusMessage = "Scan failed to start",
-                        scanCompleted = true
-                    )}
+                    Log.e("BLE", "BLE module scan request failed")
+                    _uiState.update {
+                        it.copy(
+                            isBleModuleScanning = false,
+                            errorMessage = "Failed to start scan",
+                            statusMessage = "Scan failed to start",
+                            scanCompleted = true
+                        )
+                    }
                     return@launch
                 }
 
-                Log.d("BLEList", "BLE module scan request successful")
-
-                // Use takeWhile to automatically complete when scan is done
+                // Wait for scan to complete
                 bluetoothService.isScanningState
-                    .takeWhile { isScanning -> isScanning }  // Collection ends when isScanning becomes false
-                    .collect { /* just wait while scanning */ }
+                    .takeWhile { isScanning -> isScanning }
+                    .collect { /* just wait */ }
 
-                // This code will execute after scanning completes
-                _uiState.update { it.copy(
-                    isBleModuleScanning = false,
-                    scanCompleted = true,
-                    statusMessage = if (it.scannedDevicesFromBle.isEmpty())
-                        "No devices found"
-                    else
-                        "Found ${it.scannedDevicesFromBle.size} devices"
-                )}
+                // Scan completed
+                _uiState.update {
+                    it.copy(
+                        isBleModuleScanning = false,
+                        scanCompleted = true
+                    )
+                }
             } catch (e: Exception) {
-                Log.e("BLEList", "Error requesting BLE module scan", e)
-                _uiState.update { it.copy(
-                    isBleModuleScanning = false,
-                    errorMessage = "Error: ${e.message}",
-                    statusMessage = "Scan error occurred",
-                    scanCompleted = true
-                )}
+                Log.e("BLE", "Error requesting BLE module scan", e)
+                _uiState.update {
+                    it.copy(
+                        isBleModuleScanning = false,
+                        errorMessage = "Error: ${e.message}",
+                        statusMessage = "Scan error occurred",
+                        scanCompleted = true
+                    )
+                }
             }
         }
     }
-    /**
-     * Connects to a device by index from the bottom sheet and navigates with the correct address
-     */
+
     fun connectToDeviceByIndexAndNavigate(
         index: Int,
         onNavigate: (String) -> Unit
     ) {
         viewModelScope.launch {
             try {
-                // Get the current scanned devices list
-                val devices = _uiState.value.scannedDevicesFromBle //scannedDevices
+                val devices = _uiState.value.scannedDevicesFromBle
 
-                // Validate index
                 if (index < 0 || index >= devices.size) {
                     _uiState.update {
-                        it.copy(
-                            errorMessage = "Invalid device selection"
-                        )
+                        it.copy(errorMessage = "Invalid device selection")
                     }
                     return@launch
                 }
 
-                // Get the device at the selected index
                 val selectedDevice = devices[index]
-                Log.d(
-                    "BLEList",
-                    "Selected device at index $index: ${selectedDevice.name} (${selectedDevice.address})"
-                )
+                Log.d("BLE", "Selected device at index $index: ${selectedDevice.name}")
 
-                // Update UI to show we're connecting
                 _uiState.update {
                     it.copy(
                         isConnecting = true,
@@ -245,34 +200,27 @@ class BluetoothViewModel(
                     )
                 }
 
-                // Connect to the device through the BLE module
                 val success = bluetoothService.connectToDeviceByIndex(index)
 
                 if (success) {
-                    Log.d("BLEList", "Successfully connected to device at index $index")
+                    Log.d("BLE", "Successfully connected to device at index $index")
 
-                    // Update the selected device as connected in the UI
                     _uiState.update { state ->
-                        val updatedDevices = state.scannedDevices.mapIndexed { i, device ->
+                        val updatedDevices = state.scannedDevicesFromBle.mapIndexed { i, device ->
                             if (i == index) device.copy(isConnected = true) else device
                         }
                         state.copy(
                             isConnecting = false,
                             errorMessage = null,
-                            scannedDevices = updatedDevices
+                            scannedDevicesFromBle = updatedDevices
                         )
                     }
 
-                    // Store the device address for later reference
                     bluetoothService.saveLastConnectedAddress(selectedDevice.address)
-
-                    // Hide the bottom sheet
                     hideDeviceBottomSheet()
-
-                    // Navigate to the appropriate screen with the correct address
                     onNavigate(selectedDevice.address)
                 } else {
-                    Log.e("BLEList", "Failed to connect to device at index $index")
+                    Log.e("BLE", "Failed to connect to device at index $index")
                     _uiState.update {
                         it.copy(
                             isConnecting = false,
@@ -281,7 +229,7 @@ class BluetoothViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Log.e("BLEList", "Error connecting to device by index", e)
+                Log.e("BLE", "Error connecting to device by index", e)
                 _uiState.update {
                     it.copy(
                         isConnecting = false,
@@ -292,375 +240,62 @@ class BluetoothViewModel(
         }
     }
 
-
-    private fun fetchPairedDevices() {
+    fun connectToDevice(address: String, onNavigate: () -> Unit) {
         viewModelScope.launch {
             try {
-                val pairedDevices = bluetoothService.getPairedDevices()
-                _uiState.value = _uiState.value.copy(
-                    pairedDevices = pairedDevices,
-                    errorMessage = if (pairedDevices.isEmpty()) "No paired devices found" else null
-                )
-                Log.d("BluetoothViewModel", "Fetched paired devices: $pairedDevices")
-            } catch (e: Exception) {
-                Log.e("BluetoothViewModel", "Error fetching paired devices", e)
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = "Error fetching paired devices: ${e.message}"
-                )
-            }
-        }
-    }
+                _uiState.update { it.copy(isConnecting = true, errorMessage = null) }
 
-    fun refreshDevices() {
-        viewModelScope.launch {
-            if (bluetoothService.isBluetoothEnabled()) {
-                fetchPairedDevices()
-            } else {
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = "Bluetooth is disabled. Please enable it to refresh devices."
-                )
-                bluetoothService.enableBluetooth()
-            }
-        }
-    }
+                withTimeout(10000) {
+                    val success = bluetoothService.connectToDevice(address)
 
-    fun startServer() {
-        viewModelScope.launch {
-            try {
-                stopPeriodicRefresh()
-                bluetoothService.stopScanning()
+                    if (success) {
+                        _uiState.update { it.copy(isConnecting = false) }
 
-                // Add a small delay before starting advertising
-                delay(200)
-
-                bluetoothService.startAdvertising()
-                _uiState.update {
-                    it.copy(
-                        isScanning = false,
-                        errorMessage = null
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e("BluetoothViewModel", "Failed to start server", e)
-                _uiState.update { it.copy(errorMessage = "Failed to start server: ${e.message}") }
-            }
-        }
-    }
-
-
-    @SuppressLint("MissingPermission")
-    fun startScanning() {
-        viewModelScope.launch {
-            try {
-                // Check if location services are enabled
-                if (!bluetoothService.isLocationEnabled()) {
-                    _uiState.update {
-                        it.copy(
-                            isScanning = false,
-                            errorMessage = "Location services are disabled. Please enable location to scan for devices."
-                        )
-                    }
-                    bluetoothService.enableLocation()
-                    return@launch
-                }
-                disconnect()
-
-                // Proceed with scanning if location is enabled
-                Log.d("BluetoothViewModel", "Starting BLE scan...")
-                bluetoothService.stopScanning()
-                Log.d("BluetoothViewModel", "Stopped previous scan")
-                _uiState.update {
-                    Log.d("BluetoothViewModel", "Updating UI state to scanning")
-                    it.copy(
-                        isScanning = true,
-                        scannedDevices = emptyList(),
-                        errorMessage = null
-                    )
-                }
-                bluetoothService.startLeScan { device, rssi, isMobileDevice ->
-                    Log.d(
-                        "BluetoothViewModel",
-                        "Device found - Name: ${device.name ?: "Unknown"}, Address: ${device.address}, RSSI: $rssi, IsMobile: $isMobileDevice"
-                    )
-                    _uiState.update { state ->
-                        val newDevice = BluetoothDeviceData(
-                            name = device.name ?: "Unknown Device",
-                            address = device.address,
-                            rssi = rssi,
-                            isConnected = false,
-                            isMobileDevice = isMobileDevice,
-                            clickCount = 0 // Initialize clickCount
-                        )
-                        if (!state.scannedDevices.any { it.address == newDevice.address }) {
-                            Log.d(
-                                "BluetoothViewModel",
-                                "Adding new device to list: ${newDevice.name}"
+                        // Request scan and show bottom sheet
+                        requestBleModuleScan()
+                        showDeviceBottomSheet()
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isConnecting = false,
+                                errorMessage = "Failed to connect"
                             )
-                            state.copy(scannedDevices = state.scannedDevices + newDevice)
-                        } else {
-                            Log.d("BluetoothViewModel", "Device already in list: ${newDevice.name}")
-                            state
                         }
                     }
                 }
-                Log.d("BluetoothViewModel", "Scan started, waiting 30 seconds...")
-                delay(30000)
-                Log.d("BluetoothViewModel", "30 seconds elapsed, stopping scan")
-                stopScanning()
-            } catch (e: Exception) {
-                Log.e("BluetoothViewModel", "Scan failed with error: ${e.message}", e)
+            } catch (e: TimeoutCancellationException) {
+                Log.e("BluetoothViewModel", "Connection timeout", e)
                 _uiState.update {
                     it.copy(
-                        isScanning = false,
-                        errorMessage = "Scan failed: ${e.message}"
+                        isConnecting = false,
+                        errorMessage = "Connection timeout"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("BluetoothViewModel", "Connection error", e)
+                _uiState.update {
+                    it.copy(
+                        isConnecting = false,
+                        errorMessage = e.message
                     )
                 }
             }
         }
-    }
-
-    fun stopScanning() {
-        viewModelScope.launch {
-            stopPeriodicRefresh()
-            bluetoothService.stopScanning()
-            _uiState.update { it.copy(isScanning = false) }
-        }
-    }
-
-    private fun startPeriodicRefresh() {
-        refreshJob?.cancel()
-        refreshJob = viewModelScope.launch {
-            while (isActive && _uiState.value.isScanning) {
-                updatePairedDevices()
-                delay(2000) // Refresh every 2 seconds
-            }
-        }
-    }
-
-    private fun stopPeriodicRefresh() {
-        refreshJob?.cancel()
-        refreshJob = null
     }
 
     fun openBluetoothSettings() {
         bluetoothService.openBluetoothSettings()
     }
 
-    private fun updatePairedDevices() {
-        _uiState.update {
-            it.copy(pairedDevices = bluetoothService.getPairedDevices())
-        }
-    }
-
-
-    fun connectToDeviceAndNavigate(
-        device: BluetoothDeviceData,
-        onNavigate: () -> Unit,
-        isFromPairedList: Boolean
-    ) {
-        // Disconnect any existing connection and reset all devices' connection state
-        // IMPORTANT CHANGE: Don't reset all devices immediately
-        bluetoothService.disconnect()
-
-        // Don't reset all devices' connection state right away like this:
-        /*
-        _uiState.update { state ->
-            state.copy(
-                isConnecting = false,
-                pairedDevices = state.pairedDevices.map { it.copy(isConnected = false, clickCount = 0) },
-                scannedDevices = state.scannedDevices.map { it.copy(isConnected = false, clickCount = 0) }
-            )
-        }
-        */
-
-        // Increment click count for the clicked device
-        val updatedDevice = device.copy(clickCount = device.clickCount + 1)
-        val clickCount = updatedDevice.clickCount
-
-        // Update only the clicked device
-        _uiState.update { state ->
-            if (isFromPairedList) {
-                state.copy(
-                    pairedDevices = state.pairedDevices.map {
-                        if (it.address == device.address) updatedDevice else it
-                    }
-                )
-            } else {
-                state.copy(
-                    scannedDevices = state.scannedDevices.map {
-                        if (it.address == device.address) updatedDevice else it
-                    }
-                )
-            }
-        }
-
-        // Check if this is a BLE module device
-        val deviceName = device.name ?: "Unknown"
-        val isBleModule = true // deviceName.contains("BLE", ignoreCase = true) || deviceName == "BLE_WB07"
-
-        // Determine isMobileDevice parameter for the connection
-        if (isFromPairedList) {
-            bluetoothService.isMobileDevice = true
-        } else {
-            bluetoothService.isMobileDevice = !isBleModule
-        }
-
-        Log.d("BluetoothViewModel", "Device clicked: ${device.name}, Address: ${device.address}, Is BLE Module: $isBleModule, Click count: $clickCount")
-
-        if (clickCount == 1) {
-            // First click: Attempt to connect
-            deviceConnectionJob?.cancel()
-            deviceConnectionJob = viewModelScope.launch {
-                try {
-                    _uiState.update { it.copy(isConnecting = true) }
-                    withTimeout(10000) {
-                        val success = bluetoothService.connectToDevice(device.address, bluetoothService.isMobileDevice)
-                        _uiState.update { state ->
-                            if (success) {
-                                // Set only this device as connected, don't reset others
-                                if (isFromPairedList) {
-                                    state.copy(
-                                        isConnecting = false,
-                                        pairedDevices = state.pairedDevices.map {
-                                            if (it.address == device.address) it.copy(isConnected = true) else it
-                                        },
-                                        errorMessage = null
-                                    )
-                                } else {
-                                    state.copy(
-                                        isConnecting = false,
-                                        scannedDevices = state.scannedDevices.map {
-                                            if (it.address == device.address) it.copy(isConnected = true) else it
-                                        },
-                                        errorMessage = null
-                                    )
-                                }
-                            } else {
-                                state.copy(
-                                    isConnecting = false,
-                                    errorMessage = "Failed to connect"
-                                )
-                            }
-                        }
-
-                        if (success) {
-                            // If this is a BLE module, scan for devices and show the bottom sheet
-                            if (isBleModule) {
-                                _bleModuleConnected.value = true
-
-                                // KEY CHANGE: Don't clear the scanned devices list
-                                // _uiState.update { it.copy(scannedDevices = emptyList()) }
-
-                                // Request scan from BLE module
-                                requestBleModuleScan()
-
-                                // Show the bottom sheet for device selection
-                                showDeviceBottomSheet()
-                                // Don't navigate - wait for device selection
-                            } else {
-                                // For regular devices, navigate to chat as usual
-                                onNavigate()
-                            }
-                        }
-                    }
-                } catch (e: TimeoutCancellationException) {
-                    Log.e("BluetoothViewModel", "Connection timeout", e)
-                    _uiState.update {
-                        it.copy(
-                            isConnecting = false,
-                            errorMessage = "Connection timeout"
-                        )
-                    }
-                } catch (e: CancellationException) {
-                    Log.d("BluetoothViewModel", "Connection cancelled", e)
-                    _uiState.update {
-                        it.copy(
-                            isConnecting = false,
-                            errorMessage = null
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.e("BluetoothViewModel", "Connection error", e)
-                    _uiState.update {
-                        it.copy(
-                            isConnecting = false,
-                            errorMessage = e.message
-                        )
-                    }
-                }
-            }
-        } else if (clickCount >= 2) {
-            // Second click: Navigate to ChatScreen if connected
-            val currentDevice = if (isFromPairedList) {
-                _uiState.value.pairedDevices.find { it.address == device.address }
-            } else {
-                _uiState.value.scannedDevices.find { it.address == device.address }
-            }
-
-            if (currentDevice?.isConnected == true) {
-                // If it's a BLE module and connected, show the bottom sheet again
-                if (isBleModule) {
-                    _bleModuleConnected.value = true
-                    requestBleModuleScan()
-                    showDeviceBottomSheet()
-                } else {
-                    // For regular devices, navigate to chat
-                    onNavigate()
-                }
-            } else {
-                _uiState.update {
-                    it.copy(errorMessage = "Device is not connected. Please connect first.")
-                }
-            }
-        }
-    }
-
-    // Add this method to your BluetoothViewModel
-    fun disconnectDevice(device: BluetoothDeviceData) {
-        viewModelScope.launch {
-            Log.d("BluetoothViewModel", "Disconnecting device: ${device.name} (${device.address})")
-
-            // Disconnect the device using the BluetoothService
-            bluetoothService.disconnect()
-
-            // Update UI state to show device as disconnected
-            _uiState.update { state ->
-                // Update in paired devices list
-                val updatedPairedDevices = state.pairedDevices.map {
-                    if (it.address == device.address) it.copy(isConnected = false, clickCount = 0) else it
-                }
-
-                // Update in scanned devices list
-                val updatedScannedDevices = state.scannedDevices.map {
-                    if (it.address == device.address) it.copy(isConnected = false, clickCount = 0) else it
-                }
-
-                // If this was the BLE module, reset that state too
-                if (_bleModuleConnected.value) {
-                    _bleModuleConnected.value = false
-                    hideDeviceBottomSheet()
-                }
-
-                state.copy(
-                    pairedDevices = updatedPairedDevices,
-                    scannedDevices = updatedScannedDevices
-                )
-            }
-        }
-    }
-
     fun disconnect() {
         viewModelScope.launch {
             bluetoothService.disconnect()
+            _bleModuleConnected.value = false
+            hideDeviceBottomSheet()
             _uiState.update {
                 it.copy(
                     isConnecting = false,
-                    pairedDevices = it.pairedDevices.map { device ->
-                        device.copy(isConnected = false, clickCount = 0)
-                    },
-                    scannedDevices = it.scannedDevices.map { device ->
-                        device.copy(isConnected = false, clickCount = 0)
-                    }
+                    scannedDevicesFromBle = emptyList()
                 )
             }
         }
@@ -673,13 +308,14 @@ class BluetoothViewModel(
             bluetoothService.disconnect()
         }
     }
-
 }
+
 class BluetoothViewModelFactory(
     private val bluetoothService: BluetoothService
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(BluetoothViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
             return BluetoothViewModel(bluetoothService) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

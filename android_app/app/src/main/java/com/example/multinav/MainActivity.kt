@@ -37,9 +37,8 @@ class MainActivity : ComponentActivity() {
     // Initialize ChatViewModel with AudioRecorder
     private val chatViewModel by viewModels<ChatViewModel> {
         ChatViewModelFactory(
-            deviceAddress = null, // Will be set when navigating to ChatScreen
+            deviceAddress = null.toString(), // Will be set when navigating to ChatScreen
             bluetoothService = bluetoothService,
-            isMobileDevice = false,
             audioRecorder = audioRecorder
         )
     }
@@ -48,7 +47,7 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-            bluetoothViewModel.startServer()
+            bluetoothViewModel.requestBleModuleScan()
             Log.i("TAG", "permissions checked")
         }
     }
