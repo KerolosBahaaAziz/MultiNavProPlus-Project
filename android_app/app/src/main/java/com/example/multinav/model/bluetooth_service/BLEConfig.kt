@@ -32,6 +32,9 @@ object BLEConfig {
     // Base UUID prefix for BLE PRO V2
     private const val BASE_UUID_PREFIX = "bc9a-7856-3412-7856-341278563412"
 
+    // Constants for RFOXIA CHAT
+    const val RFOXIA_CHAT_MAX_BYTES = 50
+    const val B_LIST_MAX_BYTES = 255
 
     // BLE PRO V2 specific UUIDs
     // 1. Sensor Service
@@ -54,69 +57,81 @@ object BLEConfig {
     val B_STATE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0140$BASE_UUID_PREFIX")
     val B_LIST_CHARACTERISTIC_UUID: UUID = UUID.fromString("1545515f-3446-6154-2135-124513562351")
 
-    // Function to create GATT service for mobile-to-mobile communication
+    // Mobile chat service with voice support
     fun createChatService(): BluetoothGattService {
         val service = BluetoothGattService(CHAT_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
 
-        // Write characteristic for mobile devices (write with response)
+        // Text characteristics
         val writeCharacteristic = BluetoothGattCharacteristic(
             WRITE_CHARACTERISTIC_UUID,
             BluetoothGattCharacteristic.PROPERTY_WRITE,
             BluetoothGattCharacteristic.PERMISSION_WRITE
         )
-        Log.d("BLEConfig", "Mobile write characteristic created: $WRITE_CHARACTERISTIC_UUID")
 
-        // Notify characteristic for mobile devices
         val notifyCharacteristic = BluetoothGattCharacteristic(
             NOTIFY_CHARACTERISTIC_UUID,
             BluetoothGattCharacteristic.PROPERTY_NOTIFY,
             BluetoothGattCharacteristic.PERMISSION_READ
         )
-        Log.d("BLEConfig", "Mobile notify characteristic created: $NOTIFY_CHARACTERISTIC_UUID")
 
-        // Add descriptor for enabling notifications
-        val descriptor = BluetoothGattDescriptor(
-            CLIENT_CONFIG_UUID,
-            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+        // Voice characteristics
+        val voiceWriteCharacteristic = BluetoothGattCharacteristic(
+            VOICE_WRITE_CHARACTERISTIC_UUID,
+            BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+            BluetoothGattCharacteristic.PERMISSION_WRITE
         )
-        notifyCharacteristic.addDescriptor(descriptor)
 
+        val voiceNotifyCharacteristic = BluetoothGattCharacteristic(
+            VOICE_NOTIFY_CHARACTERISTIC_UUID,
+            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            BluetoothGattCharacteristic.PERMISSION_READ
+        )
+
+        // Add descriptors
+        notifyCharacteristic.addDescriptor(createNotificationDescriptor())
+        voiceNotifyCharacteristic.addDescriptor(createNotificationDescriptor())
+
+        // Add all characteristics
         service.addCharacteristic(writeCharacteristic)
         service.addCharacteristic(notifyCharacteristic)
+        service.addCharacteristic(voiceWriteCharacteristic)
+        service.addCharacteristic(voiceNotifyCharacteristic)
+
         Log.d("BLEConfig", "Mobile service created with ${service.characteristics.size} characteristics")
         return service
     }
 
-    // Function to create GATT service for BLE devices (e.g., BLE_WB07)
+    // BLE PRO V2 RFOXIA CHAT service
     fun createBLEChatService(): BluetoothGattService {
         val service = BluetoothGattService(BLE_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
 
-        // Write characteristic for BLE devices (supports both WRITE and WRITE_NO_RESPONSE)
+        // Write characteristic (send only) - 50 bytes
         val writeCharacteristic = BluetoothGattCharacteristic(
             BLE_WRITE_CHARACTERISTIC_UUID,
-            BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+            BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
             BluetoothGattCharacteristic.PERMISSION_WRITE
         )
-        Log.d("BLEConfig", "BLE write characteristic created: $BLE_WRITE_CHARACTERISTIC_UUID")
 
-        // Notify characteristic for BLE devices
+        // Read characteristic (receive only) - 50 bytes
         val notifyCharacteristic = BluetoothGattCharacteristic(
             BLE_NOTIFY_CHARACTERISTIC_UUID,
             BluetoothGattCharacteristic.PROPERTY_NOTIFY or BluetoothGattCharacteristic.PROPERTY_READ,
             BluetoothGattCharacteristic.PERMISSION_READ
         )
-        Log.d("BLEConfig", "BLE notify characteristic created: $BLE_NOTIFY_CHARACTERISTIC_UUID")
 
-        // Add descriptor for enabling notifications
-        val descriptor = BluetoothGattDescriptor(
-            CLIENT_CONFIG_UUID,
-            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
-        )
-        notifyCharacteristic.addDescriptor(descriptor)
+        notifyCharacteristic.addDescriptor(createNotificationDescriptor())
 
         service.addCharacteristic(writeCharacteristic)
         service.addCharacteristic(notifyCharacteristic)
-        Log.d("BLEConfig", "BLE service created with ${service.characteristics.size} characteristics")
+
+        Log.d("BLEConfig", "BLE RFOXIA service created")
         return service
+    }
+
+    private fun createNotificationDescriptor(): BluetoothGattDescriptor {
+        return BluetoothGattDescriptor(
+            CLIENT_CONFIG_UUID,
+            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+        )
     }
 }

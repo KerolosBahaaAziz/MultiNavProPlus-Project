@@ -110,6 +110,18 @@ class BluetoothService(private val context: Context) {
     private val _receivedAudioData = MutableStateFlow<ByteArray>(ByteArray(0))
     val receivedAudioData: StateFlow<ByteArray> = _receivedAudioData.asStateFlow()
 
+    // Protocol for distinguishing voice from text in RFOXIA CHAT
+    private object MessageProtocol {
+        const val TYPE_TEXT = 0x00.toByte()
+        const val TYPE_VOICE_START = 0x01.toByte()
+        const val TYPE_VOICE_DATA = 0x02.toByte()
+        const val TYPE_VOICE_END = 0x03.toByte()
+    }
+
+    // Audio buffer for receiving voice messages
+    private val audioBuffer = mutableListOf<ByteArray>()
+
+
     @SuppressLint("MissingPermission")
     suspend fun requestBleModuleScan(): Boolean {
         if (!_isConnected.value) {
@@ -2185,49 +2197,64 @@ class BluetoothService(private val context: Context) {
                     return@withContext false
                 }
 
-                val audioCharacteristic = gatt?.getService(SERVICE_UUID)
-                    ?.getCharacteristic(AUDIO_CHARACTERISTIC_UUID)
-
-                if (audioCharacteristic == null) {
-                    Log.e("BLE", "Audio characteristic not found")
+                val characteristic = writeCharacteristic ?: run {
+                    Log.e("BLE", "Write characteristic not found")
                     return@withContext false
                 }
 
-                // Get the actual MTU for this connection
-                val mtu = gatt?.requestMtu(512) ?: 23 // Default BLE MTU is 23
-                val chunkSize = mtu - 3 // Leave room for GATT overhead
+                // RFOXIA CHAT has 50-byte limit
+                // Format: [TYPE(1 byte)] + [DATA(up to 49 bytes)]
+                val maxDataSize = BLEConfig.RFOXIA_CHAT_MAX_BYTES - 1
                 var offset = 0
+                var chunkIndex = 0
 
-                // Send audio data in chunks
+                // Send start packet
+                val startPacket = byteArrayOf(MessageProtocol.TYPE_VOICE_START)
+                characteristic.value = startPacket
+                var success = gatt?.writeCharacteristic(characteristic) ?: false
+                if (!success) {
+                    Log.e("BLE", "Failed to send voice start packet")
+                    return@withContext false
+                }
+                delay(50)
+
+                // Send voice data in chunks
                 while (offset < audioBytes.size) {
-                    val chunkLength = minOf(chunkSize, audioBytes.size - offset)
-                    val chunk = audioBytes.copyOfRange(offset, offset + chunkLength)
+                    val remainingBytes = audioBytes.size - offset
+                    val chunkSize = minOf(maxDataSize, remainingBytes)
+                    val chunk = audioBytes.copyOfRange(offset, offset + chunkSize)
 
-                    audioCharacteristic.value = chunk
-                    val success = gatt?.writeCharacteristic(audioCharacteristic) ?: false
+                    // Create packet with type header
+                    val packet = byteArrayOf(MessageProtocol.TYPE_VOICE_DATA) + chunk
+
+                    Log.d("BLE", "Sending voice chunk $chunkIndex: ${packet.size} bytes")
+
+                    characteristic.value = packet
+                    success = gatt?.writeCharacteristic(characteristic) ?: false
 
                     if (!success) {
-                        Log.e("BLE", "Failed to send voice message chunk at offset $offset")
+                        Log.e("BLE", "Failed to send voice chunk at offset $offset")
                         return@withContext false
                     }
 
-                    offset += chunkLength
-                    delay(20) // Small delay to avoid overwhelming the Bluetooth stack
+                    offset += chunkSize
+                    chunkIndex++
+                    delay(50) // Give BLE stack time to process
                 }
 
-                // Send empty packet to indicate end of transmission (matching iOS)
-                audioCharacteristic.value = ByteArray(0)
-                gatt?.writeCharacteristic(audioCharacteristic)
+                // Send end packet
+                val endPacket = byteArrayOf(MessageProtocol.TYPE_VOICE_END)
+                characteristic.value = endPacket
+                success = gatt?.writeCharacteristic(characteristic) ?: false
 
-                Log.d("BLE", "Voice message sent successfully with end marker, total bytes: ${audioBytes.size}")
-                return@withContext true
+                Log.d("BLE", "Voice message sent: ${audioBytes.size} bytes in $chunkIndex chunks")
+                return@withContext success
             } catch (e: Exception) {
                 Log.e("BLE", "Send voice message error", e)
                 return@withContext false
             }
         }
     }
-
     @SuppressLint("MissingPermission")
     private suspend fun sendAsClient(data: ByteArray): Boolean {
         return withContext(Dispatchers.IO) {
@@ -2341,17 +2368,6 @@ class BluetoothService(private val context: Context) {
     }
 
 
-
-    fun getLastConnectedAddress(): String? {
-        return lastConnectedDeviceAddress
-    }
-
-    fun clearScannedDevicesFromBle() {
-        _scannedDevicesFromBle.value = emptyList()
-        deviceListBuffer.clear()
-        expectedDeviceCount = -1
-        Log.d("BLE", "Cleared scanned devices from BLE module")
-    }
 
     sealed class ConnectionStatus {
         object Disconnected : ConnectionStatus()
