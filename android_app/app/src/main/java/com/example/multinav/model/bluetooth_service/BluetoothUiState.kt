@@ -13,6 +13,4 @@ data class BluetoothUiState(
     val isBleModuleScanning: Boolean = false, // Add this field
     val statusMessage: String? = null,  // Add status message for feedback
     val scanCompleted: Boolean = false  // Add flag for scan completion
-
-
 )

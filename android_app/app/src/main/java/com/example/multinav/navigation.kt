@@ -292,7 +292,7 @@ fun Navigation(
                     JoyStickScreen(
                         bluetoothService = bluetoothService,
                         deviceAddress = it,
-                        isMobileDevice = bluetoothService.isMobileDevice,
+                        isMobileDevice = false,
                         navController = navController
                     )
                 } ?: run {
@@ -320,7 +320,6 @@ fun Navigation(
                     val factory = ChatViewModelFactory(
                         deviceAddress = it,
                         bluetoothService = bluetoothService,
-                        isMobileDevice = true,
                         audioRecorder = audioRecorder // Adjust based on your logic
                     )
                     val viewModel: ChatViewModel = viewModel(factory = factory)

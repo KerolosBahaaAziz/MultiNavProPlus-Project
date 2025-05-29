@@ -25,6 +25,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -40,6 +41,12 @@ class BluetoothService(private val context: Context) {
     private var writeCharacteristic: BluetoothGattCharacteristic? = null
     private var notifyCharacteristic: BluetoothGattCharacteristic? = null
 
+    private val _scannedDevices = MutableStateFlow<List<BluetoothDeviceData>>(emptyList())
+    val scannedDevices: StateFlow<List<BluetoothDeviceData>> = _scannedDevices
+
+    private val _isInitialScanning = MutableStateFlow(false)
+    val isInitialScanningState: StateFlow<Boolean> = _isInitialScanning
+
     var isScanning = false
 
     private val _isConnected = MutableStateFlow(false)
@@ -50,6 +57,10 @@ class BluetoothService(private val context: Context) {
 
     private val _bluetoothState = MutableStateFlow(isBluetoothEnabled())
     val bluetoothState: StateFlow<Boolean> = _bluetoothState
+
+    private val bluetoothLeScanner by lazy {
+        bluetoothAdapter?.bluetoothLeScanner
+    }
 
     // Messages storage
     private val _messagesPerDevice = ConcurrentHashMap<String, MutableList<Message>>()
@@ -155,6 +166,71 @@ class BluetoothService(private val context: Context) {
         val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         context.startActivity(intent)
+    }
+
+    @SuppressLint("MissingPermission")
+    suspend fun startInitialBleScan(): Boolean {
+        if (!isBluetoothEnabled()) {
+            Log.e("BLE", "Bluetooth is disabled")
+            enableBluetooth()
+            return false
+        }
+        if (!isLocationEnabled()) {
+            Log.e("BLE", "Location services disabled")
+            enableLocation()
+            return false
+        }
+
+        _scannedDevices.value = emptyList()
+        _isInitialScanning.value = true
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val scanSettings = ScanSettings.Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                    .build()
+
+                val scanCallback = object : ScanCallback() {
+                    override fun onScanResult(callbackType: Int, result: ScanResult) {
+                        val device = result.device
+                        val deviceData = BluetoothDeviceData(
+                            name = device.name ?: "Unknown",
+                            address = device.address,
+                            rssi = result.rssi,
+                            isConnected = false,
+                            isMobileDevice = false,
+                            clickCount = 0
+                        )
+                        _scannedDevices.update { current ->
+                            if (current.none { it.address == deviceData.address }) {
+                                current + deviceData
+                            } else {
+                                current
+                            }
+                        }
+                    }
+
+                    override fun onScanFailed(errorCode: Int) {
+                        Log.e("BLE", "Initial scan failed with error: $errorCode")
+                        _isInitialScanning.value = false
+                    }
+                }
+
+                bluetoothLeScanner?.startScan(null, scanSettings, scanCallback)
+                delay(10000) // Scan for 10 seconds
+                bluetoothLeScanner?.stopScan(scanCallback)
+                _isInitialScanning.value = false
+                true
+            } catch (e: SecurityException) {
+                Log.e("BLE", "Permission error during initial scan", e)
+                _isInitialScanning.value = false
+                false
+            } catch (e: Exception) {
+                Log.e("BLE", "Initial scan error", e)
+                _isInitialScanning.value = false
+                false
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -348,6 +424,16 @@ class BluetoothService(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     suspend fun requestBleModuleScan(): Boolean {
+        if (!isBluetoothEnabled()) {
+            Log.e("BLE", "Bluetooth is disabled")
+            enableBluetooth()
+            return false
+        }
+        if (!isLocationEnabled()) {
+            Log.e("BLE", "Location services disabled")
+            enableLocation()
+            return false
+        }
         if (!_isConnected.value) {
             Log.e("BLE", "Cannot request scan: Not connected to BLE module")
             return false
@@ -373,29 +459,43 @@ class BluetoothService(private val context: Context) {
             return false
         }
 
-        val setNotificationSuccess = gattClient?.setCharacteristicNotification(bListChar, true) ?: false
-        if (setNotificationSuccess) {
-            val descriptor = bListChar.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
-            if (descriptor != null) {
-                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                gattClient?.writeDescriptor(descriptor)
-                delay(500)
+        var setNotificationSuccess = false
+        repeat(3) { attempt ->
+            setNotificationSuccess = gattClient?.setCharacteristicNotification(bListChar, true) ?: false
+            if (setNotificationSuccess) {
+                val descriptor = bListChar.getDescriptor(BLEConfig.CLIENT_CONFIG_UUID)
+                if (descriptor != null) {
+                    descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    if (gattClient?.writeDescriptor(descriptor) == true) {
+                        delay(500)
+                        return@repeat
+                    }
+                }
             }
-        } else {
+            Log.w("BLE", "Failed to enable notifications for B_LIST, attempt ${attempt + 1}")
+            delay(100)
+        }
+        if (!setNotificationSuccess) {
             Log.e("BLE", "Failed to enable notifications for B_LIST")
             _isScanning.value = false
             return false
         }
 
-        bStateChar.value = "c".toByteArray(Charsets.UTF_8)
-        val writeSuccess = gattClient?.writeCharacteristic(bStateChar) ?: false
-
+        var writeSuccess = false
+        repeat(3) { attempt ->
+            bStateChar.value = "c".toByteArray(Charsets.UTF_8)
+            writeSuccess = gattClient?.writeCharacteristic(bStateChar) ?: false
+            if (writeSuccess) return@repeat
+            Log.w("BLE", "Failed to write scan command, attempt ${attempt + 1}")
+            delay(100)
+        }
         if (!writeSuccess) {
             Log.e("BLE", "Failed to send scan command to BLE module")
             _isScanning.value = false
             return false
         }
 
+        scanTimeoutJob?.cancel()
         scanTimeoutJob = CoroutineScope(Dispatchers.IO).launch {
             delay(30000)
             if (_isScanning.value) {

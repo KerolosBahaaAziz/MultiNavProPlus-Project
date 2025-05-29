@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-            bluetoothViewModel.requestBleModuleScan()
+            bluetoothViewModel.startInitialBleScan()
             Log.i("TAG", "permissions checked")
         }
     }

@@ -63,12 +63,13 @@ fun GradientButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    gradientColors: List<Color> = AppTheme.gradientColors
 ) {
     GradientButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp).fillMaxWidth(), // Add height constraint
-        enabled = enabled
+        enabled = enabled,
     ) {
         if (isLoading) {
             CircularProgressIndicator(

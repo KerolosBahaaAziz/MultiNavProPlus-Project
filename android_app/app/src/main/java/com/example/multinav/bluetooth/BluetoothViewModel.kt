@@ -55,9 +55,15 @@ class BluetoothViewModel(
                 when (status) {
                     is BluetoothService.ConnectionStatus.Connected -> {
                         _bleModuleConnected.value = true
+                        _uiState.update { it.copy(scannedDevices = it.scannedDevices.map { device ->
+                            if (device.address == bluetoothService.getConnectedDeviceAddress()) {
+                                device.copy(isConnected = true)
+                            } else device
+                        }) }
                     }
                     is BluetoothService.ConnectionStatus.Disconnected -> {
                         _bleModuleConnected.value = false
+                        _uiState.update { it.copy(scannedDevices = it.scannedDevices.map { it.copy(isConnected = false) }) }
                     }
                     is BluetoothService.ConnectionStatus.Connecting -> {
                         _uiState.update { it.copy(isConnecting = true) }
@@ -109,6 +115,72 @@ class BluetoothViewModel(
                 }
             }
         }
+
+        // Monitor initial scanned devices
+        viewModelScope.launch {
+            bluetoothService.scannedDevices.collect { devices ->
+                Log.d("BluetoothViewModel", "Initial scanned devices: ${devices.size}")
+                _uiState.update { it.copy(scannedDevices = devices) }
+            }
+        }
+
+        // Monitor initial scanning state
+        viewModelScope.launch {
+            bluetoothService.isInitialScanningState.collect { isScanning ->
+                Log.d("BluetoothViewModel", "Initial scanning state: $isScanning")
+                _uiState.update { it.copy(isScanning = isScanning) }
+            }
+        }
+    }
+
+    fun startInitialBleScan() {
+        Log.d("BluetoothViewModel", "Starting initial BLE scan")
+        _uiState.update {
+            it.copy(
+                isScanning = true,
+                errorMessage = null,
+                scannedDevices = emptyList()
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val success = bluetoothService.startInitialBleScan()
+                if (!success) {
+                    _uiState.update {
+                        it.copy(
+                            isScanning = false,
+                            errorMessage = "Failed to start scan. Check permissions and location services."
+                        )
+                    }
+                    return@launch
+                }
+
+                withTimeout(15000) {
+                    bluetoothService.isInitialScanningState
+                        .takeWhile { isScanning -> isScanning }
+                        .collect { /* wait */ }
+                }
+
+                _uiState.update { it.copy(isScanning = false) }
+            } catch (e: TimeoutCancellationException) {
+                Log.e("BluetoothViewModel", "Initial scan timeout", e)
+                _uiState.update {
+                    it.copy(
+                        isScanning = false,
+                        errorMessage = "Initial scan timed out"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("BluetoothViewModel", "Initial scan error", e)
+                _uiState.update {
+                    it.copy(
+                        isScanning = false,
+                        errorMessage = "Initial scan error: ${e.message}"
+                    )
+                }
+            }
+        }
     }
 
     fun showDeviceBottomSheet() {
@@ -141,7 +213,7 @@ class BluetoothViewModel(
                     _uiState.update {
                         it.copy(
                             isBleModuleScanning = false,
-                            errorMessage = "Failed to start scan",
+                            errorMessage = "Failed to start scan. Ensure a BLE module is connected.",
                             statusMessage = "Scan failed to start",
                             scanCompleted = true
                         )
@@ -149,15 +221,27 @@ class BluetoothViewModel(
                     return@launch
                 }
 
-                // Wait for scan to complete
-                bluetoothService.isScanningState
-                    .takeWhile { isScanning -> isScanning }
-                    .collect { /* just wait */ }
+                // Wait for scan to complete with timeout
+                withTimeout(35000) {
+                    bluetoothService.isScanningState
+                        .takeWhile { isScanning -> isScanning }
+                        .collect { /* just wait */ }
+                }
 
                 // Scan completed
                 _uiState.update {
                     it.copy(
                         isBleModuleScanning = false,
+                        scanCompleted = true
+                    )
+                }
+            } catch (e: TimeoutCancellationException) {
+                Log.e("BLE", "Scan timeout", e)
+                _uiState.update {
+                    it.copy(
+                        isBleModuleScanning = false,
+                        errorMessage = "Scan timed out",
+                        statusMessage = "Scan timed out",
                         scanCompleted = true
                     )
                 }

@@ -55,9 +55,8 @@ fun ChatScreen(
     // Initialize the ViewModel with AudioRecorder
     val viewModel: ChatViewModel = viewModel(
         factory = ChatViewModelFactory(
-            deviceAddress = deviceAddress,
+            deviceAddress = deviceAddress.toString(),
             bluetoothService = bluetoothService,
-            isMobileDevice = false,
             audioRecorder = audioRecorder
         )
     )
@@ -397,7 +396,6 @@ fun MessageInput(
                         viewModel.startRecording()
                     } else {
                         Log.w("ChatScreen", "RECORD_AUDIO permission not granted")
-                        viewModel.receiveMessage("Please grant RECORD_AUDIO permission to record voice messages")
                     }
                 },
                 enabled = enabled

@@ -94,7 +94,7 @@ class JoyStickViewModel(
         viewModelScope.launch {
             try {
                 Log.d("JoyStickViewModel", "Attempting to reconnect to device: $deviceAddress, isMobileDevice: $isMobileDevice")
-                val success = bluetoothService.connectToDevice(deviceAddress, isMobileDevice) // Use isMobileDevice
+                val success = bluetoothService.connectToDevice(deviceAddress) // Use isMobileDevice
                 if (success) {
                     Log.d("JoyStickViewModel", "Reconnected successfully")
                 } else {
@@ -120,7 +120,7 @@ class JoyStickViewModel(
                         return@launch
                     }
                 }
-                bluetoothService.sendMessage(command, isMobileDevice = isMobileDevice) // Use isMobileDevice
+                bluetoothService.sendTextMessage(command) // Use isMobileDevice
                 Log.d("JoyStick", "Sent command: $command")
             } catch (e: Exception) {
                 Log.e("JoyStick", "Error sending command: ${e.message}", e)
