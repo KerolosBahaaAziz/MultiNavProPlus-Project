@@ -10,14 +10,23 @@ object BLEConfig {
     val VOICE_WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb") // New UUID for voice messages
     val VOICE_NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb")
 
+//    // Service UUID for mobile-to-mobile communication
+//    val CHAT_SERVICE_UUID: UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+//
+//    // Characteristic for sending data (write) - for mobile
+//    val WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+//
+//    // Characteristic for receiving data (notify) - for mobile
+//    val NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
+
     // Service UUID for mobile-to-mobile communication
-    val CHAT_SERVICE_UUID: UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+    val CHAT_SERVICE_UUID: UUID = UUID.fromString("0000ABC0-0000-1000-8000-00805f9b34fb")
 
     // Characteristic for sending data (write) - for mobile
-    val WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+    val WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0000ABC1-0000-1000-8000-00805f9b34fb")
 
     // Characteristic for receiving data (notify) - for mobile
-    val NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
+    val NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("0000ABC2-0000-1000-8000-00805f9b34fb")
 
     // Service UUID for BLE devices (e.g., BLE_WB07)
     val BLE_SERVICE_UUID: UUID = UUID.fromString("020BC9A-7856-3412-7856-341278563412")
