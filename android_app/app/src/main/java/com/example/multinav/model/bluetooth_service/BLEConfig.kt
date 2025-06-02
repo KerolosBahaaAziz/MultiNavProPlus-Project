@@ -42,7 +42,7 @@ object BLEConfig {
     private const val BASE_UUID_PREFIX = "bc9a-7856-3412-7856-341278563412"
 
     // Constants for RFOXIA CHAT
-    const val RFOXIA_CHAT_MAX_BYTES = 50
+    const val RFOXIA_CHAT_MAX_BYTES = 20
     const val B_LIST_MAX_BYTES = 255
 
     // BLE PRO V2 specific UUIDs
