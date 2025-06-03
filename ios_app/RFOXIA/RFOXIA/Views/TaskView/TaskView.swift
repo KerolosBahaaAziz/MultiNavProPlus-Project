@@ -6,15 +6,12 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct TaskView: View {
     
-    @State private var isOn: [Bool]
     @FetchRequest(entity: History.entity(), sortDescriptors: []) var savedTasks: FetchedResults<History>
-    
-    init() {
-        self._isOn = State(initialValue: Array(repeating: false, count: 100))
-    }
+    @Environment(\.managedObjectContext) private var viewContext
     
     var body: some View {
         NavigationStack {
@@ -25,19 +22,34 @@ struct TaskView: View {
                 VStack {
                     List {
                         ForEach(Array(savedTasks.enumerated()), id: \.1.id) { index, task in
-                            
-                            VStack(alignment: .leading) {
-                                NavigationLink {
-                                    decodedTaskView(task: task)
-                                } label: {
+                            HStack {
+                                // Task name with navigation
+                                NavigationLink(destination: decodedTaskView(task: task)) {
                                     Text(task.taskName ?? "Unnamed Task")
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .foregroundStyle(Color.white)
+                                        .foregroundStyle(.white)
                                 }
-                                
-                                Toggle("Activate", isOn: bindingForIndex(index, task: task))
-                                    .toggleStyle(SwitchToggleStyle(tint: .green))
-                                    .padding(.top, 5)
+
+                                Spacer()
+
+                                // Send button
+                                Button(action: {
+                                    printTaskLetters(task: task)
+                                }) {
+                                    Image(systemName: "paperplane.fill")
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 8)
+                                }
+                                .buttonStyle(BorderlessButtonStyle()) // prevent NavigationLink interference
+
+                                // Delete button
+                                Button(action: {
+                                    deleteTask(task: task)
+                                }) {
+                                    Image(systemName: "trash.fill")
+                                        .foregroundColor(.red)
+                                        .padding(.horizontal, 8)
+                                }
+                                .buttonStyle(BorderlessButtonStyle()) // prevent NavigationLink interference
                             }
                             .listRowBackground(Color.clear)
                         }
@@ -66,23 +78,6 @@ struct TaskView: View {
         }
     }
     
-    // Separate the binding logic for toggle
-    private func bindingForIndex(_ index: Int, task: History) -> Binding<Bool> {
-        Binding(
-            get: {
-                isOn[index]
-            },
-            set: { newValue in
-                if isOn.indices.contains(index) {
-                    isOn[index] = newValue
-                    if newValue {
-                        printTaskLetters(task: task)
-                    }
-                }
-            }
-        )
-    }
-    
     private func printTaskLetters(task: History) {
         guard let itemsData = task.items,
               let decodedItems = try? JSONDecoder().decode([ButtonHistoryItem].self, from: itemsData) else {
@@ -95,8 +90,16 @@ struct TaskView: View {
         
         print("Task Letters: \(lettersString)")
     }
+    
+    private func deleteTask(task: History) {
+        viewContext.delete(task)
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting task: \(error)")
+        }
+    }
 }
-
 
 #Preview {
     TaskView()

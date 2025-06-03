@@ -18,6 +18,9 @@ struct ActionsAndDelaysView: View {
     @State private var selectedButtons: [ButtonHistoryItem] = []
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+
     
     var body: some View {
         ScrollView {
@@ -100,12 +103,17 @@ struct ActionsAndDelaysView: View {
             }
             .sheet(isPresented: $showSecondPicker) {
                 SecondPickerSheet { seconds in
-                    let item = ButtonHistoryItem(
-                        type: .delay,
-                        value: "\(seconds) seconds",
-                        timestamp: Date()
-                    )
-                    selectedButtons.append(item)
+                    if let last = selectedButtons.last, last.type == .delay {
+                        alertMessage = "You cannot add two delays in a row."
+                        showAlert = true
+                    } else {
+                        let item = ButtonHistoryItem(
+                            type: .delay,
+                            value: "\(seconds) seconds",
+                            timestamp: Date()
+                        )
+                        selectedButtons.append(item)
+                    }
                 }
             }
             .onChange(of: selectedMode) { _, newValue in
@@ -128,6 +136,11 @@ struct ActionsAndDelaysView: View {
             .onAppear {
                 loadTaskIfNeeded()
             }
+            .alert("Error", isPresented: $showAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(alertMessage)
+            }
         }
     }
     
@@ -143,21 +156,35 @@ struct ActionsAndDelaysView: View {
     }
     
     private func saveTask() {
+        guard !taskName.trimmingCharacters(in: .whitespaces).isEmpty else {
+            alertMessage = "Task name cannot be empty."
+            showAlert = true
+            return
+        }
+        
+        guard !selectedButtons.isEmpty else {
+            alertMessage = "You must add at least one action to the task."
+            showAlert = true
+            return
+        }
+
         let newTask = History(context: context)
         newTask.id = UUID()
         newTask.taskName = taskName
-        
+
         if let encoded = try? JSONEncoder().encode(selectedButtons) {
             newTask.items = encoded
         }
-        
+
         do {
             try context.save()
             dismiss()
         } catch {
-            print("Failed to save task: \(error.localizedDescription)")
+            alertMessage = "Failed to save task: \(error.localizedDescription)"
+            showAlert = true
         }
     }
+
     
 }
 
