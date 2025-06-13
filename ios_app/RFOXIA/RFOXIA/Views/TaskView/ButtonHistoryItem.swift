@@ -40,9 +40,9 @@ struct ButtonHistoryItem: Identifiable, Codable{
         case .delay:
             return "clock"
         case .mode:
-            return ""
+            return "gearshape"
         case .rotating:
-            return ""
+            return "arrow.triangle.2.circlepath"
         }
     }
     

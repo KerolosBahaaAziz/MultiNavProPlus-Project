@@ -70,7 +70,7 @@ struct TaskView: View {
     private func bindingForIndex(_ index: Int, task: History) -> Binding<Bool> {
         Binding(
             get: {
-                isOn[index] ?? false
+                isOn[index]
             },
             set: { newValue in
                 if isOn.indices.contains(index) {

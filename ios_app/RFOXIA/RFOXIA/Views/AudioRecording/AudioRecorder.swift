@@ -9,6 +9,15 @@ import Foundation
 import AVFoundation
 import SwiftUICore
 
+struct Recordingg: Identifiable ,Equatable{
+    let id = UUID()
+    let url: URL
+    let createdAt: Date
+    var name: String {
+        url.lastPathComponent
+    }
+}
+
 class AudioRecorder: NSObject, ObservableObject {
     @Published var recordings: [Recordingg] = []
     @Published var isRecording = false
@@ -20,15 +29,6 @@ class AudioRecorder: NSObject, ObservableObject {
     var timer: Timer?
     
     let recordingSession = AVAudioSession.sharedInstance()
-    
-    struct Recordingg: Identifiable ,Equatable{
-        let id = UUID()
-        let url: URL
-        let createdAt: Date
-        var name: String {
-            url.lastPathComponent
-        }
-    }
     
     func startRecording() {
         do {
