@@ -33,11 +33,7 @@ struct ContentView: View {
         //        DevicesNamesView()
         //            .environment(\.managedObjectContext, viewContext)
         //            .environmentObject(bluetoothManager)
-<<<<<<< HEAD
-        TaskView()
-=======
         MainTabView()
->>>>>>> d15e60628a8e9605b023d58e620b5049b6827790
             .environment(\.managedObjectContext, viewContext)
             .environmentObject(bluetoothManager)
     }

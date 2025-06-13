@@ -82,7 +82,7 @@ struct GoogleSignInView: View {
                                 if success {
                                     UserDefaults.standard.set(true, forKey: "isLogin")
                                     UserDefaults.standard.set(Auth.auth().currentUser?.email, forKey: "userEmail")
-                                    print("email stored: \(UserDefaults.standard.value(forKey: "userEmail"))")
+                                    print("email stored: \(UserDefaults.standard.value(forKey: "userEmail") ?? "no stored email")")
                                     self.navigateToHome = true
                                 } else {
                                     UserDefaults.standard.set(false, forKey: "isLogin")

@@ -74,7 +74,7 @@ struct BluetoothChatView: View {
                 .padding(.bottom, 0)
                 .padding(.leading, 0)
                 
-                NavigationLink(destination: ApplePayView(), isActive: $navigateToSubscribe) {
+                NavigationLink(destination: PayPalView(), isActive: $navigateToSubscribe) {
                     EmptyView()
                 }
             }.background(BackgroundGradient.backgroundGradient)

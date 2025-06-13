@@ -9,7 +9,7 @@ import SwiftUI
 import AVFoundation
 
 struct VoiceMessageBubble: View {
-    let recording: AudioRecorder.Recording
+    let recording: Recordingg
     
     @State private var audioPlayer: AVAudioPlayer?
     @State private var isPlaying = false
@@ -104,8 +104,10 @@ struct VoiceMessageBubble: View {
     }
 }
 
+
 #Preview {
     let dummyURL = URL(fileURLWithPath: "dummy.m4a")
-    let dummyRecording = AudioRecorder.Recording(url: dummyURL, createdAt: Date())
-    return VoiceMessageBubble(recording: dummyRecording)
+    let dummyRecording = Recordingg(url: dummyURL, createdAt: Date())
+    VoiceMessageBubble(recording: dummyRecording)
 }
+

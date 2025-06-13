@@ -26,7 +26,7 @@ struct ChatMessagesView: View {
                                     .foregroundColor(message.isCurrentUser ? .white : .black)
                                     .cornerRadius(16)
                             } else if case .voice(let url) = message.type {
-                                VoiceMessageBubble(recording: AudioRecorder.Recording(url: url, createdAt: message.createdAt))
+                                VoiceMessageBubble(recording: Recordingg(url: url, createdAt: message.createdAt))
                             }
                         }
                         .frame(maxWidth: 250, alignment: message.isCurrentUser ? .trailing : .leading)
