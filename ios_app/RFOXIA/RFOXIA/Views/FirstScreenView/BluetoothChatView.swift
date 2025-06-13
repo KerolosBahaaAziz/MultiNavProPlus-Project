@@ -7,22 +7,6 @@
 
 import SwiftUI
 
-// MARK: - Message Model
-
-enum MessageType {
-    case text(String)
-    case voice(URL)
-}
-
-struct ChatMessage: Identifiable {
-    let id = UUID()
-    let type: MessageType
-    let isCurrentUser: Bool
-    let senderName: String
-    let createdAt: Date = Date()
-}
-
-
 // MARK: - Chat View
 
 struct BluetoothChatView: View {
@@ -31,7 +15,7 @@ struct BluetoothChatView: View {
     @State var messages: [ChatMessage] = []
     @State var isRecording = false
     @StateObject var recorder = AudioRecorder()
-
+    
     
     @State var navigateToSubscribe = false
     @State var alertItem: AlertInfo?
@@ -58,7 +42,7 @@ struct BluetoothChatView: View {
                     Button(action: {
                         if !inputText.isEmpty {
                             bluetoothManager.sendMessage(inputText)
-                            let newMessage = ChatMessage(type: .text(inputText), isCurrentUser: true, senderName: "Me")
+                            let newMessage = ChatMessage(type: .text(inputText), isCurrentUser: true, senderName: "Me", senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: inputText)
                             messages.append(newMessage)
                             inputText = ""
                         }
@@ -99,23 +83,53 @@ struct BluetoothChatView: View {
                     bluetoothManager.scanForDevices()
                     bluetoothManager.enableNotify(for: [bluetoothManager.chatCharacteristicUUID])
                 }
-                .onChange(of: bluetoothManager.receivedMessages) { newMessages in
-                    for message in newMessages {
-                        let newMessage = ChatMessage(type: .text(message), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName)
-                        messages.append(newMessage)
-                    }
-                }.onDisappear{
+                .onChange(of: bluetoothManager.receivedMessages, perform: handleReceivedMessages).onDisappear{
                     bluetoothManager.disableNotify(for: [bluetoothManager.chatCharacteristicUUID])
                 }
-         }.navigationBarBackButtonHidden(true)
-            .onChange(of: recorder.recordings) { newRecordings in
-                if let last = newRecordings.last {
-                    let newMessage = ChatMessage(type: .voice(last.url), isCurrentUser: true, senderName: "Me")
-                        messages.append(newMessage)
-                    }
-                    
-                }
+                .onChange(of: bluetoothManager.receivedAudioData, perform: handleReceivedAudioData)
+            
+        }.navigationBarBackButtonHidden(true)
+            .onReceive(recorder.$recordings) { newRecordings in
+                handleNewRecordings(newRecordings)
+            }
+    }
+    
+    func saveReceivedAudio(data: Data) -> URL? {
+        let filename = "ReceivedVoice_\(UUID().uuidString).m4a"
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+        
+        do {
+            try data.write(to: fileURL)
+            return fileURL
+        } catch {
+            print("Error saving received audio: \(error)")
+            return nil
         }
+    }
+    
+    private func handleReceivedMessages(_ newMessages: [String]) {
+        for message in newMessages {
+            let newMessage = ChatMessage(type: .text(message), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName, senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: message)
+            messages.append(newMessage)
+        }
+    }
+    
+    private func handleReceivedAudioData(_ audioDataArray: [Data]) {
+        for audioData in audioDataArray {
+            if let savedURL = saveReceivedAudio(data: audioData) {
+                let newMessage = ChatMessage(type: .voice(savedURL), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName, senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: "")
+                messages.append(newMessage)
+            }
+        }
+    }
+    
+    private func handleNewRecordings(_ newRecordings: [Recordingg]) {
+        if let last = newRecordings.last {
+            let newMessage = ChatMessage(type: .voice(last.url), isCurrentUser: true, senderName: "Me", senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: "")
+            messages.append(newMessage)
+        }
+    }
+    
 }
 
 

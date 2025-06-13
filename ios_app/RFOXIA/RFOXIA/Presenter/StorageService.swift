@@ -43,5 +43,13 @@ class StorageService {
     func loadInt(forKey key: String) -> Int {
         defaults.integer(forKey: key)
     }
+    
+    func saveFloat(_ value: Float ,forKey key : String){
+        defaults.set(value, forKey: key)
+    }
+    
+    func loadFloat(forKey key : String) -> Float{
+        defaults.float(forKey: key)
+    }
 }
 

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 
 struct GoogleSignInView: View {
@@ -49,6 +50,7 @@ struct GoogleSignInView: View {
                                 self.alertMessage = message
                                 self.navigateToHome = true
                                 if success {
+                                    UserDefaults.standard.set(email, forKey: "userEmail")
                                     UserDefaults.standard.set(true, forKey: "isLogin")
                                 } else {
                                     self.showAlert = true
@@ -79,6 +81,8 @@ struct GoogleSignInView: View {
                             GoogleAuthHandler.shared.signIn(presenting: rootVC) { success in
                                 if success {
                                     UserDefaults.standard.set(true, forKey: "isLogin")
+                                    UserDefaults.standard.set(Auth.auth().currentUser?.email, forKey: "userEmail")
+                                    print("email stored: \(UserDefaults.standard.value(forKey: "userEmail"))")
                                     self.navigateToHome = true
                                 } else {
                                     UserDefaults.standard.set(false, forKey: "isLogin")

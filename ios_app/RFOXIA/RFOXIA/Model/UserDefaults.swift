@@ -11,5 +11,6 @@ class UserDefaultsUsed{
     func userDefaults(){
         UserDefaults.standard.set(false, forKey: "isSubscribed")
         UserDefaults.standard.set(false, forKey: "isLogin")
+        UserDefaults.standard.set("false", forKey: "userEmail")
     }
 }

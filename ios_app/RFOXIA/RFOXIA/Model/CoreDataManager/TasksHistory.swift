@@ -16,24 +16,22 @@ struct CoreDataManager {
         container = NSPersistentContainer(name: "ShiftDataModel")
         container.loadPersistentStores { description, error in
             if let error = error {
-                print("Core Data failed to load: \(error.localizedDescription)")
+                fatalError("Core Data failed to load: \(error.localizedDescription)")
             }
         }
     }
 
+    // MARK: - History Handling
     func saveHistory(taskName: String, items: [ButtonHistoryItem]) {
         let context = container.viewContext
         let history = History(context: context)
         history.id = UUID()
         history.taskName = taskName
-        
-        // Create string like "U D A W2 L P"
-        let commandString = items.map { $0.commandLetter }.joined(separator: " ")
-        history.letters = commandString  // Make sure "letters" exists in CoreData model as String
+        history.letters = items.map { $0.commandLetter }.joined(separator: " ")
         
         do {
             try context.save()
-        print("Saved letters: \(commandString)")
+            print("Saved letters: \(history.letters ?? "")")
         } catch {
             print("Failed to save history: \(error.localizedDescription)")
         }
@@ -42,7 +40,6 @@ struct CoreDataManager {
     func fetchHistories() -> [History] {
         let context = container.viewContext
         let request: NSFetchRequest<History> = History.fetchRequest()
-
         do {
             return try context.fetch(request)
         } catch {
@@ -50,4 +47,6 @@ struct CoreDataManager {
             return []
         }
     }
+
+
 }
