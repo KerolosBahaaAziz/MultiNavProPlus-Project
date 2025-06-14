@@ -7,18 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8F071A5E2DD8841B00E60424 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 8F071A5D2DD8841B00E60424 /* Lottie */; };
 		8FCAC3442DB95DC9000F9130 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC3432DB95DC9000F9130 /* FirebaseAuth */; };
 		8FCAC3462DB95DC9000F9130 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC3452DB95DC9000F9130 /* FirebaseCore */; };
 		8FCAC3482DB95DC9000F9130 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC3472DB95DC9000F9130 /* FirebaseDatabase */; };
 		8FCAC34A2DB95DC9000F9130 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC3492DB95DC9000F9130 /* FirebaseFirestore */; };
 		8FCAC34D2DB95F2D000F9130 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC34C2DB95F2D000F9130 /* GoogleSignIn */; };
 		8FCAC34F2DB95F2D000F9130 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCAC34E2DB95F2D000F9130 /* GoogleSignInSwift */; };
-		8FCD9DC32DFC771A007CD97F /* CardPayments in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCD9DC22DFC771A007CD97F /* CardPayments */; };
-		8FCD9DC52DFC771A007CD97F /* CorePayments in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCD9DC42DFC771A007CD97F /* CorePayments */; };
-		8FCD9DC72DFC771A007CD97F /* PayPalWebPayments in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCD9DC62DFC771A007CD97F /* PayPalWebPayments */; };
-		8FCD9DC92DFC771A007CD97F /* PaymentButtons in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCD9DC82DFC771A007CD97F /* PaymentButtons */; };
-		8FCD9DCC2DFC83A7007CD97F /* PayPalCheckout in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCD9DCB2DFC83A7007CD97F /* PayPalCheckout */; };
+		F542FD982DFD7F0A0067D94F /* PayPalCheckout in Frameworks */ = {isa = PBXBuildFile; productRef = F542FD972DFD7F0A0067D94F /* PayPalCheckout */; };
+		F5BB0E022DCCCE91009B74C0 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = F5BB0E012DCCCE91009B74C0 /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,18 +76,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8FCD9DC92DFC771A007CD97F /* PaymentButtons in Frameworks */,
 				8FCAC34D2DB95F2D000F9130 /* GoogleSignIn in Frameworks */,
-				8F071A5E2DD8841B00E60424 /* Lottie in Frameworks */,
+				F5BB0E022DCCCE91009B74C0 /* Lottie in Frameworks */,
 				8FCAC3482DB95DC9000F9130 /* FirebaseDatabase in Frameworks */,
+				F542FD982DFD7F0A0067D94F /* PayPalCheckout in Frameworks */,
 				8FCAC34A2DB95DC9000F9130 /* FirebaseFirestore in Frameworks */,
 				8FCAC34F2DB95F2D000F9130 /* GoogleSignInSwift in Frameworks */,
 				8FCAC3462DB95DC9000F9130 /* FirebaseCore in Frameworks */,
 				8FCAC3442DB95DC9000F9130 /* FirebaseAuth in Frameworks */,
-				8FCD9DC72DFC771A007CD97F /* PayPalWebPayments in Frameworks */,
-				8FCD9DC32DFC771A007CD97F /* CardPayments in Frameworks */,
-				8FCD9DC52DFC771A007CD97F /* CorePayments in Frameworks */,
-				8FCD9DCC2DFC83A7007CD97F /* PayPalCheckout in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -158,12 +150,8 @@
 				8FCAC3492DB95DC9000F9130 /* FirebaseFirestore */,
 				8FCAC34C2DB95F2D000F9130 /* GoogleSignIn */,
 				8FCAC34E2DB95F2D000F9130 /* GoogleSignInSwift */,
-				8F071A5D2DD8841B00E60424 /* Lottie */,
-				8FCD9DC22DFC771A007CD97F /* CardPayments */,
-				8FCD9DC42DFC771A007CD97F /* CorePayments */,
-				8FCD9DC62DFC771A007CD97F /* PayPalWebPayments */,
-				8FCD9DC82DFC771A007CD97F /* PaymentButtons */,
-				8FCD9DCB2DFC83A7007CD97F /* PayPalCheckout */,
+				F5BB0E012DCCCE91009B74C0 /* Lottie */,
+				F542FD972DFD7F0A0067D94F /* PayPalCheckout */,
 			);
 			productName = RFOXIA;
 			productReference = 8FBF349B2DA954A200049105 /* RFOXIA.app */;
@@ -250,9 +238,8 @@
 			packageReferences = (
 				8FCAC3422DB95DC9000F9130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				8FCAC34B2DB95F2D000F9130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
-				8F071A5C2DD8841B00E60424 /* XCRemoteSwiftPackageReference "lottie-ios" */,
-				8FCD9DC12DFC771A007CD97F /* XCRemoteSwiftPackageReference "paypal-ios" */,
-				8FCD9DCA2DFC83A7007CD97F /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */,
+				F5BB0E002DCCCE91009B74C0 /* XCRemoteSwiftPackageReference "lottie-spm" */,
+				F542FD962DFD7F0A0067D94F /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8FBF349C2DA954A200049105 /* Products */;
@@ -455,10 +442,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"RFOXIA/Preview Content\"";
+				DEVELOPMENT_TEAM = ZA23JTQV5N;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RFOXIA/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses Bluetooth to connect with nearby devices.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show on the map";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record audio messages";
@@ -467,6 +454,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -488,10 +476,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"RFOXIA/Preview Content\"";
+				DEVELOPMENT_TEAM = ZA23JTQV5N;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RFOXIA/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses Bluetooth to connect with nearby devices.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show on the map";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record audio messages";
@@ -500,6 +488,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -623,14 +612,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		8F071A5C2DD8841B00E60424 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/airbnb/lottie-ios.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 4.5.1;
-			};
-		};
 		8FCAC3422DB95DC9000F9130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -647,15 +628,7 @@
 				minimumVersion = 8.0.0;
 			};
 		};
-		8FCD9DC12DFC771A007CD97F /* XCRemoteSwiftPackageReference "paypal-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/paypal/paypal-ios/";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.0;
-			};
-		};
-		8FCD9DCA2DFC83A7007CD97F /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */ = {
+		F542FD962DFD7F0A0067D94F /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/paypal/paypalcheckout-ios";
 			requirement = {
@@ -663,14 +636,17 @@
 				minimumVersion = 1.3.0;
 			};
 		};
+		F5BB0E002DCCCE91009B74C0 /* XCRemoteSwiftPackageReference "lottie-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		8F071A5D2DD8841B00E60424 /* Lottie */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8F071A5C2DD8841B00E60424 /* XCRemoteSwiftPackageReference "lottie-ios" */;
-			productName = Lottie;
-		};
 		8FCAC3432DB95DC9000F9130 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8FCAC3422DB95DC9000F9130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -701,30 +677,15 @@
 			package = 8FCAC34B2DB95F2D000F9130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
 		};
-		8FCD9DC22DFC771A007CD97F /* CardPayments */ = {
+		F542FD972DFD7F0A0067D94F /* PayPalCheckout */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8FCD9DC12DFC771A007CD97F /* XCRemoteSwiftPackageReference "paypal-ios" */;
-			productName = CardPayments;
-		};
-		8FCD9DC42DFC771A007CD97F /* CorePayments */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8FCD9DC12DFC771A007CD97F /* XCRemoteSwiftPackageReference "paypal-ios" */;
-			productName = CorePayments;
-		};
-		8FCD9DC62DFC771A007CD97F /* PayPalWebPayments */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8FCD9DC12DFC771A007CD97F /* XCRemoteSwiftPackageReference "paypal-ios" */;
-			productName = PayPalWebPayments;
-		};
-		8FCD9DC82DFC771A007CD97F /* PaymentButtons */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8FCD9DC12DFC771A007CD97F /* XCRemoteSwiftPackageReference "paypal-ios" */;
-			productName = PaymentButtons;
-		};
-		8FCD9DCB2DFC83A7007CD97F /* PayPalCheckout */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8FCD9DCA2DFC83A7007CD97F /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */;
+			package = F542FD962DFD7F0A0067D94F /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */;
 			productName = PayPalCheckout;
+		};
+		F5BB0E012DCCCE91009B74C0 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F5BB0E002DCCCE91009B74C0 /* XCRemoteSwiftPackageReference "lottie-spm" */;
+			productName = Lottie;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
