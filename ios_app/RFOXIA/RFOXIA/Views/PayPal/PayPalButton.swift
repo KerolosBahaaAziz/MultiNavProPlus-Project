@@ -26,44 +26,52 @@ struct PayPalButtonContainer: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
 
-        Checkout.setCreateOrderCallback { createOrderAction in
-            PayPalOrderService.shared.createOrder(amount: amount, currency: currency) { orderId in
-                if let orderId = orderId {
-                    createOrderAction.set(orderId: orderId)
-                } else {
-                    print("❌ Failed to create PayPal order")
+        // Delay creation to ensure PayPal SDK is fully initialized
+        DispatchQueue.main.async {
+            // 🧠 Ensure only created once
+            guard view.subviews.isEmpty else { return }
+
+            // 🔁 Set up callbacks
+            Checkout.setCreateOrderCallback { createOrderAction in
+                PayPalOrderService.shared.createOrder(amount: amount, currency: currency) { orderId in
+                    if let orderId = orderId {
+                        createOrderAction.set(orderId: orderId)
+                    } else {
+                        print("❌ Failed to create PayPal order")
+                    }
                 }
             }
-        }
 
-        Checkout.setOnApproveCallback { approval in
-            approval.actions.capture { response, error in
-                if let data = response?.data {
-                    print("✅ Payment approved and captured: \(data)")
-                } else if let error = error {
-                    print("❌ Error capturing payment: \(error.localizedDescription)")
+            Checkout.setOnApproveCallback { approval in
+                approval.actions.capture { response, error in
+                    if let data = response?.data {
+                        print("✅ Payment approved and captured: \(data)")
+                    } else if let error = error {
+                        print("❌ Error capturing payment: \(error.localizedDescription)")
+                    }
                 }
             }
+
+            Checkout.setOnCancelCallback {
+                print("⚠️ User canceled the PayPal payment.")
+            }
+
+            Checkout.setOnErrorCallback { errorInfo in
+                print("❌ PayPal SDK error: \(errorInfo.error.localizedDescription)")
+            }
+
+            // ✅ Safely create PayPal button after SDK is configured
+            let button = PayPalButton()
+            button.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(button)
+
+            NSLayoutConstraint.activate([
+                button.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                button.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                button.topAnchor.constraint(equalTo: view.topAnchor),
+                button.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
         }
-
-        Checkout.setOnCancelCallback {
-            print("⚠️ User canceled the PayPal payment.")
-        }
-
-        Checkout.setOnErrorCallback { errorInfo in
-            print("❌ PayPal SDK error: \(errorInfo.error.localizedDescription)")
-        }
-
-        let button = PayPalButton()
-        button.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(button)
-
-        NSLayoutConstraint.activate([
-            button.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            button.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            button.topAnchor.constraint(equalTo: view.topAnchor),
-            button.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
 
         return view
     }

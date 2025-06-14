@@ -8,7 +8,9 @@
 import Foundation
 import SwiftUI
 
+
 struct PayPalView: View {
+    
     var body: some View {
         VStack {
             Text("Pay with PayPal")

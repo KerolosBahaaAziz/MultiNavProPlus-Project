@@ -25,6 +25,7 @@ struct RFOXIAApp: App {
         
         Checkout.set(config: config)
         Checkout.start()
+        print("✅ Checkout configured")
     }
     var body: some Scene {
         WindowGroup {
