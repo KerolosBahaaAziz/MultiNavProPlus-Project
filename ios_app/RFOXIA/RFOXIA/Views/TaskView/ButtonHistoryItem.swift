@@ -9,12 +9,12 @@ import Foundation
 import SwiftUICore
 
 struct ButtonHistoryItem: Identifiable, Codable{
-    let id = UUID()
+    var id = UUID()
     let type: ButtonType
     let value: String
     let timestamp: Date
     
-    enum ButtonType: Codable {
+    enum ButtonType: Codable ,Equatable{
         case direction(String)
         case action(String)
         case activator(String)
@@ -93,7 +93,6 @@ extension ButtonHistoryItem {
             return value.replacingOccurrences(of: "seconds", with: "")
                 //return "W\(seconds)"
             //}
-            return ""
         case .mode:
             if let modeNumber = value.components(separatedBy: " ").last {
                return "M\(modeNumber)"
