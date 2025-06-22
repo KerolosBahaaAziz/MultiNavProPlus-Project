@@ -19,7 +19,6 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     private var audioCharacteristic: CBCharacteristic?
     private var deviceNameCharacteristic: CBCharacteristic?
     
-        
     private var expectingDeviceCount = false
     private var expectedDeviceCount = 0
     private var receivedDeviceNamesBuffer = ""
@@ -33,11 +32,12 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var isBluetoothOn = false
     @Published var isConnected = false
     @Published var discoveredPeripherals: [(CBPeripheral, String)] = []
-    @Published var receivedMessages: [String] {
-        didSet {
-            storage.save(receivedMessages, forKey: "receivedMessages")
-        }
-    }
+    @Published var receivedMessages: [String] = []
+//    {
+//        didSet {
+//            storage.save(receivedMessages, forKey: "receivedMessages")
+//        }
+//    }
     @Published var accelerometerMessages: Int {
         didSet {
             storage.saveInt(accelerometerMessages, forKey: "accelerometerMessages")
@@ -79,7 +79,8 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var showConnectionError: Bool = false
     @Published var receivedAudioData: [Data] = []
     private var currentAudioBuffer: [Data] = []
-    
+    // NEW: Added buffer to store incoming message chunks
+    private var currentMessageBuffer: [Data] = []
     
     let chatCharacteristicUUID = CBUUID(string: "1234")
     
@@ -130,16 +131,38 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         connectedPeripheral?.delegate = self
     }
     
-    // Sending message via Bluetooth
     func sendMessage(_ message: String) {
-        guard let peripheral = connectedPeripheral , let characteristic = messageCharacteristic else {
+        guard let peripheral = connectedPeripheral, let characteristic = messageCharacteristic else {
             print("Bluetooth connection or characteristic not available")
             return
         }
         
-        if let messageData = message.data(using: .utf8){
-            peripheral.writeValue(messageData, for: characteristic, type: .withoutResponse)
+//<<<<<<< HEAD
+//        if let messageData = message.data(using: .utf8){
+//            peripheral.writeValue(messageData, for: characteristic, type: .withoutResponse)
+//=======
+        // MODIFIED: Updated to send message in chunks based on MTU
+        guard let messageData = message.data(using: .utf8) else {
+            print("Error: Couldn't convert message to Data.")
+            return
+//>>>>>>> sending-task-history-to-stm
         }
+        
+        // NEW: Get MTU and send message in chunks
+        let mtu = peripheral.maximumWriteValueLength(for: .withoutResponse)
+        var offset = 0
+        
+        while offset < messageData.count {
+            let chunkSize = min(mtu, messageData.count - offset)
+            let chunk = messageData.subdata(in: offset..<offset + chunkSize)
+            peripheral.writeValue(chunk, for: characteristic, type: .withoutResponse)
+            print("📤 Sent message chunk of size \(chunk.count) bytes")
+            offset += chunkSize
+        }
+        
+        // NEW: Send empty packet to indicate end of message
+        peripheral.writeValue(Data(), for: characteristic, type: .withoutResponse)
+        print("📤 Sent empty packet to indicate end of message")
     }
     
     func sendCommandToMicrocontroller(_ command: String) {
@@ -276,15 +299,31 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         guard error == nil else { return }
         
         if characteristic == messageCharacteristic {
-            if let data = characteristic.value{
-                print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
-                if let message = String(data: data, encoding: .utf8) {
-                    DispatchQueue.main.async {
-                        self.receivedMessages.append(message)
+                    // MODIFIED: Updated to handle message chunks and empty packet
+                    if let data = characteristic.value {
+                        if data.isEmpty {
+                            print("📩 End of message stream received")
+                            // NEW: Combine buffered chunks into a single message
+                            let combinedData = Data(currentMessageBuffer.joined())
+                            if let message = String(data: combinedData, encoding: .utf8) {
+                                print("✅ Reconstructed message: \(message)")
+                                DispatchQueue.main.async {
+                                    self.receivedMessages.append(message)
+                                    self.currentMessageBuffer.removeAll()
+                                }
+                            } else {
+                                print("❌ Failed to decode message as UTF-8 string")
+                                DispatchQueue.main.async {
+                                    self.currentMessageBuffer.removeAll()
+                                }
+                            }
+                        } else {
+                            print("📩 Received message chunk of size \(data.count) bytes")
+                            // NEW: Append chunk to message buffer
+                            currentMessageBuffer.append(data)
+                        }
                     }
-                }
-            }
-        } else if characteristic == accelerometerCharacteristic {
+                } else if characteristic == accelerometerCharacteristic {
             if let data = characteristic.value{
                 print("Received raw bytes:", data.map { String(format: "%02hhx", $0) }.joined(separator: " "))
                 let value = data.withUnsafeBytes {
