@@ -62,5 +62,11 @@
 		<string>bluetooth-central</string>
 		<string>bluetooth-peripheral</string>
 	</array>
+    <key>paypalBaseUrl</key>
+    <string>https://sandbox.paypal.com</string> <!-- Use sandbox for testing, or production URL for live -->
+    <key>paypalClientId</key>
+    <string>ATWhnnTwJeTlDn5ZHDAqGe_5_jEe7fErSWl86LP5INce3EJttsBs_Y0BE3h76_cQKIpHy_pGK4wugmp3</string>
+    <key>paypalSecrect</key>
+    <string>EEhRqLsM3dzj_PhLT0CFSIDdJGcHbkjm-DO7YSk6hSI8VFeoDduFWBhjod3HFw2SA07agAqNn1bhl0MG</string>
 </dict>
 </plist>

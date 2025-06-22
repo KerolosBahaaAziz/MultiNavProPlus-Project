@@ -19,7 +19,7 @@ extension CoreDataManager{
            message.createdAt = Date()
            message.isCurrentUser = isMine
            message.type = type
-        message.record = record
+           message.record = record
 
            do {
                try context.save()

@@ -26,14 +26,42 @@ struct PayPalButtonContainer: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
 
-        // Delay creation to ensure PayPal SDK is fully initialized
-        DispatchQueue.main.async {
-            // 🧠 Ensure only created once
-            guard view.subviews.isEmpty else { return }
+        let button = UIButton(type: .system)
+        button.setTitle("Pay with PayPal", for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = UIColor.systemBlue
+        button.layer.cornerRadius = 8
+        button.translatesAutoresizingMaskIntoConstraints = false
 
-            // 🔁 Set up callbacks
+        button.addTarget(context.coordinator, action: #selector(Coordinator.payWithPayPal), for: .touchUpInside)
+
+        view.addSubview(button)
+
+        NSLayoutConstraint.activate([
+            button.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            button.topAnchor.constraint(equalTo: view.topAnchor),
+            button.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        return view
+    }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(amount: amount, currency: currency)
+    }
+
+    class Coordinator {
+        let amount: String
+        let currency: String
+
+        init(amount: String, currency: String) {
+            self.amount = amount
+            self.currency = currency
+        }
+
+        @objc func payWithPayPal() {
             Checkout.setCreateOrderCallback { createOrderAction in
-                PayPalOrderService.shared.createOrder(amount: amount, currency: currency) { orderId in
+                PayPalOrderService.shared.createOrder(amount: self.amount, currency: self.currency) { orderId in
                     if let orderId = orderId {
                         createOrderAction.set(orderId: orderId)
                     } else {
@@ -48,6 +76,7 @@ struct PayPalButtonContainer: UIViewRepresentable {
                         print("✅ Payment approved and captured: \(data)")
                     } else if let error = error {
                         print("❌ Error capturing payment: \(error.localizedDescription)")
+                        print("Debug info: \(error)")
                     }
                 }
             }
@@ -60,20 +89,8 @@ struct PayPalButtonContainer: UIViewRepresentable {
                 print("❌ PayPal SDK error: \(errorInfo.error.localizedDescription)")
             }
 
-            // ✅ Safely create PayPal button after SDK is configured
-            let button = PayPalButton()
-            button.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(button)
-
-            NSLayoutConstraint.activate([
-                button.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                button.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                button.topAnchor.constraint(equalTo: view.topAnchor),
-                button.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-            ])
+            Checkout.start()
         }
-
-        return view
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {}
