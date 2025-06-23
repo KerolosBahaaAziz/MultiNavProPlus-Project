@@ -192,6 +192,30 @@ extension DataBaseManager {
                 completion(isExpired)
             }
     }
+    
+    func getSubscriptionExpiryDate(completion: @escaping (Date?) -> Void) {
+        guard let email = Auth.auth().currentUser?.email else {
+            print("❌ No user signed in.")
+            completion(nil)
+            return
+        }
+
+        let safeEmail = email.replacingOccurrences(of: ".", with: "-")
+
+        database.child(safeEmail)
+            .child("PaymentHistory")
+            .child("expiryDate")
+            .observeSingleEvent(of: .value) { snapshot in
+                guard let timeStamp = snapshot.value as? TimeInterval else {
+                    print("❌ No expiry date found.")
+                    completion(nil)
+                    return
+                }
+                let expiryDate = Date(timeIntervalSince1970: timeStamp)
+                completion(expiryDate)
+            }
+    }
+
 }
 
 

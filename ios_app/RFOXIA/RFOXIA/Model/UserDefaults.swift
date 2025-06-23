@@ -10,7 +10,9 @@ import Foundation
 class UserDefaultsUsed{
     func userDefaults(){
         UserDefaults.standard.set(false, forKey: "isSubscribed")
+        UserDefaults.standard.set("", forKey: "subscriptionExpireDate")
         UserDefaults.standard.set(false, forKey: "isLogin")
         UserDefaults.standard.set("false", forKey: "userEmail")
+        UserDefaults.standard.set("false", forKey: "otherEmail")
     }
 }
