@@ -18,13 +18,13 @@ class ApplePayHandler : NSObject{
     var paymentStatus = PKPaymentAuthorizationStatus.failure
     var completionHandler: PaymentCompletionHandler?
     
-    func startApplePay(completion : @escaping PaymentCompletionHandler){
+    func startApplePay(amount : Double, currencyCode : String,completion : @escaping PaymentCompletionHandler){
         completionHandler = completion
         
         paymentSummary = []
         
         paymentSummary.append(PKPaymentSummaryItem(label: "Total",
-                                                   amount: 9.99,
+                                                   amount: NSDecimalNumber(value: amount),
                                                    type: .final))
         
         let paymentRequest = PKPaymentRequest()
@@ -32,7 +32,7 @@ class ApplePayHandler : NSObject{
         paymentRequest.merchantIdentifier = "merchant.2jd4vk6g4v2prs6z"
         paymentRequest.merchantCapabilities = .threeDSecure
         paymentRequest.supportedNetworks = [.visa, .masterCard, .amex, .discover]
-        paymentRequest.currencyCode = "USD"
+        paymentRequest.currencyCode = currencyCode
         paymentRequest.countryCode = "US"
         
         paymentController = PKPaymentAuthorizationController(paymentRequest: paymentRequest)
