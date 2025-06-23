@@ -9,13 +9,17 @@ import Foundation
 import SwiftUI
 
 struct PayPalView: View {
+    var amount : String
+    var currency : String
     var body: some View {
         VStack {
-            Text("Pay with PayPal")
-                .font(.title)
-
-            PayPalButtonView(amount: "15.00", currency: "USD")
+            PayPalButtonView(amount: amount, currency: currency, onPaymentSuccess: {
+                
+            })
         }
-        .padding()
     }
+}
+
+#Preview {
+    PayPalView(amount: "100", currency: "USD")
 }
