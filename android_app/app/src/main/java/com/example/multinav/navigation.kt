@@ -67,13 +67,13 @@ sealed class Screen(
     val icon: Int? = null
 ) {
     data object Splash : Screen("splash")
-    data object DeviceList : Screen("deviceList", label = "Devices", icon = R.drawable.ic_phone)
+    data object DeviceList : Screen("deviceList", label = "Chat", icon = R.drawable.ic_phone)
     data object Chat : Screen("chat/{deviceAddress}") {
         fun createRoute(deviceAddress: String) = "chat/$deviceAddress"
     }
 
     data object JoyStick :
-        Screen("joystick/{deviceAddress}", label = "Joystick", icon = R.drawable.ic_joystick) {
+        Screen("joystick/{deviceAddress}", label = "Connect", icon = R.drawable.ic_joystick) {
         fun createRoute(deviceAddress: String) = "joystick/$deviceAddress"
     }
 

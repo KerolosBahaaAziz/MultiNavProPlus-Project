@@ -31,7 +31,7 @@ fun FloatingButton(
         modifier = modifier
             .padding(top = 10.dp)
             .background(
-                brush = Brush.linearGradient(colors = gradientColors),
+                brush = Brush.linearGradient(colors = gradientColors.map { it.copy(alpha = 0.5f) }),
                 shape = CircleShape
             ),
         containerColor = Color.Transparent // Set to transparent to show the gradient

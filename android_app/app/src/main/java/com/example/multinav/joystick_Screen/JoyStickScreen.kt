@@ -101,7 +101,7 @@ fun CircleIconButton(
         modifier = modifier
             .size(52.dp)
             .background(
-                brush = Brush.linearGradient(colors = gradientColors),
+                brush = Brush.linearGradient(colors = gradientColors.map { it.copy(alpha = 0.5f) }),
                 shape = CircleShape
             )
 
@@ -604,7 +604,6 @@ fun JoyStickScreen(
                         FloatingButton(
                             onClick = { navController.navigate(Screen.TasksList.route) },
                             modifier = Modifier.size(50.dp)
-
 
                         )
                     }

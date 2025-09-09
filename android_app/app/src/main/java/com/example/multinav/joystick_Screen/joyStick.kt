@@ -59,7 +59,7 @@ fun MyAnalogJoystick(
 
         // Draw the base of the joystick
         drawCircle(
-            color = androidx.compose.ui.graphics.Color.Gray,
+            color = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.5f),
             radius = joystickRadius.toPx(),
             center = center
         )
@@ -73,7 +73,7 @@ fun MyAnalogJoystick(
             )
         } else {
             drawCircle(
-                color = androidx.compose.ui.graphics.Color.LightGray,
+                color = androidx.compose.ui.graphics.Color.LightGray.copy(alpha = 0.5f),
                 radius = 20.dp.toPx(),
                 center = center
             )

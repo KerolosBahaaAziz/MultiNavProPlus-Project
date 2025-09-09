@@ -44,7 +44,10 @@ fun CircleToggleButton(
         modifier = modifier
             .size(50.dp)
             .background(
-                brush = if (isToggled.value) Brush.linearGradient(colors = gradientColors) else Brush.linearGradient(listOf(Color.Gray, Color.Gray)),
+                brush = if (isToggled.value)
+                    Brush.linearGradient(colors = gradientColors.map { it.copy(alpha = 0.5f) })
+                else
+                    Brush.linearGradient(listOf(Color.Gray.copy(alpha = 0.5f), Color.Gray.copy(alpha = 0.5f))),
                 shape = CircleShape
             )
     ) {
