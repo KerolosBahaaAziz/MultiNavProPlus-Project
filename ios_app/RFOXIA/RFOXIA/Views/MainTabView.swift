@@ -25,7 +25,7 @@ struct MainTabView: View {
 
             TabView {
                 
-                BluetoothChatView()
+                DevicesNamesView()
                     .tabItem {
                         Label("Chat", systemImage: "bubble.left.and.bubble.right.fill")
                     }
@@ -38,6 +38,7 @@ struct MainTabView: View {
             }
             .accentColor(Color(red: 26/255, green: 61/255, blue: 120/255)) 
         }
+        .navigationBarBackButtonHidden(true)
     }
 }
 

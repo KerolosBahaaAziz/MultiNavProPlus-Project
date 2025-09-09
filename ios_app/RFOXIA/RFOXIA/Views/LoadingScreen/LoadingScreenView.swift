@@ -23,7 +23,7 @@ struct LoadingScreenView: View {
                     .resizable()
                     .scaledToFit()
             } else {
-                EmptyView()
+                GoogleSignInView()
             }
         }
         .onAppear {
