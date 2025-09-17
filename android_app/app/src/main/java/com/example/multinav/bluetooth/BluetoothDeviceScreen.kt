@@ -256,7 +256,7 @@ fun BluetoothDeviceScreen(
                                     index = index,
                                     onNavigate = { deviceAddress ->
                                         navController.navigate(
-                                            Screen.JoyStick.createRoute(
+                                            Screen.Chat.createRoute(
                                                 deviceAddress = deviceAddress,
                                             )
                                         )

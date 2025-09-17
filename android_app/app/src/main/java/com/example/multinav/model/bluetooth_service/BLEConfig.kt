@@ -64,7 +64,9 @@ object BLEConfig {
     // 3. Bluetooth Connection Service - IMPORTANT FOR YOUR USE CASE
     val BLIST_CONNECTION_SERVICE_UUID: UUID = UUID.fromString("0040$BASE_UUID_PREFIX")
     val B_STATE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0140$BASE_UUID_PREFIX")
-    val B_LIST_CHARACTERISTIC_UUID: UUID = UUID.fromString("1545515f-3446-6154-2135-124513562351")
+    //val B_LIST_CHARACTERISTIC_UUID: UUID = UUID.fromString("1545515f-3446-6154-2135-124513562351")
+
+    val B_LIST_CHARACTERISTIC_UUID: UUID = UUID.fromString("0240$BASE_UUID_PREFIX")
 
     // Mobile chat service with voice support
     fun createChatService(): BluetoothGattService {

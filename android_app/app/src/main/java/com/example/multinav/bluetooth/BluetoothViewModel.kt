@@ -193,7 +193,7 @@ class BluetoothViewModel(
     }
 
     fun requestBleModuleScan() {
-        Log.d("BLE", "Requesting BLE module scan")
+        Log.d("BLE", "Requesting BLE module scan bottom sheet")
 
         _uiState.update {
             it.copy(

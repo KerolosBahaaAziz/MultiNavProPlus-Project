@@ -30,6 +30,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 class BluetoothService(private val context: Context) {
+
     private val bluetoothManager by lazy {
         context.getSystemService(BluetoothManager::class.java)
     }
