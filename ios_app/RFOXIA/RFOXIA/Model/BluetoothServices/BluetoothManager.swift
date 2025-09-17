@@ -85,7 +85,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     let chatCharacteristicUUID = CBUUID(string: "1234")
     
     let accelerometerCharacteristicUUID = CBUUID(string: "0000FE42-8E22-4541-9D4C-21EDAE82ED19")
-    let deviceNameCharacteristicUUID = CBUUID(string: "1545515f-3446-6154-2135-124513562351") //replace with the real one
+    let deviceNameCharacteristicUUID = CBUUID(string: "0240BC9A-7856-3412-7856-341278563412") //replace with the real one
     let sendToDiscoverDevicesCharacteristicUUID = CBUUID(string: "0140BC9A-7856-3412-7856-341278563412") //replace with the real one
     
     
