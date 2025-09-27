@@ -39,13 +39,30 @@ class JoyStickViewModel(
     val airQuality: StateFlow<String> = _airQuality
 
     init {
+        // Try reconnect if not connected
         if (!bluetoothService.isConnected.value) {
             reconnect()
         }
-        setupSensorDataListener()
 
+        // Listen for connection state changes
+        viewModelScope.launch {
+            bluetoothService.isConnected.collect { connected ->
+                if (!connected) {
+                    resetSensorData()
+                }
+            }
+        }
+
+        // Listen for sensor data messages
+        setupSensorDataListener()
     }
 
+    private fun resetSensorData() {
+        _temperature.value = "-"
+        _humidity.value = "-"
+        _pressure.value = "-"
+        _airQuality.value = "-"
+    }
     private fun setupSensorDataListener() {
         // Listen for messages from the device
         viewModelScope.launch {
