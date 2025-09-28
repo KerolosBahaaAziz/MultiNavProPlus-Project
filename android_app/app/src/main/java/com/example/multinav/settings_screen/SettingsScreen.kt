@@ -4,24 +4,19 @@ package com.example.multinav.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallTopAppBar
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,11 +26,14 @@ fun SettingsScreen(
     onSubscribeNavigate: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    var newPassword by remember { mutableStateOf("") }
+    var showPasswordField by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = {
-            SmallTopAppBar(title = { Text("Settings") })
-        }
+        topBar = { SmallTopAppBar(title = { Text("Settings") }) },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -86,15 +84,25 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
+                        // Show email
+                        Text(
+                            text = state.email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Premium status / subscribe
                         if (state.isPremium) {
                             Text(
                                 text = "Premium user",
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
                             )
                         } else {
-                            // Subscribe -> navigate to subscription flow (PayPal/Stripe)
                             Button(
                                 onClick = onSubscribeNavigate,
                                 modifier = Modifier.fillMaxWidth()
@@ -104,7 +112,6 @@ fun SettingsScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Dev helper: mark paid locally in RTDB (for testing)
                             Button(
                                 onClick = { viewModel.markPaidLocally() },
                                 modifier = Modifier.fillMaxWidth(),
@@ -114,9 +121,68 @@ fun SettingsScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Change Password Section
+                        if (!showPasswordField) {
+                            Button(
+                                onClick = { showPasswordField = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Change Password")
+                            }
+                        } else {
+                            OutlinedTextField(
+                                value = newPassword,
+                                onValueChange = { newPassword = it },
+                                label = { Text("New Password") },
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = {
+                                    if (newPassword.length >= 6) {
+                                        viewModel.changePassword(newPassword) { success, message ->
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar(message)
+                                                if (success) {
+                                                    newPassword = ""
+                                                    showPasswordField = false
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Password must be at least 6 characters")
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Update Password")
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = {
+                                    newPassword = ""
+                                    showPasswordField = false
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                            ) {
+                                Text("Cancel")
+                            }
+                        }
+
                         Spacer(modifier = Modifier.weight(1f))
 
-                        // Logout button — uses viewModel.logout() then navigation callback
+                        // Logout
                         Button(
                             onClick = {
                                 viewModel.logout()

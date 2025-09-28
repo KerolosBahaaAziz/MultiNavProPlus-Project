@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val firstName: String = "",
     val lastName: String = "",
+    val email: String = "",
     val isPremium: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null
@@ -57,18 +58,14 @@ class SettingsViewModel(
                 if (snapshot.exists()) {
                     val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
                     val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
-                    val paid = snapshot.child("paid").getValue(Boolean::class.java) ?: false
+                    val premium = snapshot.child("paid").getValue(Boolean::class.java) ?: false
 
                     _uiState.value = SettingsUiState(
                         firstName = firstName,
                         lastName = lastName,
-                        isPremium = paid,
+                        email = user.email ?: "",
+                        isPremium = premium,
                         isLoading = false
-                    )
-                } else {
-                    _uiState.value = SettingsUiState(
-                        isLoading = false,
-                        error = "User data not found"
                     )
                 }
             }
@@ -93,6 +90,21 @@ class SettingsViewModel(
                 )
                 userRef.setValue(newUser)
             }
+        }
+    }
+
+    fun changePassword(newPassword: String, onResult: (success: Boolean, message: String) -> Unit) {
+        val user = auth.currentUser
+        if (user != null) {
+            user.updatePassword(newPassword)
+                .addOnSuccessListener {
+                    onResult(true, "Password updated successfully.")
+                }
+                .addOnFailureListener { e ->
+                    onResult(false, e.message ?: "Failed to update password.")
+                }
+        } else {
+            onResult(false, "No user is signed in.")
         }
     }
 
