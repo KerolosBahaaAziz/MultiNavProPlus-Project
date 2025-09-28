@@ -2,6 +2,7 @@ package com.example.multinav
 
 import ActionsAndDelaysScreen
 import ActionsAndDelaysViewModel
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -51,6 +51,9 @@ import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.model.AudioRecorder
+import com.example.multinav.settings.SettingsScreen
+import com.example.multinav.settings.SettingsViewModel
+import com.example.multinav.settings.SettingsViewModelFactory
 import com.example.multinav.sign_up.SignUpScreen
 import com.example.multinav.splash_screen.SplashScreen
 import com.example.multinav.task_actions.TaskActionsScreen
@@ -76,7 +79,7 @@ sealed class Screen(
         Screen("joystick/{deviceAddress}", label = "Connect", icon = R.drawable.ic_joystick) {
         fun createRoute(deviceAddress: String) = "joystick/$deviceAddress"
     }
-
+    data object Settings : Screen("settings")
     data object Login : Screen("login")
     data object SignUp : Screen("signup")
     data object ActionsAndDelays : Screen("actions_delays")
@@ -260,15 +263,14 @@ fun Navigation(
                 SplashScreen()
                 LaunchedEffect(Unit) {
                     delay(2000L) // Delay for 2 seconds
-                    val nextRoute =
-                        if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
-
-                            Screen.DeviceList.route
-                        } else {
-                            Screen.Login.route
-                        }
+                    val nextRoute = if (auth.currentUser?.isEmailVerified == true) {
+                        Screen.DeviceList.route
+                    } else {
+                        Screen.Login.route
+                    }
                     navController.navigate(nextRoute) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
+                        launchSingleTop = true // Add this
                     }
                 }
             }
@@ -365,6 +367,34 @@ fun Navigation(
                     taskId = backStackEntry.arguments?.getInt("taskId") ?: 0
                 )
             }
+            // inside your NavHost { ... } block in navigation.kt
+
+            composable(Screen.Settings.route) {
+                // create factory with actual Firebase instances passed from your Navigation composable
+                val factory = SettingsViewModelFactory(
+                    auth = auth,                     // pass FirebaseAuth instance you have in Navigation()
+                    databaseReference = database.reference // pass FirebaseDatabase instance you have in Navigation()
+                )
+
+                val viewModel: SettingsViewModel = viewModel(factory = factory)
+
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onLogout = {
+                        navController.navigate(Screen.Login.route) {
+                            // clear back stack so user can't go back after logout
+                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                        }
+                    },
+                    onSubscribeNavigate = {
+                        // TODO: navigate to subscription flow (PayPal/Stripe) e.g. navController.navigate("subscription")
+                    }
+                )
+            }
+
+
+
+
         }
     }
 }

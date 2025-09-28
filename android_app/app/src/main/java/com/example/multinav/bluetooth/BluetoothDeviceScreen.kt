@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -60,6 +61,8 @@ fun BluetoothDeviceScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = state.isScanning)
     val showBottomSheet by bluetoothViewModel.showBottomSheet.collectAsState(initial = false)
     val isBleModuleConnected by bluetoothViewModel.bleModuleConnected.collectAsState(initial = false)
+    var expanded = remember { mutableStateOf(false) }
+    val userName = auth.currentUser?.displayName ?: "Guest"
 
     Box(
         modifier = Modifier
@@ -86,29 +89,48 @@ fun BluetoothDeviceScreen(
                     TopAppBar(
                         title = { Text("Bluetooth Devices") },
                         actions = {
-                            IconButton(
-                                onClick = {
-                                    auth.signOut()
-                                    navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.DeviceList.route) { inclusive = true }
-                                        popUpTo(Screen.JoyStick.route) { inclusive = true }
-                                        popUpTo(Screen.Chat.route) { inclusive = true }
-                                    }
-                                }
-                            ) {
+                            // Settings button
+                            IconButton(onClick = { expanded.value = true }) {
                                 Icon(
-                                    imageVector = Icons.Default.ExitToApp,
-                                    contentDescription = "Log Out",
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings",
                                     tint = Color.White
                                 )
                             }
+
+                            // Dropdown menu
+                            DropdownMenu(
+                                expanded = expanded.value,
+                                onDismissRequest = { expanded.value = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Settings") },
+                                    onClick = {
+                                        expanded.value = false
+                                        navController.navigate(Screen.Settings.route)   // ✅ navigate
+                                    }
+                                )
+                                Divider()
+                                DropdownMenuItem(
+                                    text = { Text("Logout") },
+                                    onClick = {
+                                        expanded.value = false
+                                        auth.signOut()
+                                        navController.navigate(Screen.Login.route) {
+                                            popUpTo(Screen.DeviceList.route) { inclusive = true }
+                                            popUpTo(Screen.JoyStick.route) { inclusive = true }
+                                            popUpTo(Screen.Chat.route) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent,
                             titleContentColor = Color.White
                         )
-                    )
-                }
+                    )                }
             },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
         ) { padding ->
@@ -437,7 +459,8 @@ fun BleDeviceBottomSheet(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)
-                                    .animateItemPlacement(),
+                                    //.animateItemPlacement()
+                                ,
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surface
                                 ),

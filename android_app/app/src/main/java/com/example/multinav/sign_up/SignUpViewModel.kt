@@ -103,14 +103,16 @@ class SignUpViewModel(
                 "paid" to false,
             )
             database.reference
+                .child("PublicCoupons") // Add this line
                 .child(sanitizedEmail)
                 .setValue(userData)
                 .await()
         } catch (e: Exception) {
             uiState = UiState.Error("Failed to save user data: ${e.message}")
-            Log.e("SingUp", "Failed to save user data", e)
+            Log.e("SignUp", "Failed to save user data", e)
         }
     }
+
 
 
     private suspend fun sendVerificationEmail(user: FirebaseUser): Result<Void?> = suspendCancellableCoroutine { continuation ->
