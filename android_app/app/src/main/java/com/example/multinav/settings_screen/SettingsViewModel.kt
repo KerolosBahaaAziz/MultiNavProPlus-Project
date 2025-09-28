@@ -1,6 +1,7 @@
 // app/src/main/java/com/example/multinav/settings/SettingsViewModel.kt
 package com.example.multinav.settings
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -28,6 +29,7 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
+        ensureUserInDatabase()
         loadUserData()
     }
 
@@ -41,43 +43,56 @@ class SettingsViewModel(
             return
         }
 
-        // RTDB key in your database uses '-' instead of '.' in emails
-        val emailKey = user.email?.replace(".", "-") ?: run {
+        val emailKey = user.email?.toFirebaseKey() ?: run {
             _uiState.value = SettingsUiState(isLoading = false, error = "Invalid email")
             return
         }
+        Log.d("SettingsVM", "Email = ${user.email}")
+        Log.d("SettingsVM", "EmailKey = $emailKey")
 
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-        // Use addOnSuccessListener / addOnFailureListener - we don't need to suspend
-        viewModelScope.launch {
-            databaseRef.child("PublicCoupons").child(emailKey).get()
-                .addOnSuccessListener { snapshot ->
-                    if (snapshot.exists()) {
-                        val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
-                        val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
-                        val paid = snapshot.child("paid").getValue(Boolean::class.java) ?: false
+        databaseRef.child("UsersDB").child(emailKey).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
+                    val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
+                    val paid = snapshot.child("paid").getValue(Boolean::class.java) ?: false
 
-                        _uiState.value = SettingsUiState(
-                            firstName = firstName,
-                            lastName = lastName,
-                            isPremium = paid,
-                            isLoading = false,
-                            error = null
-                        )
-                    } else {
-                        _uiState.value = SettingsUiState(
-                            isLoading = false,
-                            error = "User data not found"
-                        )
-                    }
-                }
-                .addOnFailureListener { exc ->
+                    _uiState.value = SettingsUiState(
+                        firstName = firstName,
+                        lastName = lastName,
+                        isPremium = paid,
+                        isLoading = false
+                    )
+                } else {
                     _uiState.value = SettingsUiState(
                         isLoading = false,
-                        error = exc.message ?: "Failed to read user data"
+                        error = "User data not found"
                     )
                 }
+            }
+            .addOnFailureListener { exc ->
+                _uiState.value = SettingsUiState(
+                    isLoading = false,
+                    error = exc.message ?: "Failed to read user data"
+                )
+            }
+    }
+    fun ensureUserInDatabase() {
+        val user = auth.currentUser ?: return
+        val safeEmail = user.email?.toFirebaseKey() ?: return
+
+        val userRef = databaseRef.child("UsersDB").child(safeEmail)
+        userRef.get().addOnSuccessListener { snapshot ->
+            if (!snapshot.exists()) {
+                val newUser = mapOf(
+                    "firstName" to "",
+                    "lastName" to "",
+                    "paid" to false
+                )
+                userRef.setValue(newUser)
+            }
         }
     }
 
@@ -92,7 +107,7 @@ class SettingsViewModel(
     fun markPaidLocally() {
         val user = auth.currentUser ?: return
         val emailKey = user.email?.replace(".", "-") ?: return
-        databaseRef.child("PublicCoupons").child(emailKey).child("paid").setValue(true)
+        databaseRef.child("UsersDB").child(emailKey).child("paid").setValue(true)
             .addOnSuccessListener {
                 // update local state
                 _uiState.value = _uiState.value.copy(isPremium = true)
@@ -102,6 +117,11 @@ class SettingsViewModel(
                 _uiState.value = _uiState.value.copy(error = it.message)
             }
     }
+
+    private fun String.toFirebaseKey(): String {
+        return this.replace(".", "-") // same rule you used when saving
+    }
+
 }
 
 

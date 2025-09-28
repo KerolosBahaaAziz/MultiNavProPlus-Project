@@ -103,7 +103,7 @@ class SignUpViewModel(
                 "paid" to false,
             )
             database.reference
-                .child("PublicCoupons") // Add this line
+                .child("UsersDB") // Add this line
                 .child(sanitizedEmail)
                 .setValue(userData)
                 .await()
