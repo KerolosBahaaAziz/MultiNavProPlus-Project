@@ -59,14 +59,14 @@ dependencies {
     implementation("androidx.room:room-runtime:$room_version")
     ksp("androidx.room:room-compiler:$room_version")
 
-    implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1") // Or the latest version
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation(libs.androidx.constraintlayout.compose) // Or the latest version
+    implementation(libs.androidx.navigation.compose)
 
-    implementation("com.google.firebase:firebase-database")
-    implementation("com.google.firebase:firebase-auth")
-    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
-    implementation("androidx.compose.material:material-icons-core")
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.auth)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -87,15 +87,14 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
-    implementation("androidx.navigation:navigation-compose:2.7.7")
 
     implementation(files("libs/heresdk-explore-android-4.22.2.0.186672.aar")) // Direct AAR reference
-    implementation("com.google.android.gms:play-services-location:21.3.0") // Corrected syntax
+    implementation(libs.play.services.location) // Corrected syntax
 // implementation ("com.here.sdk:explore:4.22.2.0")
-    implementation ("com.google.accompanist:accompanist-swiperefresh:0.27.0")
+    implementation (libs.accompanist.swiperefresh)
 
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.9.1")
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.logging.interceptor)
 
 }
