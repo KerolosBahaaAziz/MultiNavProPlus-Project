@@ -1,6 +1,8 @@
 // app/src/main/java/com/example/multinav/settings/SettingsScreen.kt
 package com.example.multinav.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -30,6 +33,8 @@ fun SettingsScreen(
     var showPasswordField by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
 
     Scaffold(
         topBar = { SmallTopAppBar(title = { Text("Settings") }) },
@@ -103,11 +108,18 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Medium
                             )
                         } else {
+                            // 🔹 Navigate to PayPalScreen when clicking Subscribe
                             Button(
-                                onClick = onSubscribeNavigate,
+                                onClick = {
+                                    // For now, hardcode an order ID you created with sandbox API
+                                    val sandboxOrderId = "5O190127TN364715T"//"REPLACE_WITH_ORDER_ID"
+                                    val paypalSandboxUrl = "https://www.sandbox.paypal.com/checkoutnow?token=$sandboxOrderId"
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paypalSandboxUrl))
+                                    context.startActivity(intent)
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(text = "Subscribe")
+                                Text("Pay with PayPal (Sandbox)")
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))

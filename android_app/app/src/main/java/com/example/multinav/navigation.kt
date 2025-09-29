@@ -88,6 +88,8 @@ sealed class Screen(
     data object TaskActions : Screen("task_actions/{taskTitle}/{taskId}") {
         fun createRoute(taskTitle: String, taskId: Int) = "task_actions/$taskTitle/$taskId"
     }
+
+
 }
 
 @Composable
@@ -387,13 +389,10 @@ fun Navigation(
                         }
                     },
                     onSubscribeNavigate = {
-                        // TODO: navigate to subscription flow (PayPal/Stripe) e.g. navController.navigate("subscription")
                     }
+
                 )
             }
-
-
-
 
         }
     }

@@ -44,6 +44,16 @@
             android:theme="@style/Theme.MultiNav"
             android:configChanges="orientation|screenSize"> <!-- Added to handle rotation -->
 
+            <!-- Add new intent filter for PayPal deep linking -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Add your scheme for PayPal return URL -->
+                <data
+                    android:scheme="multinav"
+                    android:host="payment" />
+            </intent-filter>
 
             <!-- Add this to support fullscreen mode -->
             <meta-data

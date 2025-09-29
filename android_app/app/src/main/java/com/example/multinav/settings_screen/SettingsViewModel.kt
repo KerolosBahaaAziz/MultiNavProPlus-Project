@@ -130,6 +130,20 @@ class SettingsViewModel(
             }
     }
 
+    fun markPaidAfterPayment() {
+        val user = auth.currentUser ?: return
+        val emailKey = user.email?.toFirebaseKey() ?: return
+
+        databaseRef.child("UsersDB").child(emailKey).child("paid").setValue(true)
+            .addOnSuccessListener {
+                _uiState.value = _uiState.value.copy(isPremium = true)
+            }
+            .addOnFailureListener {
+                _uiState.value = _uiState.value.copy(error = it.message)
+            }
+    }
+
+
     private fun String.toFirebaseKey(): String {
         return this.replace(".", "-") // same rule you used when saving
     }

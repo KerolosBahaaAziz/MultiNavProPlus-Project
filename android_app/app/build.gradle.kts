@@ -93,4 +93,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0") // Corrected syntax
 // implementation ("com.here.sdk:explore:4.22.2.0")
     implementation ("com.google.accompanist:accompanist-swiperefresh:0.27.0")
+
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.9.1")
+
 }
