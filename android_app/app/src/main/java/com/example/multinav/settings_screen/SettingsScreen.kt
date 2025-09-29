@@ -3,10 +3,17 @@ package com.example.multinav.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.multinav.payment.PayPalApiService
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +42,8 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-
+    var isProcessingPayment by remember { mutableStateOf(false) }
+    val paypalService = remember { PayPalApiService() }
 
     Scaffold(
         topBar = { SmallTopAppBar(title = { Text("Settings") }) },
@@ -102,107 +111,217 @@ fun SettingsScreen(
 
                         // Premium status / subscribe
                         if (state.isPremium) {
-                            Text(
-                                text = "Premium user",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Premium",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Premium Member",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         } else {
-                            // 🔹 Navigate to PayPalScreen when clicking Subscribe
+                            // PayPal payment button with dynamic order creation
                             Button(
                                 onClick = {
-                                    // For now, hardcode an order ID you created with sandbox API
-                                    val sandboxOrderId = "5O190127TN364715T"//"REPLACE_WITH_ORDER_ID"
-                                    val paypalSandboxUrl = "https://www.sandbox.paypal.com/checkoutnow?token=$sandboxOrderId"
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paypalSandboxUrl))
-                                    context.startActivity(intent)
+                                    isProcessingPayment = true
+                                    coroutineScope.launch {
+                                        try {
+                                            // Create a new order with PayPal API
+                                            val orderId = paypalService.createOrder("9.99")
+
+                                            // Open PayPal checkout with the new order ID
+                                            val paypalUrl = "https://www.sandbox.paypal.com/checkoutnow?token=$orderId"
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paypalUrl))
+                                            context.startActivity(intent)
+
+                                            // Show success message
+                                            snackbarHostState.showSnackbar(
+                                                "Complete payment in browser. Use 'Mark Paid' button after payment."
+                                            )
+
+                                            // Note: In a real app, you'd verify the payment on your backend
+                                            // before marking as paid
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar(
+                                                "Failed to create PayPal order: ${e.message}"
+                                            )
+                                        } finally {
+                                            isProcessingPayment = false
+                                        }
+                                    }
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !isProcessingPayment,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF0070E0) // PayPal blue
+                                )
                             ) {
-                                Text("Pay with PayPal (Sandbox)")
+                                if (isProcessingPayment) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("Subscribe with PayPal ($9.99/month)")
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Button(
-                                onClick = { viewModel.markPaidLocally() },
+                            // Dev button to mark as paid (for testing)
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.markPaidLocally()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Marked as premium (dev mode)")
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF2E7D32)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFF2E7D32))
                             ) {
-                                Text(text = "Mark Paid (dev)", color = Color.White)
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = "Dev",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "Mark Paid (Dev Testing)")
                             }
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
 
+                        Divider()
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
                         // Change Password Section
                         if (!showPasswordField) {
-                            Button(
+                            OutlinedButton(
                                 onClick = { showPasswordField = true },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "Password"
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text("Change Password")
                             }
                         } else {
-                            OutlinedTextField(
-                                value = newPassword,
-                                onValueChange = { newPassword = it },
-                                label = { Text("New Password") },
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Text(
+                                        "Update Password",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(12.dp))
 
-                            Button(
-                                onClick = {
-                                    if (newPassword.length >= 6) {
-                                        viewModel.changePassword(newPassword) { success, message ->
-                                            coroutineScope.launch {
-                                                snackbarHostState.showSnackbar(message)
-                                                if (success) {
-                                                    newPassword = ""
-                                                    showPasswordField = false
+                                    OutlinedTextField(
+                                        value = newPassword,
+                                        onValueChange = { newPassword = it },
+                                        label = { Text("New Password") },
+                                        placeholder = { Text("Enter at least 6 characters") },
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                if (newPassword.length >= 6) {
+                                                    viewModel.changePassword(newPassword) { success, message ->
+                                                        coroutineScope.launch {
+                                                            snackbarHostState.showSnackbar(message)
+                                                            if (success) {
+                                                                newPassword = ""
+                                                                showPasswordField = false
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar(
+                                                            "Password must be at least 6 characters"
+                                                        )
+                                                    }
                                                 }
-                                            }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Update")
                                         }
-                                    } else {
-                                        coroutineScope.launch {
-                                            snackbarHostState.showSnackbar("Password must be at least 6 characters")
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                newPassword = ""
+                                                showPasswordField = false
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Cancel")
                                         }
                                     }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Update Password")
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Button(
-                                onClick = {
-                                    newPassword = ""
-                                    showPasswordField = false
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-                            ) {
-                                Text("Cancel")
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        // Logout
+                        // Logout button
                         Button(
                             onClick = {
                                 viewModel.logout()
                                 onLogout()
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
                         ) {
+                            Icon(
+                                imageVector = Icons.Default.ExitToApp,
+                                contentDescription = "Logout"
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(text = "Logout", color = Color.White)
                         }
                     }
