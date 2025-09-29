@@ -7,8 +7,11 @@
 
 import SwiftUI
 
+import SwiftUI
+
 struct DeviceListView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager  // Use the environment object here
+    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @State private var navigateToMain = false   // State to trigger navigation
     
     var body: some View {
         VStack {
@@ -27,8 +30,19 @@ struct DeviceListView: View {
                 }
             }
             
-            // Hidden navigation trigger
+            // Skip button
+            Button("Skip") {
+                navigateToMain = true
+            }
+            .padding()
+            
+            // Navigation links
             NavigationLink(destination: MainTabView(), isActive: $bluetoothManager.isConnected) {
+                EmptyView()
+            }
+            .hidden()
+            
+            NavigationLink(destination: MainTabView(), isActive: $navigateToMain) {
                 EmptyView()
             }
             .hidden()
@@ -36,13 +50,16 @@ struct DeviceListView: View {
         .navigationTitle("Select a Device")
         .onAppear {
             bluetoothManager.scanForDevices()
-        }.alert("Connection Failed", isPresented: $bluetoothManager.showConnectionError) {
+        }
+        .alert("Connection Failed", isPresented: $bluetoothManager.showConnectionError) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(bluetoothManager.connectionErrorMessage)
-        }.navigationBarBackButtonHidden(true)
+        }
+        .navigationBarBackButtonHidden(true)
     }
 }
+
 
 #Preview {
     DeviceListView()
