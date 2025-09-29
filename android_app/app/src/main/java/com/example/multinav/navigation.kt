@@ -51,7 +51,6 @@ import com.example.multinav.chat.ChatViewModel
 import com.example.multinav.chat.ChatViewModelFactory
 import com.example.multinav.login_screen.LoginScreen
 import com.example.multinav.model.AudioRecorder
-import com.example.multinav.settings.SettingsScreen
 import com.example.multinav.settings.SettingsViewModel
 import com.example.multinav.settings.SettingsViewModelFactory
 import com.example.multinav.sign_up.SignUpScreen

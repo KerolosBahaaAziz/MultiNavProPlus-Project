@@ -1,5 +1,5 @@
 // app/src/main/java/com/example/multinav/settings/SettingsScreen.kt
-package com.example.multinav.settings
+package com.example.multinav
 
 import android.content.Intent
 import android.net.Uri
@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.multinav.payment.PayPalApiService
+import com.example.multinav.settings.SettingsViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,26 @@ fun SettingsScreen(
     val context = LocalContext.current
     var isProcessingPayment by remember { mutableStateOf(false) }
     val paypalService = remember { PayPalApiService() }
+
+    val paymentState by PayPalPaymentManager.paymentState.collectAsState()
+
+
+    // Handle payment state changes
+    LaunchedEffect(paymentState) {
+        when (paymentState) {
+            is PaymentState.Success -> {
+                // Payment successful - mark user as premium
+                viewModel.markPaidAfterPayment()
+                snackbarHostState.showSnackbar("Payment successful! You're now premium!")
+                PayPalPaymentManager.resetState()
+            }
+            is PaymentState.Cancelled -> {
+                snackbarHostState.showSnackbar("Payment was cancelled")
+                PayPalPaymentManager.resetState()
+            }
+            else -> {}
+        }
+    }
 
     Scaffold(
         topBar = { SmallTopAppBar(title = { Text("Settings") }) },

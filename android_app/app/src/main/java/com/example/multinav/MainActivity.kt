@@ -2,6 +2,7 @@
 
 package com.example.multinav
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -58,12 +59,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-      //  WindowCompat.setDecorFitsSystemWindows(window,false)
+        //  WindowCompat.setDecorFitsSystemWindows(window,false)
         checkAndRequestPermissions()
+
+        // Handle PayPal return on initial launch
+        handlePayPalReturn(intent)
+
         val auth = FirebaseAuth.getInstance()
         val database = FirebaseDatabase.getInstance()
 
-// Initialize HERE SDK with accessKeyId and accessKeySecret
+        // Initialize HERE SDK with accessKeyId and accessKeySecret
         val accessKeyId = getString(R.string.here_access_key_id)
         val accessKeySecret = getString(R.string.here_access_key_secret)
         val authenticationMode = AuthenticationMode.withKeySecret(accessKeyId, accessKeySecret)
@@ -79,31 +84,58 @@ class MainActivity : ComponentActivity() {
         }
 
         val user = FirebaseAuth.getInstance().currentUser
-//         val email =user?.email
-//        val Uid = user?.uid
-//        Log.d("email","Email : $email")
-//        Log.d("email","uid : $Uid")
         val startDestination = if (auth.currentUser != null && auth.currentUser!!.isEmailVerified) {
             Screen.DeviceList.route // Navigate to main screen if signed in and email verified
         } else {
             Screen.Login.route // Navigate to login screen otherwise
-             }
+        }
+
         setContent {
             MultiNavTheme {
-          //     SingUpScreen(auth = auth)
                 Navigation(
                     bluetoothViewModel = bluetoothViewModel,
                     database = database,
                     auth = auth,
                     startDestination = startDestination
                 )
-//                ChatScreen(
-//                    viewModel = chatViewModel,
-//                    deviceAddress = "MOCK_DEVICE_ADDRESS",
-//                    onNavigateBack = { finish() },
-//                    bluetoothService = bluetoothService // Exit app on back
-//                )
             }
+        }
+    }
+
+    // Handle new intents when app is already running
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent?.let {
+            handlePayPalReturn(it)
+            setIntent(it) // Update the intent
+        }
+    }
+
+    // Handle PayPal return deep links
+    private fun handlePayPalReturn(intent: Intent) {
+        val data = intent.data
+        Log.d("PayPal", "Received intent with data: $data")
+
+        if (data != null && data.scheme == "com.example.multinav" && data.host == "paypal") {
+            when (data.path) {
+                "/success" -> {
+                    // Extract query parameters
+                    val token = data.getQueryParameter("token") // PayPal order ID
+                    val payerId = data.getQueryParameter("PayerID")
+
+                    Log.d("PayPal", "Payment success - Token: $token, PayerID: $payerId")
+
+                    // Notify the payment manager
+                    PayPalPaymentManager.onPaymentSuccess(token, payerId)
+                }
+                "/cancel" -> {
+                    Log.d("PayPal", "Payment cancelled")
+                    PayPalPaymentManager.onPaymentCancelled()
+                }
+            }
+
+            // Clear the intent data to prevent re-processing
+            intent.data = null
         }
     }
 
@@ -142,4 +174,3 @@ class MainActivity : ComponentActivity() {
         SDKNativeEngine.getSharedInstance()?.dispose()
     }
 }
-
