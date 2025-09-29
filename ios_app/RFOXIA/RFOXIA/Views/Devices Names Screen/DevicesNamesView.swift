@@ -29,15 +29,18 @@ struct DevicesNamesView: View {
                 }
             } else {
                 List(bluetoothManager.nearByDevicesName.indices, id: \.self) { index in
-                    Button(action: {
-                        bluetoothManager.discoverOrSelectNearbyDevices(index)
-                    }) {
+                    NavigationLink(
+                        destination: BluetoothChatView()
+                    ) {
                         Text(bluetoothManager.nearByDevicesName[index])
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color.blue.opacity(0.1))
                             .cornerRadius(8)
                     }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        bluetoothManager.discoverOrSelectNearbyDevices(index)
+                    })
                 }
             }
         }

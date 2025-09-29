@@ -12,7 +12,7 @@ class SaveMessgaePresenter{
     
     private init()    {}
     
-    func saveMessageCoreData(forEmail email: String, text: String?, isMine: Bool, type: String?, record: Data?){
-        CoreDataManager.shared.saveMessages(forEmail: email, text: text, isMine: isMine, type: type, record: record)
+    func saveMessageCoreData(forEmail email: String, text: String?, isMine: Bool, type: String?, record: Data?, senderName: String){
+        CoreDataManager.shared.saveMessages(forEmail: email, text: text, isMine: isMine, type: type, record: record, senderName: senderName)
     }
 }

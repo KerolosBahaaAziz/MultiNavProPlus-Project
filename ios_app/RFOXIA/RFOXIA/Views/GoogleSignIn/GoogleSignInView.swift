@@ -133,7 +133,7 @@ struct GoogleSignInView: View {
     }
     
     func checkSubscribtion(){
-        CheckSubscribtionPresenter.shared.checkSubscribtion()
+        CheckSubscribtionPresenter.shared.checkSubscription()
     }
 }
 

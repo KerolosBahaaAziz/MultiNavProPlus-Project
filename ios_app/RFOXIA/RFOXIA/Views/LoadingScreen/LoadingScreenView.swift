@@ -23,7 +23,12 @@ struct LoadingScreenView: View {
                     .resizable()
                     .scaledToFit()
             } else {
-                EmptyView()
+                let isLogin = UserDefaults.standard.bool(forKey: "isLogin")
+                if isLogin{
+                    DeviceListView()
+                } else {
+                    GoogleSignInView()
+                }
             }
         }
         .onAppear {

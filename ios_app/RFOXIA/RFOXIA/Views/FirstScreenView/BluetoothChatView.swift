@@ -44,7 +44,7 @@ struct BluetoothChatView: View {
                             bluetoothManager.sendMessage(inputText)
                             let newMessage = ChatMessage(type: .text(inputText), isCurrentUser: true, senderName: "Me", senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", createdAt: Date(), text: inputText)
                             messages.append(newMessage)
-                            saveTextMessage(forEmail: otherUser, text: inputText, isMine: true, type: "text")
+                            saveTextMessage(forEmail: otherUser, text: inputText, isMine: true, type: "text", senderName: "Me")
                             inputText = ""
                         }
                     }) {
@@ -112,7 +112,7 @@ struct BluetoothChatView: View {
         for message in newMessages {
             let newMessage = ChatMessage(type: .text(message), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName, senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", createdAt: Date(), text: message)
             messages.append(newMessage)
-            saveTextMessage(forEmail: otherUser, text: message, isMine: false, type: "text")
+            saveTextMessage(forEmail: otherUser, text: message, isMine: false, type: "text", senderName: bluetoothManager.connectedDeviceName)
         }
     }
     
@@ -132,8 +132,8 @@ struct BluetoothChatView: View {
         }
     }
     
-    func saveTextMessage(forEmail email: String, text: String, isMine: Bool, type: String){
-        SaveMessgaePresenter.shared.saveMessageCoreData(forEmail: email, text: text, isMine: isMine, type: type, record: nil)
+    func saveTextMessage(forEmail email: String, text: String, isMine: Bool, type: String, senderName: String){
+        SaveMessgaePresenter.shared.saveMessageCoreData(forEmail: email, text: text, isMine: isMine, type: type, record: nil, senderName: senderName)
     }
     
 }

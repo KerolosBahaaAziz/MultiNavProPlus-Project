@@ -73,13 +73,14 @@ struct RegisterView: View {
                             .foregroundColor(.white)
                             .cornerRadius(12)
                             .padding(.horizontal, 40)
-                    }//.disabled(firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty)
-                    //.opacity((firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty) ? 0.5 : 1)
-                    //.animation(.easeInOut, value: firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty)
+                    }
+                    .disabled(firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty)
+                    .opacity((firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty) ? 0.5 : 1)
+                    .animation(.easeInOut, value: firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty)
 
                     Button(action: {
                         // Navigate manually to Sign In screen
-                        self.navigateToSignIn = true
+                        presentationMode.wrappedValue.dismiss()
                     }) {
                         Text("Already have an account? Sign In")
                             .foregroundColor(.blue)
@@ -106,7 +107,7 @@ struct RegisterView: View {
                     )
                 }
             }
-            .navigationBarBackButtonHidden(true) // Hide back button on register screen
+//            .navigationBarBackButtonHidden(true) // Hide back button on register screen
         }
     }
 }
