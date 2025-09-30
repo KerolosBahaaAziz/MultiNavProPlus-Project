@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var password: String = (UserDefaults.standard.string(forKey: "userPassword") ?? "")
     @State private var isPasswordVisible: Bool = false
     @State private var isSubscribed: Bool = UserDefaults.standard.bool(forKey: "isSubscribe")
+    @State private var isGotoSubscribed: Bool = false
     
     @State private var selectedItem: PhotosPickerItem? = nil
     @State private var profileImage: Image? = nil
@@ -24,6 +25,8 @@ struct SettingsView: View {
     @State private var confirmPassword = ""
     @State private var passwordMessage: String? = nil
     @State private var showLogoutAlert = false
+    @State private var isLoggedOut = false
+    @State private var isPasswordChanged = false
     
     private let profileImageKey = "profileImageData"
     
@@ -128,8 +131,8 @@ struct SettingsView: View {
                         }
                         
                         Button(action: {
-                            isSubscribed.toggle()
-                            UserDefaults.standard.set(isSubscribed, forKey: "isSubscribe")
+                            isGotoSubscribed.toggle()
+                            //UserDefaults.standard.set(isSubscribed, forKey: "isSubscribe")
                         }) {
                             HStack {
                                 Image(systemName: isSubscribed ? "xmark.circle.fill" : "star.fill")
@@ -215,6 +218,15 @@ struct SettingsView: View {
                 }
                 .padding()
             }
+            .fullScreenCover(isPresented: $isLoggedOut) {
+                GoogleSignInView()
+            }
+            .fullScreenCover(isPresented: $isPasswordChanged) {
+                GoogleSignInView()
+            }
+            .fullScreenCover(isPresented: $isGotoSubscribed) {
+                ChoosePaymentMethodView()
+            }
         }
     }
     
@@ -231,6 +243,8 @@ struct SettingsView: View {
             } else {
                 passwordMessage = "Password changed successfully."
                 UserDefaults.standard.set(newPassword, forKey: "userPassword")
+                UserDefaults.standard.removeObject(forKey: "isLogin")
+                isPasswordChanged = true
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     showChangePassword = false
@@ -252,11 +266,13 @@ struct SettingsView: View {
             password = ""
             isSubscribed = false
             profileImage = nil
-            UserDefaults.standard.removeObject(forKey: "isSubscribe")
-            UserDefaults.standard.removeObject(forKey: profileImageKey)
+            UserDefaults.standard.removeObject(forKey: "isLogin")
+            UserDefaults.standard.removeObject(forKey: "isSubscribed")
+            //UserDefaults.standard.removeObject(forKey: profileImageKey)
             UserDefaults.standard.removeObject(forKey: "userEmail")
             UserDefaults.standard.removeObject(forKey: "userPassword")
             
+            isLoggedOut = true
             print("User logged out successfully")
         } catch {
             print("Error logging out: \(error.localizedDescription)")

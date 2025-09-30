@@ -48,13 +48,15 @@ struct GoogleSignInView: View {
                         }else{
                             EmailAuthHandler.shared.signInWithEmail(email: email, password: password) { success, message in
                                 self.alertMessage = message
-                                self.navigateToHome = true
                                 if success {
                                     UserDefaults.standard.set(email, forKey: "userEmail")
+                                    UserDefaults.standard.set(password, forKey: "userPassword")
                                     UserDefaults.standard.set(true, forKey: "isLogin")
+                                    self.navigateToHome = true
                                     self.checkSubscribtion()
                                 } else {
                                     self.showAlert = true
+                                    self.navigateToHome = false
                                     UserDefaults.standard.set(false, forKey: "isLogin")
                                 }
                             }

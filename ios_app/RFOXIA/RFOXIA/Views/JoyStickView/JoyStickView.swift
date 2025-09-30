@@ -12,12 +12,12 @@ struct JoyStickView: View {
     @State var value: Int = 0
     @State var selectedMode: Int = 0
     @Environment(\.scenePhase) var scenePhase
-    @State var tasks: [Task] = [
+   /* @State var tasks: [Task] = [
         Task(action: "action1"), Task(action: "action2"), Task(action: "action3"),
         Task(action: "action4"), Task(action: "action5"), Task(action: "action6"),
         Task(action: "action7"), Task(action: "action8"), Task(action: "action9"),
         Task(action: "action10")
-    ]
+    ]*/
     @EnvironmentObject var bluetoothManager: BluetoothManager
     @State var temp: Float = 35
     @State var airPressure : Float = 1013.25

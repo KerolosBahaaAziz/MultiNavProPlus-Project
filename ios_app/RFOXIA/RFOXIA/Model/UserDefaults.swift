@@ -14,5 +14,6 @@ class UserDefaultsUsed{
         UserDefaults.standard.set(false, forKey: "isLogin")
         UserDefaults.standard.set("false", forKey: "userEmail")
         UserDefaults.standard.set("false", forKey: "otherEmail")
+        UserDefaults.standard.set("password", forKey: "userPassword")
     }
 }
