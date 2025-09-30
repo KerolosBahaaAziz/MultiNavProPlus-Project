@@ -24,6 +24,30 @@ class PayPalApiService {
         private val JSON = "application/json".toMediaType()
     }
 
+
+    // For production, you should verify the payment on your backend:
+    suspend fun captureOrder(orderId: String): Boolean = withContext(Dispatchers.IO) {
+        val accessToken = getAccessToken()
+
+        val request = Request.Builder()
+            .url("$BASE_URL/v2/checkout/orders/$orderId/capture")
+            .header("Authorization", "Bearer $accessToken")
+            .header("Content-Type", "application/json")
+            .post("".toRequestBody(JSON))
+            .build()
+
+        suspendCoroutine { continuation ->
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resume(false)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    continuation.resume(response.isSuccessful)
+                }
+            })
+        }
+    }
     suspend fun createOrder(amount: String): String = withContext(Dispatchers.IO) {
         val accessToken = getAccessToken()
 
@@ -39,8 +63,12 @@ class PayPalApiService {
                 })
             })
             put("application_context", JSONObject().apply {
-                put("return_url", "https://example.com/return")
-                put("cancel_url", "https://example.com/cancel")
+                // These URLs will redirect back to your app
+                put("return_url", "com.example.multinav://paypal/success")
+                put("cancel_url", "com.example.multinav://paypal/cancel")
+                put("shipping_preference", "NO_SHIPPING")
+                put("user_action", "PAY_NOW")
+                put("brand_name", "MultiNav App")
             })
         }
 

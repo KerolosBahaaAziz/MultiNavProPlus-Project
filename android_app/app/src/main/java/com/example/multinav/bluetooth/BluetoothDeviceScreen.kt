@@ -90,40 +90,41 @@ fun BluetoothDeviceScreen(
                         title = { Text("Bluetooth Devices") },
                         actions = {
                             // Settings button
-                            IconButton(onClick = { expanded.value = true }) {
+                            IconButton(onClick = {navController.navigate(Screen.Settings.route) }) {
                                 Icon(
                                     imageVector = Icons.Default.Settings,
                                     contentDescription = "Settings",
                                     tint = Color.White
                                 )
+
                             }
 
-                            // Dropdown menu
-                            DropdownMenu(
-                                expanded = expanded.value,
-                                onDismissRequest = { expanded.value = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Settings") },
-                                    onClick = {
-                                        expanded.value = false
-                                        navController.navigate(Screen.Settings.route)   // ✅ navigate
-                                    }
-                                )
-                                Divider()
-                                DropdownMenuItem(
-                                    text = { Text("Logout") },
-                                    onClick = {
-                                        expanded.value = false
-                                        auth.signOut()
-                                        navController.navigate(Screen.Login.route) {
-                                            popUpTo(Screen.DeviceList.route) { inclusive = true }
-                                            popUpTo(Screen.JoyStick.route) { inclusive = true }
-                                            popUpTo(Screen.Chat.route) { inclusive = true }
-                                        }
-                                    }
-                                )
-                            }
+//                            // Dropdown menu
+//                            DropdownMenu(
+//                                expanded = expanded.value,
+//                                onDismissRequest = { expanded.value = false }
+//                            ) {
+//                                DropdownMenuItem(
+//                                    text = { Text("Settings") },
+//                                    onClick = {
+//                                        expanded.value = false
+//                                        navController.navigate(Screen.Settings.route)   // ✅ navigate
+//                                    }
+//                                )
+//                                Divider()
+//                                DropdownMenuItem(
+//                                    text = { Text("Logout") },
+//                                    onClick = {
+//                                        expanded.value = false
+//                                        auth.signOut()
+//                                        navController.navigate(Screen.Login.route) {
+//                                            popUpTo(Screen.DeviceList.route) { inclusive = true }
+//                                            popUpTo(Screen.JoyStick.route) { inclusive = true }
+//                                            popUpTo(Screen.Chat.route) { inclusive = true }
+//                                        }
+//                                    }
+//                                )
+//                            }
 
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
