@@ -1,4 +1,3 @@
-// app/src/main/java/com/example/multinav/settings/SettingsScreen.kt
 package com.example.multinav
 
 import android.content.Intent
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
@@ -19,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.multinav.payment.PayPalApiService
 import com.example.multinav.settings.SettingsViewModel
+import com.example.multinav.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,58 +46,59 @@ fun SettingsScreen(
     var isProcessingPayment by remember { mutableStateOf(false) }
     val paypalService = remember { PayPalApiService() }
 
-    val paymentState by PayPalPaymentManager.paymentState.collectAsState()
-
-
-    // Handle payment state changes
-    LaunchedEffect(paymentState) {
-        when (paymentState) {
-            is PaymentState.Success -> {
-                // Payment successful - mark user as premium
-                viewModel.markPaidAfterPayment()
-                snackbarHostState.showSnackbar("Payment successful! You're now premium!")
-                PayPalPaymentManager.resetState()
-            }
-            is PaymentState.Cancelled -> {
-                snackbarHostState.showSnackbar("Payment was cancelled")
-                PayPalPaymentManager.resetState()
-            }
-            else -> {}
-        }
-    }
-
     Scaffold(
-        topBar = { SmallTopAppBar(title = { Text("Settings") }) },
+        topBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(brush = Brush.horizontalGradient(AppTheme.gradientColors))
+            ) {
+                TopAppBar(
+                    title = { Text("Settings") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White
+                    )
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF233992).copy(alpha = 0.95f),
+                            Color(0xFFA030C7).copy(alpha = 0.95f),
+                            Color(0xFF1C0090).copy(alpha = 0.95f)
+                        )
+                    )
+                )
         ) {
             when {
                 state.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = AppTheme.gradientColors[1])
                     }
                 }
-
                 state.error != null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = state.error ?: "Unknown error")
+                        Text(text = state.error ?: "Unknown error", color = Color.White)
                     }
                 }
-
                 else -> {
                     val displayName = listOf(state.firstName, state.lastName).joinToString(" ").trim()
 
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 24.dp, vertical = 20.dp),
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Avatar circle with initial
+                        // Avatar
                         Box(
                             modifier = Modifier
                                 .size(96.dp)
@@ -116,21 +117,21 @@ fun SettingsScreen(
 
                         Text(
                             text = if (displayName.isNotBlank()) displayName else "Unknown user",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
                         )
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // Show email
                         Text(
                             text = state.email,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = Color.White.copy(alpha = 0.7f)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Premium status / subscribe
+                        // Premium / Subscribe
                         if (state.isPremium) {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -159,27 +160,17 @@ fun SettingsScreen(
                                 }
                             }
                         } else {
-                            // PayPal payment button with dynamic order creation
                             Button(
                                 onClick = {
                                     isProcessingPayment = true
                                     coroutineScope.launch {
                                         try {
-                                            // Create a new order with PayPal API
                                             val orderId = paypalService.createOrder("9.99")
-
-                                            // Open PayPal checkout with the new order ID
                                             val paypalUrl = "https://www.sandbox.paypal.com/checkoutnow?token=$orderId"
-                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paypalUrl))
-                                            context.startActivity(intent)
-
-                                            // Show success message
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(paypalUrl)))
                                             snackbarHostState.showSnackbar(
-                                                "Complete payment in browser. Use 'Mark Paid' button after payment."
+                                                "Complete payment in browser. Use 'Mark Paid' after payment."
                                             )
-
-                                            // Note: In a real app, you'd verify the payment on your backend
-                                            // before marking as paid
                                         } catch (e: Exception) {
                                             snackbarHostState.showSnackbar(
                                                 "Failed to create PayPal order: ${e.message}"
@@ -191,9 +182,7 @@ fun SettingsScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !isProcessingPayment,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF0070E0) // PayPal blue
-                                )
+                                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.gradientColors[1])
                             ) {
                                 if (isProcessingPayment) {
                                     CircularProgressIndicator(
@@ -202,47 +191,26 @@ fun SettingsScreen(
                                         strokeWidth = 2.dp
                                     )
                                 } else {
-                                    Text("Subscribe with PayPal ($9.99/month)")
+                                    Text("Subscribe with PayPal ")
                                 }
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Dev button to mark as paid (for testing)
-                            OutlinedButton(
-                                onClick = {
-                                    viewModel.markPaidLocally()
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("Marked as premium (dev mode)")
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFF2E7D32)
-                                ),
-                                border = BorderStroke(1.dp, Color(0xFF2E7D32))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Build,
-                                    contentDescription = "Dev",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Mark Paid (Dev Testing)")
-                            }
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        Divider()
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Change Password Section
+                        // Change password
                         if (!showPasswordField) {
                             OutlinedButton(
                                 onClick = { showPasswordField = true },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                border = BorderStroke(1.dp, Brush.horizontalGradient(AppTheme.gradientColors)),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color.Black
+                                )
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Lock,
@@ -253,10 +221,11 @@ fun SettingsScreen(
                             }
                         } else {
                             Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                )
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(6.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(16.dp)
@@ -264,7 +233,8 @@ fun SettingsScreen(
                                     Text(
                                         "Update Password",
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
                                     )
 
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -277,7 +247,16 @@ fun SettingsScreen(
                                         visualTransformation = PasswordVisualTransformation(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                                         modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true
+                                        singleLine = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = AppTheme.gradientColors[0],
+                                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                                            cursorColor = AppTheme.gradientColors[0],
+                                            focusedTextColor = Color.Black,
+                                            unfocusedTextColor = Color.Black.copy(alpha = 0.7f),
+                                            focusedPlaceholderColor = Color.Gray,
+                                            unfocusedPlaceholderColor = Color.Gray.copy(alpha = 0.6f)
+                                        )
                                     )
 
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -286,6 +265,7 @@ fun SettingsScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
+                                        // Gradient Update button
                                         Button(
                                             onClick = {
                                                 if (newPassword.length >= 6) {
@@ -306,17 +286,32 @@ fun SettingsScreen(
                                                     }
                                                 }
                                             },
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                                            contentPadding = PaddingValues()
                                         ) {
-                                            Text("Update")
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(brush = Brush.horizontalGradient(AppTheme.gradientColors))
+                                                    .padding(vertical = 12.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text("Update", color = Color.White, fontWeight = FontWeight.Bold)
+                                            }
                                         }
 
+                                        // Cancel button
                                         OutlinedButton(
                                             onClick = {
                                                 newPassword = ""
                                                 showPasswordField = false
                                             },
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier.weight(1f),
+                                            border = BorderStroke(1.dp, Brush.horizontalGradient(AppTheme.gradientColors)),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                contentColor = AppTheme.gradientColors[1]
+                                            )
                                         ) {
                                             Text("Cancel")
                                         }
@@ -324,6 +319,7 @@ fun SettingsScreen(
                                 }
                             }
                         }
+
 
                         Spacer(modifier = Modifier.weight(1f))
 
