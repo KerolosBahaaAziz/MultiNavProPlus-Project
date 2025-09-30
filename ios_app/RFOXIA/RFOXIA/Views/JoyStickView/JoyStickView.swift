@@ -32,6 +32,10 @@ struct JoyStickView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     )
     
+    @State private var navigateToTask = false
+    @State private var navigateToSubscribe = false
+    @State private var alertItem: AlertInfo?
+    
     var body: some View {
         NavigationStack {
             ZStack{
@@ -90,13 +94,23 @@ struct JoyStickView: View {
                             .padding()
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .overlay(
-                                NavigationLink(destination: TaskView()) {
+                                Button(action: handlePlusTapped) {
                                     Image(systemName: "plusminus.circle.fill")
                                         .font(.system(size: 40))
-                                        .foregroundStyle((BackgroundGradient.backgroundGradient))
+                                        .foregroundStyle(BackgroundGradient.backgroundGradient)
                                 }
+                                .background(
+                                    Group {
+                                        NavigationLink("", destination: TaskView(), isActive: $navigateToTask)
+                                            .hidden()
+                                        NavigationLink("", destination: ChoosePaymentMethodView(), isActive: $navigateToSubscribe)
+                                            .hidden()
+                                    }
+                                )
                                 , alignment: .bottomTrailing
                             )
+                            .alert(info: $alertItem)
+
                         }
                     }
                 }
@@ -155,6 +169,31 @@ struct JoyStickView: View {
             isPortrait = false
         }
     }
+    
+    func handlePlusTapped() {
+        let isSubscribed = UserDefaults.standard.bool(forKey: "isSubscribed")
+        let timeStamp = UserDefaults.standard.double(forKey: "subscriptionExpireDate")
+        let expiryDate = Date(timeIntervalSince1970: timeStamp)
+        let isExpired = expiryDate < Date()
+        
+        if isSubscribed && !isExpired {
+            // ✅ navigate instead of recording
+            navigateToTask = true
+        } else {
+            alertItem = AlertInfo(
+                title: "Notice",
+                message: isSubscribed
+                    ? "Your subscription expired. Subscribe now for $1/month."
+                    : "To use this feature, subscribe for $1/month.",
+                confirmText: "Subscribe",
+                cancelText: "Cancel",
+                confirmAction: {
+                    navigateToSubscribe = true
+                }
+            )
+        }
+    }
+
 }
 
 // Extension to detect rotation
