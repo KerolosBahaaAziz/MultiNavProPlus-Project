@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -191,7 +192,29 @@ fun SettingsScreen(
                                         strokeWidth = 2.dp
                                     )
                                 } else {
-                                    Text("Subscribe with PayPal ")
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        // 🔹 Option 1: Default payment icon
+                                        Icon(
+                                            imageVector = Icons.Default.Payment, // or Icons.Default.CreditCard
+                                            contentDescription = "PayPal",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+
+                                        // 🔹 Option 2: If you have PayPal logo drawable, use this instead:
+                                        // Icon(
+                                        //     painter = painterResource(id = R.drawable.paypal_logo),
+                                        //     contentDescription = "PayPal",
+                                        //     tint = Color.Unspecified, // keep original logo colors
+                                        //     modifier = Modifier.size(20.dp)
+                                        // )
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Subscribe with PayPal", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
 
