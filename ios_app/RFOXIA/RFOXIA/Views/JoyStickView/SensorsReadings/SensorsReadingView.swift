@@ -8,22 +8,12 @@
 import SwiftUI
 
 struct SensorsReadingView: View {
-    @Binding var temp : Float
-    @Binding var humidity : Float
-    @Binding var pressure : Float
-    @State var status : String
+    @Binding var temp : Float?
+    @Binding var humidity : Float?
+    @Binding var pressure : Float?
+    var status : String
     var body: some View {
-        HStack{
-            Text("\(String(format: "%.1f", (temp / 16383.0) * 165.0 - 40.0)) °C")
-            Spacer()
-            Text("\(String(format: "%.1f", (humidity / 16383.0) * 100.0)) %")
-            Spacer()
-            Text("\(String(format: "%.1f", pressure / 4098.0)) hPa")
-            Spacer()
-            Text("\(status)")
-        }
-        .font(.system(size: 33))
-        .background(in: .rect, fillStyle: .init(eoFill: true))
+        
     }
 }
 //
