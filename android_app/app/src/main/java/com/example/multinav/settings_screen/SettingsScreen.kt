@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.multinav.model.paypal.PayPalPaymentManager
 import com.example.multinav.model.paypal.PaymentState
@@ -57,10 +60,12 @@ fun SettingsScreen(
                 snackbarHostState.showSnackbar("Payment successful! You're now premium!")
                 PayPalPaymentManager.resetState()
             }
+
             is PaymentState.Cancelled -> {
                 snackbarHostState.showSnackbar("Payment was cancelled")
                 PayPalPaymentManager.resetState()
             }
+
             else -> {}
         }
     }
@@ -103,13 +108,16 @@ fun SettingsScreen(
                         CircularProgressIndicator(color = Color.Cyan)
                     }
                 }
+
                 state.error != null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(text = state.error ?: "Unknown error", color = Color.White)
                     }
                 }
+
                 else -> {
-                    val displayName = listOf(state.firstName, state.lastName).joinToString(" ").trim()
+                    val displayName =
+                        listOf(state.firstName, state.lastName).joinToString(" ").trim()
 
                     Column(
                         modifier = Modifier
@@ -185,8 +193,14 @@ fun SettingsScreen(
                                     coroutineScope.launch {
                                         try {
                                             val orderId = paypalService.createOrder("9.99")
-                                            val paypalUrl = "https://www.sandbox.paypal.com/checkoutnow?token=$orderId"
-                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(paypalUrl)))
+                                            val paypalUrl =
+                                                "https://www.sandbox.paypal.com/checkoutnow?token=$orderId"
+                                            context.startActivity(
+                                                Intent(
+                                                    Intent.ACTION_VIEW,
+                                                    Uri.parse(paypalUrl)
+                                                )
+                                            )
                                             snackbarHostState.showSnackbar(
                                                 "Complete payment in browser. Use 'Mark Paid' after payment."
                                             )
@@ -231,7 +245,11 @@ fun SettingsScreen(
                                         // )
 
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Subscribe with PayPal", color = Color.White, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            "Subscribe with PayPal",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                 }
                             }
@@ -247,7 +265,10 @@ fun SettingsScreen(
                             OutlinedButton(
                                 onClick = { showPasswordField = true },
                                 modifier = Modifier.fillMaxWidth(),
-                                border = BorderStroke(1.dp, Brush.horizontalGradient(AppTheme.gradientColors)),
+                                border = BorderStroke(
+                                    1.dp,
+                                    Brush.horizontalGradient(AppTheme.gradientColors)
+                                ),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White,
                                     contentColor = Color.Black
@@ -261,6 +282,12 @@ fun SettingsScreen(
                                 Text("Change Password")
                             }
                         } else {
+                            // Add these state variables at the top of your composable
+                            var confirmPassword by remember { mutableStateOf("") }
+                            var passwordVisible by remember { mutableStateOf(false) }
+                            var confirmPasswordVisible by remember { mutableStateOf(false) }
+                            var passwordError by remember { mutableStateOf<String?>(null) }
+
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -280,18 +307,42 @@ fun SettingsScreen(
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
+                                    // New Password Field
                                     OutlinedTextField(
                                         value = newPassword,
-                                        onValueChange = { newPassword = it },
+                                        onValueChange = {
+                                            newPassword = it
+                                            // Clear error when user starts typing
+                                            passwordError = null
+                                        },
                                         label = { Text("New Password") },
                                         placeholder = { Text("Enter at least 6 characters") },
-                                        visualTransformation = PasswordVisualTransformation(),
+                                        visualTransformation = if (passwordVisible)
+                                            VisualTransformation.None
+                                        else
+                                            PasswordVisualTransformation(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
+                                        isError = passwordError != null,
+                                        trailingIcon = {
+                                            IconButton(onClick = {
+                                                passwordVisible = !passwordVisible
+                                            }) {
+                                                Icon(
+                                                    imageVector = if (passwordVisible)
+                                                        Icons.Default.Visibility
+                                                    else
+                                                        Icons.Default.VisibilityOff,
+                                                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                                    tint = AppTheme.gradientColors[0]
+                                                )
+                                            }
+                                        },
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedBorderColor = AppTheme.gradientColors[0],
                                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                                            errorBorderColor = MaterialTheme.colorScheme.error,
                                             cursorColor = AppTheme.gradientColors[0],
                                             focusedTextColor = Color.Black,
                                             unfocusedTextColor = Color.Black.copy(alpha = 0.7f),
@@ -299,6 +350,63 @@ fun SettingsScreen(
                                             unfocusedPlaceholderColor = Color.Gray.copy(alpha = 0.6f)
                                         )
                                     )
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // Confirm Password Field
+                                    OutlinedTextField(
+                                        value = confirmPassword,
+                                        onValueChange = {
+                                            confirmPassword = it
+                                            // Clear error when user starts typing
+                                            passwordError = null
+                                        },
+                                        label = { Text("Confirm Password") },
+                                        placeholder = { Text("Re-enter new password") },
+                                        visualTransformation = if (confirmPasswordVisible)
+                                            VisualTransformation.None
+                                        else
+                                            PasswordVisualTransformation(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        isError = passwordError != null && confirmPassword.isNotEmpty(),
+                                        trailingIcon = {
+                                            IconButton(onClick = {
+                                                confirmPasswordVisible = !confirmPasswordVisible
+                                            }) {
+                                                Icon(
+                                                    imageVector = if (confirmPasswordVisible)
+                                                        Icons.Default.Visibility
+                                                    else
+                                                        Icons.Default.VisibilityOff,
+                                                    contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
+                                                    tint = AppTheme.gradientColors[0]
+                                                )
+                                            }
+                                        },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = AppTheme.gradientColors[0],
+                                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+                                            errorBorderColor = MaterialTheme.colorScheme.error,
+                                            cursorColor = AppTheme.gradientColors[0],
+                                            focusedTextColor = Color.Black,
+                                            unfocusedTextColor = Color.Black.copy(alpha = 0.7f),
+                                            focusedPlaceholderColor = Color.Gray,
+                                            unfocusedPlaceholderColor = Color.Gray.copy(alpha = 0.6f)
+                                        )
+                                    )
+
+                                    // Show error message if any
+                                    passwordError?.let {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(start = 16.dp)
+                                        )
+                                    }
 
                                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -309,21 +417,30 @@ fun SettingsScreen(
                                         // Gradient Update button
                                         Button(
                                             onClick = {
-                                                if (newPassword.length >= 6) {
-                                                    viewModel.changePassword(newPassword) { success, message ->
-                                                        coroutineScope.launch {
-                                                            snackbarHostState.showSnackbar(message)
-                                                            if (success) {
-                                                                newPassword = ""
-                                                                showPasswordField = false
+                                                when {
+                                                    newPassword.length < 6 -> {
+                                                        passwordError =
+                                                            "Password must be at least 6 characters"
+                                                    }
+
+                                                    newPassword != confirmPassword -> {
+                                                        passwordError = "Passwords do not match"
+                                                    }
+
+                                                    else -> {
+                                                        viewModel.changePassword(newPassword) { success, message ->
+                                                            coroutineScope.launch {
+                                                                snackbarHostState.showSnackbar(
+                                                                    message
+                                                                )
+                                                                if (success) {
+                                                                    newPassword = ""
+                                                                    confirmPassword = ""
+                                                                    passwordError = null
+                                                                    showPasswordField = false
+                                                                }
                                                             }
                                                         }
-                                                    }
-                                                } else {
-                                                    coroutineScope.launch {
-                                                        snackbarHostState.showSnackbar(
-                                                            "Password must be at least 6 characters"
-                                                        )
                                                     }
                                                 }
                                             },
@@ -334,11 +451,19 @@ fun SettingsScreen(
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .background(brush = Brush.horizontalGradient(AppTheme.gradientColors))
+                                                    .background(
+                                                        brush = Brush.horizontalGradient(
+                                                            AppTheme.gradientColors
+                                                        )
+                                                    )
                                                     .padding(vertical = 12.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Text("Update", color = Color.White, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    "Update",
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold
+                                                )
                                             }
                                         }
 
@@ -346,10 +471,17 @@ fun SettingsScreen(
                                         OutlinedButton(
                                             onClick = {
                                                 newPassword = ""
+                                                confirmPassword = ""
+                                                passwordError = null
+                                                passwordVisible = false
+                                                confirmPasswordVisible = false
                                                 showPasswordField = false
                                             },
                                             modifier = Modifier.weight(1f),
-                                            border = BorderStroke(1.dp, Brush.horizontalGradient(AppTheme.gradientColors)),
+                                            border = BorderStroke(
+                                                1.dp,
+                                                Brush.horizontalGradient(AppTheme.gradientColors)
+                                            ),
                                             colors = ButtonDefaults.outlinedButtonColors(
                                                 contentColor = AppTheme.gradientColors[1]
                                             )

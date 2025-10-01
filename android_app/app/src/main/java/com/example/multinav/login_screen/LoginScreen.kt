@@ -85,10 +85,13 @@ fun LoginScreen(
             color = violetPurple
         )
         Spacer(modifier = Modifier.height(32.dp))
+
         OutlinedTextField(
             value = viewModel.username,
-            onValueChange = { viewModel.username = it },
-            label = {
+            onValueChange = { newValue ->
+                // Remove all spaces from the input
+                viewModel.username = newValue.replace(" ", "")
+            },            label = {
                 Text("Email")
                     },
             leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = "Email") },
