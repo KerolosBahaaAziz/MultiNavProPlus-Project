@@ -7,6 +7,6 @@
 
 import Foundation
 
-struct Task : Hashable {
+struct TaskCreated : Hashable {
     var action : String
 }

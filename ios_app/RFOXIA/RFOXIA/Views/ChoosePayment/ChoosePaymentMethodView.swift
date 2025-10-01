@@ -55,10 +55,12 @@ struct ChoosePaymentMethodView: View {
                 ApplePayView(amount: total,currencyCode: "USD",privateCouponCode: couponCode, onPaymentSuccess: {
                     DataBaseManager.shared.savePaymentHistory(amount: total, method: "ApplePay")
                     resetView()
+                    updateUserDefaults()
                 })
                 PayPalButtonView(amount: String(total),currency: "USD",privateCouponCode: couponCode, onPaymentSuccess: {
                     DataBaseManager.shared.savePaymentHistory(amount: total, method: "PayPal")
                     resetView()
+                    updateUserDefaults()
                 })
             }
             .padding()
@@ -122,6 +124,13 @@ struct ChoosePaymentMethodView: View {
             }
         }
     }
+    
+    func updateUserDefaults(){
+        let today = Date ()
+        UserDefaults.standard.set(true, forKey: "isSubscribed")
+        UserDefaults.standard.set(today.timeIntervalSince1970, forKey: "subscribtionExpireDate")
+    }
+    
     func resetView(){
         subscriptionPrice = 100.0
         discount = 0.0

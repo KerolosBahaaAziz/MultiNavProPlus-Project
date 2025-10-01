@@ -8,27 +8,31 @@
 import Foundation
 
 extension BluetoothChatView{
+    
     func handleMicTapped() {
         let isSubscribed = UserDefaults.standard.bool(forKey: "isSubscribed")
-
-        if isSubscribed {
-                if isRecording {
-                    recorder.stopRecording()
-                } else {
-                    recorder.startRecording()
-                }
-                isRecording.toggle()
+        let timeStamp = UserDefaults.standard.double(forKey: "subscriptionExpireDate")
+        let expiryDate = Date(timeIntervalSince1970: timeStamp)
+        let isExpired = expiryDate < Date()
+        
+        if isSubscribed && !isExpired {
+            if isRecording {
+                recorder.stopRecording()
+            } else {
+                recorder.startRecording()
+            }
+            isRecording.toggle()
         } else {
             alertItem = AlertInfo(
                 title: "Notice",
-                message: "To use voice, subscribe for $1/month.",
+                message: isSubscribed ? "Your subscription expired. Subscribe now for $1/month." : "To use voice, subscribe for $1/month.",
                 confirmText: "Subscribe",
                 cancelText: "Cancel",
                 confirmAction: {
-                navigateToSubscribe = true
+                    navigateToSubscribe = true
                 }
             )
-            print("is anvigate : \(navigateToSubscribe)")
+            print("is navigate: \(navigateToSubscribe)")
         }
     }
     

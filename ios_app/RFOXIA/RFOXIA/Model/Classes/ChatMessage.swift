@@ -13,7 +13,7 @@ struct ChatMessage: Identifiable {
     let isCurrentUser: Bool    //( = is mine?)
     let senderName: String
     let senderId: String
-    let createdAt: Date = Date()
+    let createdAt: Date
     let text: String
 }
 

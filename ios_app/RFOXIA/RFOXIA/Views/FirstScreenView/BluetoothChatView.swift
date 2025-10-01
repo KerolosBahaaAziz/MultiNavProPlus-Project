@@ -20,11 +20,11 @@ struct BluetoothChatView: View {
     @State var navigateToSubscribe = false
     @State var alertItem: AlertInfo?
     
-    
     @StateObject private var bluetoothManager = BluetoothManager()  // Bluetooth manager
     
-    
     let customColor = Color(red: 26/255, green: 61/255, blue: 120/255)
+    
+    let otherUser = UserDefaults.standard.string(forKey: "otherEmail") ?? ""
     
     var body: some View {
         NavigationStack{
@@ -42,8 +42,9 @@ struct BluetoothChatView: View {
                     Button(action: {
                         if !inputText.isEmpty {
                             bluetoothManager.sendMessage(inputText)
-                            let newMessage = ChatMessage(type: .text(inputText), isCurrentUser: true, senderName: "Me", senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: inputText)
+                            let newMessage = ChatMessage(type: .text(inputText), isCurrentUser: true, senderName: "Me", senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", createdAt: Date(), text: inputText)
                             messages.append(newMessage)
+                            saveTextMessage(forEmail: otherUser, text: inputText, isMine: true, type: "text", senderName: "Me")
                             inputText = ""
                         }
                     }) {
@@ -109,15 +110,16 @@ struct BluetoothChatView: View {
     
     private func handleReceivedMessages(_ newMessages: [String]) {
         for message in newMessages {
-            let newMessage = ChatMessage(type: .text(message), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName, senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: message)
+            let newMessage = ChatMessage(type: .text(message), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName, senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", createdAt: Date(), text: message)
             messages.append(newMessage)
+            saveTextMessage(forEmail: otherUser, text: message, isMine: false, type: "text", senderName: bluetoothManager.connectedDeviceName)
         }
     }
     
     private func handleReceivedAudioData(_ audioDataArray: [Data]) {
         for audioData in audioDataArray {
             if let savedURL = saveReceivedAudio(data: audioData) {
-                let newMessage = ChatMessage(type: .voice(savedURL), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName, senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: "")
+                let newMessage = ChatMessage(type: .voice(savedURL), isCurrentUser: false, senderName: bluetoothManager.connectedDeviceName, senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", createdAt: Date(), text: "")
                 messages.append(newMessage)
             }
         }
@@ -125,9 +127,13 @@ struct BluetoothChatView: View {
     
     private func handleNewRecordings(_ newRecordings: [Recordingg]) {
         if let last = newRecordings.last {
-            let newMessage = ChatMessage(type: .voice(last.url), isCurrentUser: true, senderName: "Me", senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", text: "")
+            let newMessage = ChatMessage(type: .voice(last.url), isCurrentUser: true, senderName: "Me", senderId: UserDefaults.standard.string(forKey: "userEmail") ?? "", createdAt: Date(), text: "")
             messages.append(newMessage)
         }
+    }
+    
+    func saveTextMessage(forEmail email: String, text: String, isMine: Bool, type: String, senderName: String){
+        SaveMessgaePresenter.shared.saveMessageCoreData(forEmail: email, text: text, isMine: isMine, type: type, record: nil, senderName: senderName)
     }
     
 }

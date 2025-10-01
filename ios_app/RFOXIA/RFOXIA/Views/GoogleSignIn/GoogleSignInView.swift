@@ -48,12 +48,15 @@ struct GoogleSignInView: View {
                         }else{
                             EmailAuthHandler.shared.signInWithEmail(email: email, password: password) { success, message in
                                 self.alertMessage = message
-                                self.navigateToHome = true
                                 if success {
                                     UserDefaults.standard.set(email, forKey: "userEmail")
+                                    UserDefaults.standard.set(password, forKey: "userPassword")
                                     UserDefaults.standard.set(true, forKey: "isLogin")
+                                    self.navigateToHome = true
+                                    self.checkSubscribtion()
                                 } else {
                                     self.showAlert = true
+                                    self.navigateToHome = false
                                     UserDefaults.standard.set(false, forKey: "isLogin")
                                 }
                             }
@@ -82,6 +85,7 @@ struct GoogleSignInView: View {
                                 if success {
                                     UserDefaults.standard.set(true, forKey: "isLogin")
                                     UserDefaults.standard.set(Auth.auth().currentUser?.email, forKey: "userEmail")
+                                    self.checkSubscribtion()
                                     print("email stored: \(UserDefaults.standard.value(forKey: "userEmail") ?? "no stored email")")
                                     self.navigateToHome = true
                                 } else {
@@ -128,6 +132,10 @@ struct GoogleSignInView: View {
             }
             .navigationBarBackButtonHidden(true)
         }
+    }
+    
+    func checkSubscribtion(){
+        CheckSubscribtionPresenter.shared.checkSubscription()
     }
 }
 

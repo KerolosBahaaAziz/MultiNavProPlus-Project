@@ -12,10 +12,11 @@
     </entity>
     <entity name="Messages" representedClassName="Messages" syncable="YES" codeGenerationType="class">
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="email" optional="YES" attributeType="String"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isCurrentUser" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="record" optional="YES" attributeType="Binary"/>
-        <attribute name="senderId" optional="YES" attributeType="String"/>
+        <attribute name="senderName" optional="YES" attributeType="String"/>
         <attribute name="text" optional="YES" attributeType="String"/>
         <attribute name="type" optional="YES" attributeType="String"/>
     </entity>
