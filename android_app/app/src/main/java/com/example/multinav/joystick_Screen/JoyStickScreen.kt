@@ -140,6 +140,8 @@ fun JoyStickScreen(
     val pressure by viewModel.pressure.collectAsState()
     val airQuality by viewModel.airQuality.collectAsState()
     val showPremiumDialog = remember { mutableStateOf(false) }
+    val gnssAmplitude by viewModel.gnssAmplitude.collectAsState()
+
 
     // Get the SettingsViewModel to check premium status
     val settingsFactory = SettingsViewModelFactory(
@@ -393,6 +395,8 @@ fun JoyStickScreen(
                     BluetoothReaders(humidity, "%", Modifier.weight(1f))
                     BluetoothReaders(pressure, "hPa", Modifier.weight(1f))
                     BluetoothReaders(airQuality, "", Modifier.weight(1f))
+                    BluetoothReaders(gnssAmplitude, "dB", Modifier.weight(1f)) // Add GNSS amplitude
+
                 }
                 Spacer(Modifier.height(20.dp))
 
