@@ -110,7 +110,6 @@ struct JoyStickView: View {
                                 , alignment: .bottomTrailing
                             )
                             .alert(info: $alertItem)
-
                         }
                     }
                 }
