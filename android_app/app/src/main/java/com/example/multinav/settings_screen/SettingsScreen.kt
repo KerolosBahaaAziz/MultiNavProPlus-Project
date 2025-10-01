@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payment
@@ -25,7 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.multinav.model.paypal.PayPalPaymentManager
+import com.example.multinav.model.paypal.PaymentState
 import com.example.multinav.payment.PayPalApiService
 import com.example.multinav.settings.SettingsViewModel
 import com.example.multinav.ui.theme.AppTheme
@@ -46,6 +46,24 @@ fun SettingsScreen(
     val context = LocalContext.current
     var isProcessingPayment by remember { mutableStateOf(false) }
     val paypalService = remember { PayPalApiService() }
+
+    val paymentState by PayPalPaymentManager.paymentState.collectAsState()
+
+
+    LaunchedEffect(paymentState) {
+        when (paymentState) {
+            is PaymentState.Success -> {
+                viewModel.markPaidAfterPayment()
+                snackbarHostState.showSnackbar("Payment successful! You're now premium!")
+                PayPalPaymentManager.resetState()
+            }
+            is PaymentState.Cancelled -> {
+                snackbarHostState.showSnackbar("Payment was cancelled")
+                PayPalPaymentManager.resetState()
+            }
+            else -> {}
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -82,7 +100,7 @@ fun SettingsScreen(
             when {
                 state.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = AppTheme.gradientColors[1])
+                        CircularProgressIndicator(color = Color.Cyan)
                     }
                 }
                 state.error != null -> {

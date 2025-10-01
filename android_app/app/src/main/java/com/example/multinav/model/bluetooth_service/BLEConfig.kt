@@ -7,17 +7,10 @@ import android.util.Log
 import java.util.UUID
 
 object BLEConfig {
-    val VOICE_WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb") // New UUID for voice messages
-    val VOICE_NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb")
-
-//    // Service UUID for mobile-to-mobile communication
-//    val CHAT_SERVICE_UUID: UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-//
-//    // Characteristic for sending data (write) - for mobile
-//    val WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
-//
-//    // Characteristic for receiving data (notify) - for mobile
-//    val NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
+    val VOICE_WRITE_CHARACTERISTIC_UUID: UUID =
+        UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb")
+    val VOICE_NOTIFY_CHARACTERISTIC_UUID: UUID =
+        UUID.fromString("00002A20-0000-1000-8000-00805f9b34fb")
 
     // Service UUID for mobile-to-mobile communication
     val CHAT_SERVICE_UUID: UUID = UUID.fromString("0000ABC0-0000-1000-8000-00805f9b34fb")
@@ -32,8 +25,10 @@ object BLEConfig {
     val BLE_SERVICE_UUID: UUID = UUID.fromString("020BC9A-7856-3412-7856-341278563412")
 
     // BLE characteristic UUIDs for BLE_WB07
-    val BLE_WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0000FE41-8E22-4541-9D4C-21EDAE82ED19")
-    val BLE_NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("0000FE42-8E22-4541-9D4C-21EDAE82ED19")
+    val BLE_WRITE_CHARACTERISTIC_UUID: UUID =
+        UUID.fromString("0000FE41-8E22-4541-9D4C-21EDAE82ED19")
+    val BLE_NOTIFY_CHARACTERISTIC_UUID: UUID =
+        UUID.fromString("0000FE42-8E22-4541-9D4C-21EDAE82ED19")
 
     // Client config descriptor UUID (standard for notifications)
     val CLIENT_CONFIG_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB")
@@ -57,20 +52,25 @@ object BLEConfig {
     val HUMIDITY_CHARACTERISTIC_UUID: UUID = UUID.fromString("0222$BASE_UUID_PREFIX")
     val AIR_QUALITY_CHARACTERISTIC_UUID: UUID = UUID.fromString("0320$BASE_UUID_PREFIX")
 
+    // NEW: GNSS Characteristic for amplitude and position data
+    val GNSS_CHARACTERISTIC_UUID: UUID = UUID.fromString("0422$BASE_UUID_PREFIX")
+
     // 2. Motor Service
     val MOTOR_SERVICE_UUID: UUID = UUID.fromString("0030$BASE_UUID_PREFIX")
     val CONTROL_COMMAND_CHARACTERISTIC_UUID: UUID = UUID.fromString("0130$BASE_UUID_PREFIX")
 
-    // 3. Bluetooth Connection Service - IMPORTANT FOR YOUR USE CASE
+    // NEW: Joystick buttons characteristic (under motor service since it controls movement)
+    val JOYSTICK_BUTTONS_CHARACTERISTIC_UUID: UUID = UUID.fromString("0230$BASE_UUID_PREFIX")
+
+    // 3. Bluetooth Connection Service
     val BLIST_CONNECTION_SERVICE_UUID: UUID = UUID.fromString("0040$BASE_UUID_PREFIX")
     val B_STATE_CHARACTERISTIC_UUID: UUID = UUID.fromString("0140$BASE_UUID_PREFIX")
-    //val B_LIST_CHARACTERISTIC_UUID: UUID = UUID.fromString("1545515f-3446-6154-2135-124513562351")
-
     val B_LIST_CHARACTERISTIC_UUID: UUID = UUID.fromString("0240$BASE_UUID_PREFIX")
 
     // Mobile chat service with voice support
     fun createChatService(): BluetoothGattService {
-        val service = BluetoothGattService(CHAT_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+        val service =
+            BluetoothGattService(CHAT_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
 
         // Text characteristics
         val writeCharacteristic = BluetoothGattCharacteristic(
@@ -108,13 +108,17 @@ object BLEConfig {
         service.addCharacteristic(voiceWriteCharacteristic)
         service.addCharacteristic(voiceNotifyCharacteristic)
 
-        Log.d("BLEConfig", "Mobile service created with ${service.characteristics.size} characteristics")
+        Log.d(
+            "BLEConfig",
+            "Mobile service created with ${service.characteristics.size} characteristics"
+        )
         return service
     }
 
     // BLE PRO V2 RFOXIA CHAT service
     fun createBLEChatService(): BluetoothGattService {
-        val service = BluetoothGattService(BLE_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+        val service =
+            BluetoothGattService(BLE_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
 
         // Write characteristic (send only) - 50 bytes
         val writeCharacteristic = BluetoothGattCharacteristic(

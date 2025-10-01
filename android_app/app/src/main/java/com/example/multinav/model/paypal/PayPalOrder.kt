@@ -1,4 +1,4 @@
-package com.example.multinav
+package com.example.multinav.model.paypal
 
 data class CreateOrderRequest(
     val intent: String,

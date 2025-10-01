@@ -1,10 +1,9 @@
-package com.example.multinav.model
+package com.example.multinav.model.paypal
 
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.*
 
 object PayPalClient {
 

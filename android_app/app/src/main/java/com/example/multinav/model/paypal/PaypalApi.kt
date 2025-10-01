@@ -1,5 +1,8 @@
-package com.example.multinav.model
+package com.example.multinav.model.paypal
 
+import com.example.multinav.model.OrderRequest
+import com.example.multinav.model.OrderResponse
+import com.example.multinav.model.TokenResponse
 import retrofit2.Call
 import retrofit2.http.*
 
