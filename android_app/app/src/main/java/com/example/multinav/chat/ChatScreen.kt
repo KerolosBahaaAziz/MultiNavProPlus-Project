@@ -28,12 +28,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.multinav.model.AudioRecorder
 import com.example.multinav.model.bluetooth_service.BluetoothService
 import com.example.multinav.R
+import com.example.multinav.settings.SettingsViewModel
+import com.example.multinav.settings.SettingsViewModelFactory
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import java.io.File
 import java.io.FileOutputStream
 
@@ -44,11 +49,21 @@ fun ChatScreen(
     deviceAddress: String? = null,
     bluetoothService: BluetoothService,
     onNavigateBack: () -> Unit = {},
-    viewModel: ChatViewModel
+    viewModel: ChatViewModel,
+    auth: FirebaseAuth,
+    database: FirebaseDatabase
 ) {
     val messages by viewModel.messages.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val context = LocalContext.current
+    val showPremiumDialog = remember { mutableStateOf(false) }
+    // Get the SettingsViewModel to check premium status
+    val settingsFactory = SettingsViewModelFactory(
+        auth = auth,
+        databaseReference = database.reference
+    )
+    val settingsViewModel: SettingsViewModel = viewModel(factory = settingsFactory)
+    val settingsState by settingsViewModel.uiState.collectAsState()
 
     val audioRecorder = remember { AudioRecorder(context) }
 
@@ -87,7 +102,11 @@ fun ChatScreen(
         // Check and request RECORD_AUDIO permission on start
         val permission = android.Manifest.permission.RECORD_AUDIO
         val context = context
-        if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                permission
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             permissionLauncher.launch(permission)
         }
     }
@@ -180,6 +199,7 @@ fun ChatScreen(
                                 )
                             }
                         }
+
                         is Message.Voice -> {
                             Box(
                                 modifier = Modifier
@@ -205,13 +225,52 @@ fun ChatScreen(
             Spacer(modifier = Modifier.height(8.dp))
             MessageInput(
                 viewModel = viewModel,
-                enabled =true //connectionState is BluetoothService.ConnectionStatus.Connected,
-                //audioRecorder = audioRecorder
+                enabled = true,
+                isPremium = settingsState.isPremium,
+                showPremiumDialog = showPremiumDialog
             )
+            // Add the premium dialog at the end of your ChatScreen
+            if (showPremiumDialog.value) {
+                AlertDialog(
+                    onDismissRequest = { showPremiumDialog.value = false },
+                    title = {
+                        Text(
+                            text = "Premium Feature",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text("Voice messaging requires a premium subscription. Would you like to subscribe now?")
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showPremiumDialog.value = false
+                                // Navigate to settings - you'll need to pass navController or a navigation callback
+                                // For now, we'll just close the dialog
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFA030C7) // Your gradient color
+                            )
+                        ) {
+                            Text("Subscribe", color = Color.White)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showPremiumDialog.value = false }
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
         }
+
+
+
     }
 }
-
 
 @Composable
 fun VoiceMessageItem(
@@ -274,7 +333,9 @@ fun VoiceMessageItem(
 @Composable
 fun MessageInput(
     viewModel: ChatViewModel,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isPremium: Boolean = false, // Add this
+    showPremiumDialog: MutableState<Boolean> // Add this
 ) {
     var inputText by rememberSaveable { mutableStateOf("") }
     val isRecording by viewModel.isRecording
@@ -387,15 +448,22 @@ fun MessageInput(
             // Show Mic icon when not recording
             IconButton(
                 onClick = {
-                    val permission = android.Manifest.permission.RECORD_AUDIO
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            permission
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        viewModel.startRecording()
+                    // Check if user is premium first
+                    if (isPremium) {
+                        // User is premium, proceed with recording
+                        val permission = android.Manifest.permission.RECORD_AUDIO
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                permission
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            viewModel.startRecording()
+                        } else {
+                            Log.w("ChatScreen", "RECORD_AUDIO permission not granted")
+                        }
                     } else {
-                        Log.w("ChatScreen", "RECORD_AUDIO permission not granted")
+                        // User is not premium, show dialog
+                        showPremiumDialog.value = true
                     }
                 },
                 enabled = enabled

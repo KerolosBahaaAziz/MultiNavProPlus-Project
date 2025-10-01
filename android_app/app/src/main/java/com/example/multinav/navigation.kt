@@ -333,6 +333,8 @@ fun Navigation(
                         bluetoothService = bluetoothService,
                         onNavigateBack = { navController.popBackStack() },
                         viewModel = viewModel,
+                        auth = auth, // Add this
+                        database = database // Add this
                     )
                 }
             }
