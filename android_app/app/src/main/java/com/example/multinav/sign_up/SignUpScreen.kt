@@ -100,7 +100,7 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.height(32.dp))
             OutlinedTextField(
                 value = viewModel.firstName,
-                onValueChange = { viewModel.firstName = it },
+                onValueChange = { viewModel.firstName = it.replace(" ", "") }, // 🔹 Remove spaces
                 label = { Text("First Name") },
                 leadingIcon = { Icon(Icons.Filled.PersonOutline, contentDescription = "First Name") },
                 modifier = Modifier.fillMaxWidth(),
@@ -114,7 +114,7 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = viewModel.lastName,
-                onValueChange = { viewModel.lastName = it },
+                onValueChange = { viewModel.lastName = it.replace(" ","") },
                 label = { Text("Last Name") },
                 leadingIcon = { Icon(Icons.Filled.PersonOutline, contentDescription = "Last Name") },
                 modifier = Modifier.fillMaxWidth(),
@@ -128,7 +128,7 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = viewModel.email,
-                onValueChange = { viewModel.email = it },
+                onValueChange = { viewModel.email = it.replace(" ","") },
                 label = { Text("Email") },
                 leadingIcon = { Icon(Icons.Filled.MailOutline, contentDescription = "Email") },
                 modifier = Modifier.fillMaxWidth(),

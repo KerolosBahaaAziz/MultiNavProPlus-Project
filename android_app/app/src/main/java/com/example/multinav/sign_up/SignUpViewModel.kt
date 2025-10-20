@@ -93,7 +93,7 @@ class SignUpViewModel(
     private fun sanitizeEmail(email: String): String {
         return email.replace(".", "-")
     }
-
+/*
     private suspend fun saveUserData(user: FirebaseUser) {
         val sanitizedEmail = sanitizeEmail(user.email ?: email)
         try {
@@ -105,6 +105,25 @@ class SignUpViewModel(
             database.reference
                 .child("UsersDB") // Add this line
                 .child(sanitizedEmail)
+                .setValue(userData)
+                .await()
+        } catch (e: Exception) {
+            uiState = UiState.Error("Failed to save user data: ${e.message}")
+            Log.e("SignUp", "Failed to save user data", e)
+        }
+    } */
+
+    private suspend fun saveUserData(user: FirebaseUser) {
+        try {
+            val userData = mapOf(
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "email" to (user.email ?: email),
+                "isPremium" to false
+            )
+            database.reference
+                .child("UsersDB")
+                .child(user.uid) // ✅ Use UID instead of email key
                 .setValue(userData)
                 .await()
         } catch (e: Exception) {
@@ -127,33 +146,35 @@ class SignUpViewModel(
     }
 
     fun singUp() {
-        if (!validateInputs(updateUiState = true)) {
-            return
-        }
+        if (!validateInputs(updateUiState = true)) return
+
         uiState = UiState.Loading
         viewModelScope.launch {
             try {
                 val authResult = auth.createUserWithEmailAndPassword(email, password).await()
                 val user = authResult.user
-                user?.let {
-                    val result = sendVerificationEmail(it)
+                if (user != null) {
+                    // ✅ Save user data immediately (with first/last name)
+                    saveUserData(user)
+
+                    val result = sendVerificationEmail(user)
                     if (result.isSuccess) {
                         uiState = UiState.VerificationPending
-                        verificationMessage = "Verification email sent to $email. Please verify your email to complete sign-up."
-                        // Change: Removed auth.signOut() to keep user signed in for verification check
+                        verificationMessage = "Verification email sent to $email. Please verify your email."
                     } else {
                         uiState = UiState.Error("Failed to send verification email: ${result.exceptionOrNull()?.message}")
                         user.delete()
                     }
-                } ?: run {
+                } else {
                     uiState = UiState.Error("User creation failed.")
                 }
             } catch (e: Exception) {
                 uiState = UiState.Error(e.message ?: "Sign up failed")
-                Log.e("SingUp", "Sign up failed", e)
+                Log.e("SignUp", "Sign up failed", e)
             }
         }
     }
+
 
     fun resendVerificationEmail() {
         val user = auth.currentUser

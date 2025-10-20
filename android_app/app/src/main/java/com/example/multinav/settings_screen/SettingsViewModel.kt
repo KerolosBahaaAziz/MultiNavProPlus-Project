@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseReference
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,52 +36,70 @@ class SettingsViewModel(
     }
 
     private fun loadUserData() {
-        val user = auth.currentUser
-        if (user == null) {
-            _uiState.value = SettingsUiState(
-                isLoading = false,
-                error = "User not logged in"
-            )
-            return
-        }
+        val user = auth.currentUser ?: return
+        val uid = user.uid
 
-        val emailKey = user.email?.toFirebaseKey() ?: run {
-            _uiState.value = SettingsUiState(isLoading = false, error = "Invalid email")
-            return
-        }
-        Log.d("SettingsVM", "Email = ${user.email}")
-        Log.d("SettingsVM", "EmailKey = $emailKey")
+        _uiState.value = _uiState.value.copy(isLoading = true)
 
-        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
-        databaseRef.child("UsersDB").child(emailKey).get()
+        // Try reading new UID-based path first
+        databaseRef.child("UsersDB").child(uid).get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot.exists()) {
-                    val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
-                    val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
-                    val premium = snapshot.child("paid").getValue(Boolean::class.java) ?: false
-
-                    _uiState.value = SettingsUiState(
-                        firstName = firstName,
-                        lastName = lastName,
-                        email = user.email ?: "",
-                        isPremium = premium,
-                        isLoading = false
-                    )
+                    updateUiFromSnapshot(snapshot, user.email ?: "")
+                } else {
+                    // fallback for old email-based users
+                    val oldEmailKey = user.email?.toFirebaseKey()
+                    if (oldEmailKey != null) {
+                        databaseRef.child("UsersDB").child(oldEmailKey).get()
+                            .addOnSuccessListener { oldSnap ->
+                                if (oldSnap.exists()) {
+                                    // Migrate to UID path automatically
+                                    val data = oldSnap.value
+                                    databaseRef.child("UsersDB").child(uid).setValue(data)
+                                    oldSnap.ref.removeValue() // optional cleanup
+                                    updateUiFromSnapshot(oldSnap, user.email ?: "")
+                                } else {
+                                    createNewUser(uid)
+                                }
+                            }
+                    } else {
+                        createNewUser(uid)
+                    }
                 }
             }
-            .addOnFailureListener { exc ->
-                _uiState.value = SettingsUiState(
-                    isLoading = false,
-                    error = exc.message ?: "Failed to read user data"
-                )
+            .addOnFailureListener {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = it.message)
             }
+    }
+
+    private fun updateUiFromSnapshot(snapshot: DataSnapshot, email: String) {
+        val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
+        val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
+        val paid = snapshot.child("paid").getValue(Boolean::class.java) ?: false
+
+        _uiState.value = SettingsUiState(
+            firstName = firstName,
+            lastName = lastName,
+            email = email,
+            isPremium = paid,
+            isLoading = false
+        )
+    }
+
+    private fun createNewUser(uid: String) {
+        val newUser = mapOf(
+            "firstName" to "",
+            "lastName" to "",
+            "paid" to false
+        )
+        databaseRef.child("UsersDB").child(uid).setValue(newUser)
+        _uiState.value = _uiState.value.copy(isLoading = false)
     }
     fun ensureUserInDatabase() {
         val user = auth.currentUser ?: return
-        val safeEmail = user.email?.toFirebaseKey() ?: return
+        val uid = user.uid
 
-        val userRef = databaseRef.child("UsersDB").child(safeEmail)
+        val userRef = databaseRef.child("UsersDB").child(uid)
         userRef.get().addOnSuccessListener { snapshot ->
             if (!snapshot.exists()) {
                 val newUser = mapOf(
@@ -132,9 +151,9 @@ class SettingsViewModel(
 
     fun markPaidAfterPayment() {
         val user = auth.currentUser ?: return
-        val emailKey = user.email?.toFirebaseKey() ?: return
+        val uid = user.uid
 
-        databaseRef.child("UsersDB").child(emailKey).child("paid").setValue(true)
+        databaseRef.child("UsersDB").child(uid).child("paid").setValue(true)
             .addOnSuccessListener {
                 _uiState.value = _uiState.value.copy(isPremium = true)
             }
@@ -142,6 +161,7 @@ class SettingsViewModel(
                 _uiState.value = _uiState.value.copy(error = it.message)
             }
     }
+
 
 
     private fun String.toFirebaseKey(): String {
