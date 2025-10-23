@@ -26,3 +26,7 @@ DerivedData/
 
 # Swift Package Manager
 .swiftpm/
+android_app/gradle/wrapper/gradle-wrapper.properties
+android_app/gradle/libs.versions.toml
+android_app/.idea/inspectionProfiles/Project_Default.xml
+android_app/.idea/AndroidProjectSystem.xml

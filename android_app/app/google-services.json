@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "511871082784",
+    "firebase_url": "https://rfoxia-20970-default-rtdb.firebaseio.com",
+    "project_id": "rfoxia-20970",
+    "storage_bucket": "rfoxia-20970.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:511871082784:android:bda295c3b88b5147a2f745",
+        "android_client_info": {
+          "package_name": "com.example.multinav"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "511871082784-jpfq6f6vfqcsohnn3olv9ougrjce54nu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkkY0IUIn58xxuzGfMMHDnmTTYIanOfvc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "511871082784-jpfq6f6vfqcsohnn3olv9ougrjce54nu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "511871082784-oeivf2guad3h35kq667tjvi4gpmr6rjm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "iti.RFOXIA"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,28 @@
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+!.idea/gradle.xml
+!.idea/runConfigurations/
+
+# Gradle
+.gradle/
+build/
+android_app/.gradle/
+android_app/build/
+android_app/gradle/
+
+# Local configuration files
+local.properties
+
+# macOS system files
+.DS_Store
+
+# Android native build files
+.externalNativeBuild/
+.cxx/
+
+# Screenshots or recordings from Android Studio
+captures/
+
+# Large binary files (specific to your project)
+android_app/gradle/android/fakeDependency.jar

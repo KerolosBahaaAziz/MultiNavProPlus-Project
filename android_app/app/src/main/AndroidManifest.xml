@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <!-- Location permissions required for BLE scanning on Android < 12 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Optional voice features -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Declare BLE feature requirement -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@drawable/logo_09_09"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/logo_09_09"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MultiNav"
+        android:name=".MyApplication"
+        tools:targetApi="31">
+
+        <!-- Add this meta-data for cutout support -->
+        <meta-data
+            android:name="android:windowLayoutInDisplayCutoutMode"
+            android:value="shortEdges" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.MultiNav"
+            android:configChanges="orientation|screenSize"> <!-- Added to handle rotation -->
+
+            <!-- Add new intent filter for PayPal deep linking -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Add your scheme for PayPal return URL -->
+                <data
+                    android:scheme="multinav"
+                    android:host="payment" />
+            </intent-filter>
+
+            <!-- Add this to support fullscreen mode -->
+            <meta-data
+                android:name="android:windowLayoutInDisplayCutoutMode"
+                android:value="shortEdges" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="com.example.multinav"
+                    android:host="paypal" />
+            </intent-filter>
+
+        </activity>
+
+
+    </application>
+
+</manifest>
