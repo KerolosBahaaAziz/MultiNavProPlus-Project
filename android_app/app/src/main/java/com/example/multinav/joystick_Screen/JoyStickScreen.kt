@@ -209,7 +209,7 @@ fun JoyStickScreen(
                 if (error == null) {
                     // Start with zoomed out view
                     val defaultCoordinates = GeoCoordinates(30.0444, 31.2357) // Cairo
-                    val zoomedOutDistance = MapMeasure(MapMeasure.Kind.DISTANCE, 10000000.0) // 50km view
+                    val zoomedOutDistance = MapMeasure(MapMeasure.Kind.DISTANCE, 9000000.0) // 50km view
                     camera.lookAt(defaultCoordinates, zoomedOutDistance)
 
                     Log.i("JoyStickScreen", "Map loaded with zoomed out view")
@@ -308,7 +308,7 @@ fun JoyStickScreen(
 
                 // Zoom out to show larger area
                 val zoomOutLocation = lastKnownGnssLocation ?: GeoCoordinates(30.0444, 31.2357)
-                val zoomedOutDistance = MapMeasure(MapMeasure.Kind.DISTANCE, 1000000.0) // 50km view
+                val zoomedOutDistance = MapMeasure(MapMeasure.Kind.DISTANCE, 900000.0) // 50km view
                 mapView?.camera?.lookAt(zoomOutLocation, zoomedOutDistance)
 
                 Log.i("JoyStickScreen", "No GNSS signal - showing zoomed out view")
