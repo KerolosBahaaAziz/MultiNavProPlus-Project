@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.os.Build
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -201,18 +202,33 @@ fun JoyStickScreen(
             }
         }
 
-        // Initialize MapView
-        mapView = MapView(context).apply {
+        // Create a context with English locale for MapView
+        val locale = java.util.Locale("en", "US")
+        java.util.Locale.setDefault(locale)
+        val config = android.content.res.Configuration(context.resources.configuration)
+        config.setLocale(locale)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            config.setLocales(android.os.LocaleList(locale))
+        }
+        val localizedContext = context.createConfigurationContext(config)
+
+// Initialize MapView with localized context
+        mapView = MapView(localizedContext).apply {
             onCreate(null)
             onResume()
+
             mapScene.loadScene(MapScheme.NORMAL_DAY) { error ->
                 if (error == null) {
-                    // Start with zoomed out view
-                    val defaultCoordinates = GeoCoordinates(30.0444, 31.2357) // Cairo
-                    val zoomedOutDistance = MapMeasure(MapMeasure.Kind.DISTANCE, 9000000.0) // 50km view
+                    // Use a Western location as default (London, UK or New York, USA)
+                    // London
+                  //  val defaultCoordinates = GeoCoordinates(51.5074, -0.1278)
+                    // Or use New York
+                     val defaultCoordinates = GeoCoordinates(40.7128, -74.0060)
+
+                    val zoomedOutDistance = MapMeasure(MapMeasure.Kind.DISTANCE, 9000000.0)
                     camera.lookAt(defaultCoordinates, zoomedOutDistance)
 
-                    Log.i("JoyStickScreen", "Map loaded with zoomed out view")
+                    Log.i("JoyStickScreen", "Map loaded with default location: London")
                     isMapLoaded = true
                 } else {
                     Log.e("JoyStickScreen", "Failed to load map: ${error.toString()}")
