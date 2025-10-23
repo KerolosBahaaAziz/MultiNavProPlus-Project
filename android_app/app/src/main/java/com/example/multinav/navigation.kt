@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -133,91 +134,59 @@ fun Navigation(
                 // Wrapper Box for the navigation bar with gradient background
                 Box(
                     modifier = Modifier
-                        .height(56.dp)
                         .fillMaxWidth()
+                        .background(brush = AppTheme.horizontalGradient) // Extend gradient to full area
+                        .navigationBarsPadding() // Apply padding after background
                 ) {
-                    // Apply gradient background to the entire nav bar
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
+                            .height(56.dp) // Increased height for better spacing
                             .background(brush = AppTheme.horizontalGradient)
-                    )
-                NavigationBar(
-                    modifier = Modifier.height(56.dp),
-                    containerColor = Color.Transparent // Make container transparent
-                ) {
-                    val tabItems = listOf(Screen.JoyStick, Screen.DeviceList)
-                    tabItems.forEach { screen ->
-                        if (screen.label != null && screen.icon != null) {
-                            NavigationBarItem(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(id = screen.icon),
-                                        contentDescription = screen.label,
-                                        modifier = Modifier.size(20.dp),
-                                        tint = AppTheme.onGradientColor // Use theme constant for consistent coloring
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        screen.label,
-                                        color = Color.White,
-                                        fontSize = 12.sp
-                                    )
-                                },
-                                selected = currentRoute == screen.route.substringBefore("/{deviceAddress}"),
-                                onClick = {
-                                    if (screen.route == Screen.JoyStick.route) {
-                                        // First, check if we're already connected to a device
-                                        val connectedDeviceAddress =
-                                            bluetoothService.getConnectedDeviceAddress()
-
-                                        if (connectedDeviceAddress != null) {
-                                            // We have a connected device - use its address
-                                            navController.navigate(
-                                                Screen.JoyStick.createRoute(
-                                                    connectedDeviceAddress
-                                                )
+                    ) {
+                        NavigationBar(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 4.dp), // Add top padding
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp
+                        ) {
+                            val tabItems = listOf(Screen.JoyStick, Screen.DeviceList)
+                            tabItems.forEach { screen ->
+                                if (screen.label != null && screen.icon != null) {
+                                    NavigationBarItem(
+                                        icon = {
+                                            Box(
+                                                modifier = Modifier.padding(top = 2.dp) // Additional icon padding
                                             ) {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
+                                                Icon(
+                                                    painter = painterResource(id = screen.icon),
+                                                    contentDescription = screen.label,
+                                                    modifier = Modifier.size(20.dp), // Slightly larger icon
+                                                    tint = AppTheme.onGradientColor
+                                                )
                                             }
-                                        } else {
-                                            // Find a device that's marked as connected in the UI state
-                                            val connectedDevice =
-                                                bluetoothViewModel.uiState.value.let { state ->
-                                                    state.pairedDevices.find { it.isConnected }
-                                                        ?: state.scannedDevices.find { it.isConnected }
-                                                }
+                                        },
+                                        label = {
+                                            Text(
+                                                screen.label,
+                                                color = Color.White,
+                                                fontSize = 11.sp, // Slightly smaller font
+                                                maxLines = 1
+                                            )
+                                        },
+                                        selected = currentRoute == screen.route.substringBefore("/{deviceAddress}"),
+                                        onClick = {
+                                            if (screen.route == Screen.JoyStick.route) {
+                                                // First, check if we're already connected to a device
+                                                val connectedDeviceAddress =
+                                                    bluetoothService.getConnectedDeviceAddress()
 
-                                            if (connectedDevice != null) {
-                                                // Navigate with the connected device from UI state
-                                                navController.navigate(
-                                                    Screen.JoyStick.createRoute(
-                                                        connectedDevice.address
-                                                    )
-                                                ) {
-                                                    popUpTo(navController.graph.startDestinationId) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            } else {
-                                                // No connected device found
-                                                coroutineScope.launch {
-                                                    snackbarHostState.showSnackbar(
-                                                        "Connect to device first",
-                                                        duration = SnackbarDuration.Short
-                                                    )
-                                                }
-                                                coroutineScope.launch {  // Navigate with the connected device from UI state
+                                                if (connectedDeviceAddress != null) {
+                                                    // We have a connected device - use its address
                                                     navController.navigate(
                                                         Screen.JoyStick.createRoute(
-                                                            "placeholder_address"
+                                                            connectedDeviceAddress
                                                         )
                                                     ) {
                                                         popUpTo(navController.graph.startDestinationId) {
@@ -226,31 +195,74 @@ fun Navigation(
                                                         launchSingleTop = true
                                                         restoreState = true
                                                     }
+                                                } else {
+                                                    // Find a device that's marked as connected in the UI state
+                                                    val connectedDevice =
+                                                        bluetoothViewModel.uiState.value.let { state ->
+                                                            state.pairedDevices.find { it.isConnected }
+                                                                ?: state.scannedDevices.find { it.isConnected }
+                                                        }
+
+                                                    if (connectedDevice != null) {
+                                                        // Navigate with the connected device from UI state
+                                                        navController.navigate(
+                                                            Screen.JoyStick.createRoute(
+                                                                connectedDevice.address
+                                                            )
+                                                        ) {
+                                                            popUpTo(navController.graph.startDestinationId) {
+                                                                saveState = true
+                                                            }
+                                                            launchSingleTop = true
+                                                            restoreState = true
+                                                        }
+                                                    } else {
+                                                        // No connected device found
+                                                        coroutineScope.launch {
+                                                            snackbarHostState.showSnackbar(
+                                                                "Connect to device first",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
+                                                        coroutineScope.launch {
+                                                            navController.navigate(
+                                                                Screen.JoyStick.createRoute(
+                                                                    "placeholder_address"
+                                                                )
+                                                            ) {
+                                                                popUpTo(navController.graph.startDestinationId) {
+                                                                    saveState = true
+                                                                }
+                                                                launchSingleTop = true
+                                                                restoreState = true
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                // Regular navigation for other tabs
+                                                navController.navigate(screen.route) {
+                                                    popUpTo(navController.graph.startDestinationId) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
                                                 }
                                             }
-                                        }
-                                    } else {
-                                        // Regular navigation for other tabs
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.startDestinationId) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = AppTheme.onGradientColor,
-                                    unselectedIconColor = AppTheme.onGradientColorMuted,
-                                    selectedTextColor = AppTheme.onGradientColor,
-                                    unselectedTextColor = AppTheme.onGradientColorMuted,
-                                    indicatorColor = AppTheme.selectionOverlay
-                                )
-                            )
+                                        },
+                                        alwaysShowLabel = true,
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = AppTheme.onGradientColor,
+                                            unselectedIconColor = AppTheme.onGradientColorMuted,
+                                            selectedTextColor = AppTheme.onGradientColor,
+                                            unselectedTextColor = AppTheme.onGradientColorMuted,
+                                            indicatorColor = Color.White.copy(alpha = 0.15f) // Subtle indicator
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
-                }
                 }
             }
         }
