@@ -31,6 +31,7 @@ import com.here.sdk.core.engine.AuthenticationMode
 import com.here.sdk.core.engine.SDKNativeEngine
 import com.here.sdk.core.engine.SDKOptions
 import com.here.sdk.core.errors.InstantiationErrorException
+import com.here.sdk.mapview.MapView
 
 class MainActivity : ComponentActivity() {
     private val bluetoothService by lazy { BluetoothService(this) }
@@ -243,35 +244,29 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun initializeHereSDK() {
-        // Force English locale before SDK initialization
-        val locale = java.util.Locale("en", "US")
-        java.util.Locale.setDefault(locale)
-
         val accessKeyId = getString(R.string.here_access_key_id)
         val accessKeySecret = getString(R.string.here_access_key_secret)
         val authenticationMode = AuthenticationMode.withKeySecret(accessKeyId, accessKeySecret)
         val sdkOptions = SDKOptions(authenticationMode).apply {
             cachePath = "${filesDir}/here_sdk_cache"
-            // Try to set any available language options
-            try {
-                // Some versions support these properties
-                val field = this::class.java.getDeclaredField("languageCode")
-                field.isAccessible = true
-                field.set(this, "en")
-                Log.d("MainActivity", "Set languageCode via reflection")
-            } catch (e: Exception) {
-                Log.d("MainActivity", "languageCode field not available: ${e.message}")
-            }
         }
 
         try {
             val sdkEngine = SDKNativeEngine.makeSharedInstance(this, sdkOptions)
-            Log.i("MainActivity", "HERE SDK initialized successfully with locale: $locale")
+
+            // Set primary language to English 
+            MapView.setPrimaryLanguage(com.here.sdk.core.LanguageCode.EN_US)
+
+            // Optionally set secondary language to null or another English variant
+            MapView.setSecondaryLanguage(null)
+
+            Log.i("MainActivity", "HERE SDK initialized successfully with English language")
         } catch (e: InstantiationErrorException) {
             Log.e("MainActivity", "Failed to initialize HERE SDK: ${e.message}")
             throw RuntimeException("HERE SDK initialization failed", e)
         }
     }
+
     override fun attachBaseContext(newBase: android.content.Context) {
         // Force English locale for the entire app
         val locale = java.util.Locale.ENGLISH
