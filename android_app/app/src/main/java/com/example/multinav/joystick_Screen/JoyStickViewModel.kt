@@ -43,13 +43,23 @@ class JoyStickViewModel(
     private val _gnssAmplitude = MutableStateFlow("-")
     val gnssAmplitude: StateFlow<String> = _gnssAmplitude
 
+    // Add GNSS location states
+    private val _gnssLatitude = MutableStateFlow<Double?>(null)
+    val gnssLatitude: StateFlow<Double?> = _gnssLatitude
+
+    private val _gnssLongitude = MutableStateFlow<Double?>(null)
+    val gnssLongitude: StateFlow<Double?> = _gnssLongitude
+
+
     // Track last update time for each sensor
     private val sensorLastUpdateTime = mutableMapOf(
         "TEMP" to 0L,
         "HUM" to 0L,
         "PRESS" to 0L,
         "AQ" to 0L,
-        "GNSS" to 0L
+        "GNSS_AMPLITUDE" to 0L,
+        "GNSS_LAT" to 0L,
+        "GNSS_LON" to 0L
     )
 
     // Timeout duration in milliseconds (5 seconds)
@@ -113,12 +123,24 @@ class JoyStickViewModel(
                                     Log.d("JoyStickViewModel", "Air quality sensor timeout")
                                 }
                             }
-                            "GNSS" -> {
+                            "GNSS_AMPLITUDE" -> {
                                 if (_gnssAmplitude.value != "-") {
                                     _gnssAmplitude.value = "-"
-                                    Log.d("JoyStickViewModel", "GNSS sensor timeout")
+                                    Log.d("JoyStickViewModel", "GNSS amplitude timeout")
                                 }
                             }
+                            "GNSS_LAT" -> {
+                                if (_gnssLatitude.value != null) {
+                                    _gnssLatitude.value = null
+                                    Log.d("JoyStickViewModel", "GNSS latitude timeout")
+                                }
+                            }
+                            "GNSS_LON" -> {
+                                if (_gnssLongitude.value != null) {
+                                    _gnssLongitude.value = null
+                                    Log.d("JoyStickViewModel", "GNSS longitude timeout")
+                                }
+                                }
                         }
                     }
                 }
@@ -126,18 +148,20 @@ class JoyStickViewModel(
         }
     }
 
-    private fun resetSensorData() {
-        _temperature.value = "-"
-        _humidity.value = "-"
-        _pressure.value = "-"
-        _airQuality.value = "-"
-        _gnssAmplitude.value = "-"
+        private fun resetSensorData() {
+            _temperature.value = "-"
+            _humidity.value = "-"
+            _pressure.value = "-"
+            _airQuality.value = "-"
+            _gnssAmplitude.value = "-"
+            _gnssLatitude.value = null
+            _gnssLongitude.value = null
 
-        // Reset timestamps
-        sensorLastUpdateTime.keys.forEach { key ->
-            sensorLastUpdateTime[key] = 0L
+            // Reset timestamps
+            sensorLastUpdateTime.keys.forEach { key ->
+                sensorLastUpdateTime[key] = 0L
+            }
         }
-    }
 
     private fun setupSensorDataListener() {
         viewModelScope.launch {
@@ -153,49 +177,100 @@ class JoyStickViewModel(
     }
 
     private fun processSensorData(message: String) {
-        Log.d("JoyStickViewModel", "Processing message: $message")
+        Log.d("JoyStickViewModel", "Processing raw message: '$message'")
 
-        // Check if the message contains sensor data
-        if (message.startsWith("SENSOR:")) {
-            val sensorData = message.substringAfter("SENSOR:")
-            val currentTime = System.currentTimeMillis()
-
-            // Parse sensor data - expected format: "TEMP=24.5;HUM=48.2;PRESS=1013.2;AQ=Good;GNSS=45.3"
-            sensorData.split(";").forEach { dataPart ->
-                val parts = dataPart.split("=")
-                if (parts.size == 2) {
-                    val key = parts[0].trim()
-                    val value = parts[1].trim()
-
-                    when (key) {
-                        "TEMP" -> {
-                            _temperature.value = value
-                            sensorLastUpdateTime["TEMP"] = currentTime
-                        }
-                        "HUM" -> {
-                            _humidity.value = value
-                            sensorLastUpdateTime["HUM"] = currentTime
-                        }
-                        "PRESS" -> {
-                            _pressure.value = value
-                            sensorLastUpdateTime["PRESS"] = currentTime
-                        }
-                        "AQ" -> {
-                            _airQuality.value = value
-                            sensorLastUpdateTime["AQ"] = currentTime
-                        }
-                        "GNSS" -> {
-                            _gnssAmplitude.value = value
-                            sensorLastUpdateTime["GNSS"] = currentTime
-                        }
-                    }
-                }
+        // Try different message formats
+        when {
+            message.startsWith("SENSOR:") -> {
+                Log.d("JoyStickViewModel", "Found SENSOR: prefix")
+                parseSensorData(message.substringAfter("SENSOR:"))
             }
-
-            Log.d("JoyStickViewModel", "Updated sensor data: T=${_temperature.value}, H=${_humidity.value}, P=${_pressure.value}, AQ=${_airQuality.value}, GNSS=${_gnssAmplitude.value}")
+            message.contains("TEMP=") || message.contains("HUM=") ||
+                    message.contains("PRESS=") || message.contains("AQ=") ||
+                    message.contains("GNSS") -> {
+                Log.d("JoyStickViewModel", "Found sensor data without SENSOR: prefix")
+                parseSensorData(message)
+            }
+            else -> {
+                Log.d("JoyStickViewModel", "Message doesn't match sensor format: $message")
+            }
         }
     }
 
+    private fun parseSensorData(sensorData: String) {
+        val currentTime = System.currentTimeMillis()
+
+        // Parse sensor data - expected format: "TEMP=24.5;HUM=48.2;PRESS=1013.2;AQ=Good;GNSS_AMPLITUDE=45.3;GNSS_LAT=30.0444;GNSS_LON=31.2357"
+        sensorData.split(";").forEach { dataPart ->
+            val parts = dataPart.split("=")
+            if (parts.size == 2) {
+                val key = parts[0].trim().uppercase()
+                val value = parts[1].trim()
+
+                Log.d("JoyStickViewModel", "Parsing: $key = $value")
+
+                when (key) {
+                    "TEMP", "TEMPERATURE" -> {
+                        _temperature.value = value
+                        sensorLastUpdateTime["TEMP"] = currentTime
+                        Log.d("JoyStickViewModel", "Updated temperature: $value")
+                    }
+                    "HUM", "HUMIDITY" -> {
+                        _humidity.value = value
+                        sensorLastUpdateTime["HUM"] = currentTime
+                        Log.d("JoyStickViewModel", "Updated humidity: $value")
+                    }
+                    "PRESS", "PRESSURE" -> {
+                        _pressure.value = value
+                        sensorLastUpdateTime["PRESS"] = currentTime
+                        Log.d("JoyStickViewModel", "Updated pressure: $value")
+                    }
+                    "AQ", "AIRQUALITY", "AIR_QUALITY" -> {
+                        _airQuality.value = value
+                        sensorLastUpdateTime["AQ"] = currentTime
+                        Log.d("JoyStickViewModel", "Updated air quality: $value")
+                    }
+                    "GNSS_AMPLITUDE", "GNSS_AMP", "GNSS" -> {
+                        _gnssAmplitude.value = value
+                        sensorLastUpdateTime["GNSS_AMPLITUDE"] = currentTime
+                        Log.d("JoyStickViewModel", "Updated GNSS amplitude: $value")
+                    }
+                    "GNSS_LAT", "GNSS_LATITUDE" -> {
+                        val latitude = value.toDoubleOrNull()
+                        if (latitude != null && latitude >= -90 && latitude <= 90) {
+                            _gnssLatitude.value = latitude
+                            sensorLastUpdateTime["GNSS_LAT"] = currentTime
+                            Log.d("JoyStickViewModel", "Updated GNSS latitude: $latitude")
+                        } else {
+                            Log.e("JoyStickViewModel", "Invalid GNSS latitude value: $value")
+                        }
+                    }
+                    "GNSS_LON", "GNSS_LONG", "GNSS_LONGITUDE" -> {
+                        val longitude = value.toDoubleOrNull()
+                        if (longitude != null && longitude >= -180 && longitude <= 180) {
+                            _gnssLongitude.value = longitude
+                            sensorLastUpdateTime["GNSS_LON"] = currentTime
+                            Log.d("JoyStickViewModel", "Updated GNSS longitude: $longitude")
+                        } else {
+                            Log.e("JoyStickViewModel", "Invalid GNSS longitude value: $value")
+                        }
+                    }
+                    else -> {
+                        Log.w("JoyStickViewModel", "Unknown sensor key: $key")
+                    }
+                }
+            } else {
+                Log.w("JoyStickViewModel", "Invalid sensor data format: $dataPart")
+            }
+        }
+
+        Log.d("JoyStickViewModel",
+            "Final sensor values - T:${_temperature.value}, H:${_humidity.value}, " +
+                    "P:${_pressure.value}, AQ:${_airQuality.value}, " +
+                    "GNSS Amp:${_gnssAmplitude.value}, " +
+                    "GNSS Lat:${_gnssLatitude.value}, GNSS Lon:${_gnssLongitude.value}"
+        )
+    }
     private fun reconnect() {
         viewModelScope.launch {
             try {
