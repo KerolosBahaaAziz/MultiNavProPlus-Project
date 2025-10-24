@@ -64,14 +64,22 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         return airPressureMessages
     }
     
+    var safeAccelerometer: Int? {
+        guard let last = lastAccelerometerUpdate, Date().timeIntervalSince(last) < 5 else {
+            accelerometerMessages = nil
+            return nil
+        }
+        return accelerometerMessages
+    }
+    
     //    {
     //        didSet {
     //            storage.save(receivedMessages, forKey: "receivedMessages")
     //        }
     //    }
-    @Published var accelerometerMessages: Int {
+    @Published var accelerometerMessages: Int? {
         didSet {
-            storage.saveInt(accelerometerMessages, forKey: "accelerometerMessages")
+            storage.saveInt(accelerometerMessages ?? 0, forKey: "accelerometerMessages")
         }
     }
     
@@ -123,7 +131,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     let airPressureCharacteristicUUID = CBUUID(string: "0320BC9A-7856-3412-7856-341278563412")
     let temperatureCharacteristicUUID = CBUUID(string: "0122BC9A-7856-3412-7856-341278563412")
     let humidityCharacteristicUUID = CBUUID(string: "0222BC9A-7856-3412-7856-341278563412")
-    let audioCharacteristicUUID = CBUUID(string: "0000FD43-8E22-4541-9D4C-21EDAE82ED19") // Replace with correct UUID
+    let audioCharacteristicUUID = CBUUID(string: "0000FD43-8E22-4541-9D4C-21EDAE82ED19")
     
     
     let sendDirectionCharacteristicUUID = CBUUID(string: "0130BC9A-7856-3412-7856-341278563412")

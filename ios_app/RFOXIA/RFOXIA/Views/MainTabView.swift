@@ -25,7 +25,7 @@ struct MainTabView: View {
 
             TabView {
                 
-                BluetoothChatView()
+                DevicesNamesView()
                     .tabItem {
                         Label("Chat", systemImage: "bubble.left.and.bubble.right.fill")
                     }

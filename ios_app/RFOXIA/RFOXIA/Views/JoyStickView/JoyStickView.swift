@@ -18,7 +18,7 @@ struct JoyStickView: View {
     @State private var navigateToTask = false
     @State private var navigateToSubscribe = false
     @State private var alertItem: AlertInfo?
-
+    
     @State private var mapRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.006),
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
@@ -42,11 +42,8 @@ struct JoyStickView: View {
                         }
                     }
                     // 📍 Place overlay OUTSIDE the if-else so it always exists
-                    
                 }
             }
-            
-            
             // 📍 Attach alert here too
             .alert(info: $alertItem)
             .onAppear {
@@ -95,7 +92,7 @@ struct JoyStickView: View {
                     .font(.system(size: 40))
                     .foregroundStyle(BackgroundGradient.backgroundGradient)
             }
-            .padding()
+                .padding()
             , alignment: .bottomTrailing
         )
         .background(
@@ -135,30 +132,30 @@ struct JoyStickView: View {
         .frame(maxHeight: UIScreen.main.bounds.height * 0.25)
     }
     
-private func handlePlusTapped() {
-    let isSubscribed = UserDefaults.standard.bool(forKey: "isSubscribed")
-    let timeStamp = UserDefaults.standard.double(forKey: "subscriptionExpireDate")
-    let expiryDate = Date(timeIntervalSince1970: timeStamp)
-    let isExpired = expiryDate < Date()
-    
-    if isSubscribed && !isExpired {
-        // ✅ navigate instead of recording
-        navigateToTask = true
-    } else {
-        alertItem = AlertInfo(
-            title: "Notice",
-            message: isSubscribed
+    private func handlePlusTapped() {
+        let isSubscribed = UserDefaults.standard.bool(forKey: "isSubscribed")
+        let timeStamp = UserDefaults.standard.double(forKey: "subscriptionExpireDate")
+        let expiryDate = Date(timeIntervalSince1970: timeStamp)
+        let isExpired = expiryDate < Date()
+        
+        if isSubscribed && !isExpired {
+            // ✅ navigate instead of recording
+            navigateToTask = true
+        } else {
+            alertItem = AlertInfo(
+                title: "Notice",
+                message: isSubscribed
                 ? "Your subscription expired. Subscribe now for $1/month."
                 : "To use this feature, subscribe for $1/month.",
-            confirmText: "Subscribe",
-            cancelText: "Cancel",
-            confirmAction: {
-                navigateToSubscribe = true
-            }
-        )
+                confirmText: "Subscribe",
+                cancelText: "Cancel",
+                confirmAction: {
+                    navigateToSubscribe = true
+                }
+            )
+        }
     }
-}
-
+    
     
     private func checkOrientation() {
         let orientation = UIDevice.current.orientation
@@ -168,7 +165,7 @@ private func handlePlusTapped() {
             isPortrait = false
         }
     }
-
+    
     
     private var sensorReadings: some View {
         HStack{
@@ -196,10 +193,15 @@ private func handlePlusTapped() {
             
             Spacer()
             
-            Text("good")
+            if let acceleromate = bluetoothManager.accelerometerMessages{
+                Text("\(acceleromate)")
+            } else {
+                Text("good")
+            }
         }
         .font(.system(size: 33))
-        .background(in: .rect, fillStyle: .init(eoFill: true))
+        .background(.clear)
+        //.background(in: .rect, fillStyle: .init(eoFill: true))
     }
     
     private func modeSelector(size: CGSize) -> some View {
